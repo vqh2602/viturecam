@@ -84,17 +84,25 @@ class BeautyPanel extends ConsumerWidget {
             onChanged: (v) => controller.updateBeauty(b.copyWith(teethWhitening: v)),
           );
         default:
-          return const SizedBox.shrink();
+          return BeautySlider(
+            label: 'Skin Smoothing',
+            value: b.smooth,
+            defaultValue: 0,
+            onChanged: (v) => controller.updateBeauty(b.copyWith(smooth: v)),
+          );
       }
     }
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        buildCurrentSlider(),
+        SizedBox(
+          height: 56,
+          child: buildCurrentSlider(),
+        ),
         const Divider(height: 1, color: Colors.white10),
         SizedBox(
-          height: 52,
+          height: 56,
           child: ListView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

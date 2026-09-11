@@ -168,17 +168,25 @@ class ReshapePanel extends ConsumerWidget {
             onChanged: (v) => controller.updateFace(f.copyWith(smile: v)),
           );
         default:
-          return const SizedBox.shrink();
+          return BeautySlider(
+            label: 'Slim Face',
+            value: f.slimFace,
+            defaultValue: 0,
+            onChanged: (v) => controller.updateFace(f.copyWith(slimFace: v)),
+          );
       }
     }
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        buildCurrentSlider(),
+        SizedBox(
+          height: 56,
+          child: buildCurrentSlider(),
+        ),
         const Divider(height: 1, color: Colors.white10),
         SizedBox(
-          height: 52,
+          height: 56,
           child: ListView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

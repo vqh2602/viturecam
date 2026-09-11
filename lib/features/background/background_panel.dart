@@ -23,18 +23,25 @@ class BackgroundPanel extends ConsumerWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (bg.mode != 'none')
-          BeautySlider(
-            label: 'Blur Intensity',
-            value: bg.blurIntensity,
-            defaultValue: 50,
-            onChanged: (v) => controller.updateBackground(bg.copyWith(blurIntensity: v)),
-          )
-        else
-          const SizedBox(height: 14),
+        SizedBox(
+          height: 56,
+          child: bg.mode != 'none'
+              ? BeautySlider(
+                  label: 'Blur Intensity',
+                  value: bg.blurIntensity,
+                  defaultValue: 50,
+                  onChanged: (v) => controller.updateBackground(bg.copyWith(blurIntensity: v)),
+                )
+              : const Center(
+                  child: Text(
+                    'None • Select a background mode below',
+                    style: TextStyle(color: Colors.white38, fontSize: 12),
+                  ),
+                ),
+        ),
         const Divider(height: 1, color: Colors.white10),
         SizedBox(
-          height: 52,
+          height: 56,
           child: ListView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

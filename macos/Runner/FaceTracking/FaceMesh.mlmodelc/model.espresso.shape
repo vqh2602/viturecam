@@ -1,0 +1,1743 @@
+{
+  "layer_shapes" : {
+    "model\/add_12\/add" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_27\/Relu" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_7\/Relu" : {
+      "k" : 1,
+      "w" : 64,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_13\/Neg" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/conv2d_5\/Conv2D_to_nhwc" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/tf_op_layer_Pad_2\/Pad_2\/paddings" : {
+      "k" : 1,
+      "w" : 2,
+      "n" : 1,
+      "_rank" : 2,
+      "h" : 4
+    },
+    "model\/p_re_lu_12\/Neg_1" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/conv2d_5\/Conv2D" : {
+      "k" : 32,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/add_8\/add" : {
+      "k" : 1,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_5\/mul" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/conv2d_11\/Conv2D" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_12\/Neg" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/max_pooling2d_4\/MaxPool" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_17\/Relu" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_16\/Relu_1" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/add_2\/add" : {
+      "k" : 1,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_11\/Neg" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/tf_op_layer_Pad\/Pad\/paddings" : {
+      "k" : 1,
+      "w" : 2,
+      "n" : 1,
+      "_rank" : 2,
+      "h" : 4
+    },
+    "model\/p_re_lu_3\/Relu" : {
+      "k" : 1,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_15\/add_to_nchw" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu\/add_to_nchw" : {
+      "k" : 16,
+      "w" : 96,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 96
+    },
+    "model\/depthwise_conv2d_12\/depthwise" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_10\/Neg" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/conv2d_10\/Conv2D_to_nhwc" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/depthwise_conv2d_3\/depthwise" : {
+      "k" : 32,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu\/Relu" : {
+      "k" : 16,
+      "w" : 96,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 96
+    },
+    "model\/p_re_lu_1\/add_to_nchw" : {
+      "k" : 16,
+      "w" : 96,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 96
+    },
+    "model\/confidence\/Reshape" : {
+      "k" : 1,
+      "w" : 1,
+      "n" : 1,
+      "_rank" : 2,
+      "h" : 1
+    },
+    "model\/p_re_lu\/add" : {
+      "k" : 96,
+      "w" : 16,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 96
+    },
+    "model\/p_re_lu_19\/add" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_12\/Relu_to_nhwc" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/add_11\/add_to_nhwc" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_27\/mul" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/p_re_lu_26\/Neg_1" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_15\/Relu_1" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_7\/add" : {
+      "k" : 1,
+      "w" : 64,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_4\/Relu_1" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_18\/add" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/conv2d_9\/Conv2D" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_26\/mul" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/conv2d_13\/Conv2D_to_nhwc" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_6\/add_to_nchw" : {
+      "k" : 64,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_5\/Neg" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/p_re_lu_20\/Neg_1" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_17\/add" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/landmarks\/Reshape" : {
+      "k" : 1,
+      "w" : 1404,
+      "n" : 1,
+      "_rank" : 2,
+      "h" : 1
+    },
+    "model\/p_re_lu_27\/add_to_nchw" : {
+      "k" : 32,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_16\/add" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_13\/Relu_1" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_12\/Relu" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_15\/add" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_14\/add" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_4\/mul" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/p_re_lu_17\/Neg_1" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_13\/add" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/add_16\/add" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_14\/Relu_1" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/conv2d_4\/Conv2D_to_nhwc" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_12\/add" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/depthwise_conv2d_13\/depthwise" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_11\/Neg_1" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/add_9\/add" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/add_18\/add_to_nhwc" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/depthwise_conv2d_5\/depthwise" : {
+      "k" : 32,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_20\/mul" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/p_re_lu_27\/Relu_1" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_11\/add" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/add_3\/add" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/depthwise_conv2d_14\/depthwise" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_12\/Relu_1" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/conv2d_16\/Conv2D" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/add_11\/add" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/add\/add" : {
+      "k" : 96,
+      "w" : 16,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 96
+    },
+    "model\/p_re_lu_10\/add" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/conv2d_30\/Conv2D" : {
+      "k" : 1,
+      "w" : 0,
+      "n" : 1,
+      "h" : 0
+    },
+    "model\/conv2d_20\/Conv2D_to_nhwc" : {
+      "k" : 0,
+      "w" : 1404,
+      "n" : 1,
+      "h" : 0
+    },
+    "model\/p_re_lu_26\/Relu" : {
+      "k" : 32,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/conv2d_20\/Conv2D" : {
+      "k" : 1404,
+      "w" : 0,
+      "n" : 1,
+      "h" : 0
+    },
+    "model\/p_re_lu_16\/Relu" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/max_pooling2d_5\/MaxPool" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_6\/add" : {
+      "k" : 1,
+      "w" : 64,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu\/Relu_to_nhwc" : {
+      "k" : 96,
+      "w" : 16,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 96
+    },
+    "model\/conv2d_10\/Conv2D" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_4\/Neg" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/p_re_lu_26\/Relu_1" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_6\/Relu" : {
+      "k" : 1,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/conv2d_4\/Conv2D" : {
+      "k" : 32,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_2\/add_to_nchw" : {
+      "k" : 16,
+      "w" : 96,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 96
+    },
+    "model\/p_re_lu_11\/Relu_1" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_12\/add_to_nchw" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_9\/Relu_1" : {
+      "k" : 1,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_2\/Relu" : {
+      "k" : 96,
+      "w" : 16,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 96
+    },
+    "model\/conv2d\/Conv2D_to_nhwc" : {
+      "k" : 96,
+      "w" : 16,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 96
+    },
+    "model\/max_pooling2d\/MaxPool" : {
+      "k" : 16,
+      "w" : 48,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 48
+    },
+    "model\/conv2d_16\/Conv2D_to_nhwc" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_3\/mul" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/p_re_lu_17\/add_to_nchw" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/conv2d_15\/Conv2D" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_7\/add_to_nchw" : {
+      "k" : 64,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_19\/mul" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/p_re_lu_16\/Neg_1" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_3\/Relu_1" : {
+      "k" : 1,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/depthwise_conv2d_15\/depthwise" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_18\/mul" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/p_re_lu_10\/Relu_1" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_10\/Neg_1" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_11\/Relu" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_17\/mul" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/add_4\/add" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/depthwise_conv2d_16\/depthwise" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/conv2d_8\/Conv2D" : {
+      "k" : 64,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_16\/mul" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/add_15\/add" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_6\/Relu_to_nhwc" : {
+      "k" : 1,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_15\/mul" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/add_2\/add_to_nhwc" : {
+      "k" : 1,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/conv2d_30\/Conv2D_to_nhwc" : {
+      "k" : 0,
+      "w" : 1,
+      "n" : 1,
+      "h" : 0
+    },
+    "model\/p_re_lu_5\/add" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/conv2d_8\/Conv2D_to_nhwc" : {
+      "k" : 1,
+      "w" : 64,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_14\/mul" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/depthwise_conv2d_23\/depthwise" : {
+      "k" : 32,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_3\/Neg" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/p_re_lu_8\/Relu_1" : {
+      "k" : 1,
+      "w" : 64,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_13\/mul" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/add_10\/add" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_12\/mul" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/depthwise_conv2d_7\/depthwise" : {
+      "k" : 64,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_11\/mul" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/p_re_lu_18\/Relu_to_nhwc" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_14\/add_to_nchw" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_2\/mul" : {
+      "k" : 96,
+      "w" : 16,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 96
+    },
+    "model\/p_re_lu_9\/mul" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/p_re_lu_10\/mul" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/p_re_lu_2\/Relu_1" : {
+      "k" : 96,
+      "w" : 16,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 96
+    },
+    "model\/p_re_lu\/Neg" : {
+      "k" : 1,
+      "w" : 16,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/p_re_lu_15\/Relu" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/add_5\/add_to_nhwc" : {
+      "k" : 1,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/max_pooling2d_1\/MaxPool" : {
+      "k" : 32,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "points_confidence" : {
+      "k" : 1,
+      "w" : 1405,
+      "n" : 1,
+      "_rank" : 2,
+      "h" : 1
+    },
+    "model\/p_re_lu_3\/add_to_nchw" : {
+      "k" : 32,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_9\/Relu" : {
+      "k" : 1,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_19\/add_to_nchw" : {
+      "k" : 32,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/conv2d_19\/Conv2D_to_nhwc" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/depthwise_conv2d_17\/depthwise" : {
+      "k" : 32,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_15\/Neg_1" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_5\/Relu" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/depthwise_conv2d_18\/depthwise" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/add_5\/add" : {
+      "k" : 1,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/conv2d_3\/Conv2D" : {
+      "k" : 32,
+      "w" : 48,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 48
+    },
+    "model\/p_re_lu_4\/add" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_8\/add_to_nchw" : {
+      "k" : 64,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_2\/Neg_1" : {
+      "k" : 96,
+      "w" : 16,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 96
+    },
+    "model\/p_re_lu_26\/add_to_nchw" : {
+      "k" : 32,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/depthwise_conv2d_2\/depthwise" : {
+      "k" : 16,
+      "w" : 48,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 48
+    },
+    "model\/p_re_lu_2\/Neg" : {
+      "k" : 1,
+      "w" : 16,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/add_19\/add" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_9\/Neg" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/p_re_lu_1\/Relu" : {
+      "k" : 96,
+      "w" : 16,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 96
+    },
+    "model\/conv2d_14\/Conv2D" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/tf_op_layer_Pad_1\/Pad_1\/paddings" : {
+      "k" : 1,
+      "w" : 2,
+      "n" : 1,
+      "_rank" : 2,
+      "h" : 4
+    },
+    "model\/p_re_lu_1\/Neg_1" : {
+      "k" : 96,
+      "w" : 16,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 96
+    },
+    "model\/add_8\/add_to_nhwc" : {
+      "k" : 1,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/conv2d_7\/Conv2D_to_nhwc" : {
+      "k" : 1,
+      "w" : 64,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/depthwise_conv2d_9\/depthwise" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_20\/Relu" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_1\/Relu_1" : {
+      "k" : 96,
+      "w" : 16,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 96
+    },
+    "model\/p_re_lu_10\/Relu" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_11\/add_to_nchw" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_19\/Relu" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_20\/Relu_1" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/add_14\/add" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_20\/Relu_to_nhwc" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_1\/mul" : {
+      "k" : 96,
+      "w" : 16,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 96
+    },
+    "model\/p_re_lu_8\/mul" : {
+      "k" : 1,
+      "w" : 64,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/p_re_lu_4\/Neg_1" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/conv2d_7\/Conv2D" : {
+      "k" : 64,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/conv2d_19\/Conv2D" : {
+      "k" : 32,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/conv2d_2\/Conv2D_to_nhwc" : {
+      "k" : 96,
+      "w" : 16,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 96
+    },
+    "model\/tf_op_layer_Pad\/Pad" : {
+      "k" : 16,
+      "w" : 48,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 48
+    },
+    "model\/p_re_lu_3\/Neg_1" : {
+      "k" : 1,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_7\/Relu_1" : {
+      "k" : 1,
+      "w" : 64,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/depthwise_conv2d\/depthwise" : {
+      "k" : 16,
+      "w" : 96,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 96
+    },
+    "model\/p_re_lu\/Neg_1" : {
+      "k" : 96,
+      "w" : 16,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 96
+    },
+    "model\/conv2d_29\/Conv2D_to_nhwc" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/conv2d_13\/Conv2D" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_14\/Neg_1" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_3\/add" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/depthwise_conv2d_4\/depthwise" : {
+      "k" : 32,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_6\/Neg_1" : {
+      "k" : 1,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_1\/Neg" : {
+      "k" : 1,
+      "w" : 16,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/p_re_lu_8\/Neg" : {
+      "k" : 1,
+      "w" : 64,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/add_6\/add" : {
+      "k" : 1,
+      "w" : 64,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_14\/Relu" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_4\/add_to_nchw" : {
+      "k" : 32,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_27\/Neg" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/max_pooling2d_2\/MaxPool" : {
+      "k" : 64,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_5\/Neg_1" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_15\/Relu_to_nhwc" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/conv2d\/Conv2D" : {
+      "k" : 16,
+      "w" : 96,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 96
+    },
+    "model\/p_re_lu_26\/Neg" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/conv2d_29\/Conv2D" : {
+      "k" : 32,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_16\/add_to_nchw" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/conv2d_11\/Conv2D_to_nhwc" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_7\/mul" : {
+      "k" : 1,
+      "w" : 64,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/p_re_lu\/mul" : {
+      "k" : 96,
+      "w" : 16,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 96
+    },
+    "model\/p_re_lu_8\/Relu" : {
+      "k" : 1,
+      "w" : 64,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_6\/Relu_1" : {
+      "k" : 1,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/add_18\/add" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_8\/Neg_1" : {
+      "k" : 1,
+      "w" : 64,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_4\/Relu" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/conv2d_2\/Conv2D" : {
+      "k" : 16,
+      "w" : 96,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 96
+    },
+    "model\/p_re_lu_7\/Neg_1" : {
+      "k" : 1,
+      "w" : 64,
+      "n" : 1,
+      "h" : 1
+    },
+    "input_image" : {
+      "k" : 3,
+      "w" : 192,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 192
+    },
+    "model\/p_re_lu_20\/Neg" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/conv2d_1\/Conv2D_to_nhwc" : {
+      "k" : 96,
+      "w" : 16,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 96
+    },
+    "model\/add_13\/add" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/conv2d_18\/Conv2D_to_nhwc" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_20\/add_to_nchw" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/max_pooling2d_3\/MaxPool" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/depthwise_conv2d_6\/depthwise" : {
+      "k" : 64,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_18\/Relu" : {
+      "k" : 32,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_19\/Relu_1" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/add_14\/add_to_nhwc" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu\/Relu_1" : {
+      "k" : 96,
+      "w" : 16,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 96
+    },
+    "model\/p_re_lu_2\/add" : {
+      "k" : 96,
+      "w" : 16,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 96
+    },
+    "model\/p_re_lu_9\/add" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_19\/Neg_1" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/conv2d_28\/Conv2D" : {
+      "k" : 32,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_7\/Neg" : {
+      "k" : 1,
+      "w" : 64,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/p_re_lu_3\/Relu_to_nhwc" : {
+      "k" : 1,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_13\/Neg_1" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/tf_op_layer_Pad_1\/Pad_1" : {
+      "k" : 32,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/add_7\/add" : {
+      "k" : 1,
+      "w" : 64,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_9\/Neg_1" : {
+      "k" : 1,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_27\/add" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/conv2d_18\/Conv2D" : {
+      "k" : 32,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_9\/add_to_nchw" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_13\/add_to_nchw" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/add_1\/add" : {
+      "k" : 96,
+      "w" : 16,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 96
+    },
+    "model\/p_re_lu_26\/add" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/conv2d_6\/Conv2D" : {
+      "k" : 64,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_6\/mul" : {
+      "k" : 1,
+      "w" : 64,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/depthwise_conv2d_10\/depthwise" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_18\/Relu_1" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_18\/add_to_nchw" : {
+      "k" : 32,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_5\/add_to_nchw" : {
+      "k" : 32,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/conv2d_12\/Conv2D" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/depthwise_conv2d_11\/depthwise" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_13\/Relu" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/tf_op_layer_Pad_2\/Pad_2" : {
+      "k" : 64,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/conv2d_1\/Conv2D" : {
+      "k" : 16,
+      "w" : 96,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 96
+    },
+    "model\/conv2d_14\/Conv2D_to_nhwc" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/depthwise_conv2d_1\/depthwise" : {
+      "k" : 16,
+      "w" : 96,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 96
+    },
+    "model\/p_re_lu_9\/Relu_to_nhwc" : {
+      "k" : 1,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_19\/Neg" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/p_re_lu_26\/Relu_to_nhwc" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/depthwise_conv2d_8\/depthwise" : {
+      "k" : 64,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_27\/Neg_1" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_18\/Neg" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/p_re_lu_20\/add" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_17\/Neg" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/p_re_lu_17\/Relu_1" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_1\/add" : {
+      "k" : 96,
+      "w" : 16,
+      "n" : 1,
+      "_rank" : 4,
+      "h" : 96
+    },
+    "model\/p_re_lu_8\/add" : {
+      "k" : 1,
+      "w" : 64,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/add_17\/add" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_16\/Neg" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/conv2d_17\/Conv2D" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/conv2d_28\/Conv2D_to_nhwc" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_6\/Neg" : {
+      "k" : 1,
+      "w" : 64,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/p_re_lu_15\/Neg" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/p_re_lu_5\/Relu_1" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_10\/add_to_nchw" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_14\/Neg" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "_rank" : 3,
+      "h" : 1
+    },
+    "model\/conv2d_17\/Conv2D_to_nhwc" : {
+      "k" : 1,
+      "w" : 128,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/p_re_lu_18\/Neg_1" : {
+      "k" : 1,
+      "w" : 32,
+      "n" : 1,
+      "h" : 1
+    },
+    "model\/conv2d_21\/Conv2D" : {
+      "k" : 128,
+      "w" : 1,
+      "n" : 1,
+      "h" : 1
+    }
+  }
+}

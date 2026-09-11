@@ -33,17 +33,18 @@ class BeautySlider extends StatelessWidget {
     return GestureDetector(
       onDoubleTap: onReset ?? () => onChanged(defaultValue),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        height: 56,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Row(
               children: [
                 Text(
                   label,
                   style: const TextStyle(
-                    fontSize: 13,
+                    fontSize: 12.5,
                     fontWeight: FontWeight.w500,
                     color: Colors.white,
                     letterSpacing: 0.2,
@@ -64,29 +65,32 @@ class BeautySlider extends StatelessWidget {
                 Text(
                   '$valueText${unit ?? ''}',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 12.5,
                     fontWeight: FontWeight.w600,
                     color: isModified ? const Color(0xFFFF8DA1) : Colors.white70,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             SliderTheme(
               data: SliderThemeData(
                 trackHeight: 3,
                 activeTrackColor: const Color(0xFFFF7597),
                 inactiveTrackColor: Colors.white.withValues(alpha: 0.12),
                 thumbColor: Colors.white,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.5, elevation: 2),
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6, elevation: 2),
                 overlayColor: const Color(0xFFFF7597).withValues(alpha: 0.2),
-                overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+                overlayShape: const RoundSliderOverlayShape(overlayRadius: 11),
               ),
-              child: Slider(
-                value: value.clamp(min, max),
-                min: min,
-                max: max,
-                onChanged: onChanged,
+              child: SizedBox(
+                height: 22,
+                child: Slider(
+                  value: value.clamp(min, max),
+                  min: min,
+                  max: max,
+                  onChanged: onChanged,
+                ),
               ),
             ),
           ],

@@ -492,21 +492,24 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     }
 
     return Container(
+      height: 168,
       decoration: const BoxDecoration(
         color: Color(0xFF18181C),
         border: Border(top: BorderSide(color: Colors.white10)),
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          // Sub-panel for active category
-          activePanel,
+          // Sub-panel for active category with constant height across all modes
+          SizedBox(
+            height: 113,
+            child: activePanel,
+          ),
 
           const Divider(height: 1, color: Colors.white10),
 
           // Main horizontal category toolbar (Xingtu style)
           Container(
-            height: 54,
+            height: 52,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [

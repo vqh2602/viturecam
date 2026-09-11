@@ -35,7 +35,9 @@ class MainFlutterWindow: NSWindow {
 
             switch call.method {
             case "initialize":
-                result(["success": true])
+                let tid = engine.ensureTextureRegistered()
+                NSLog("[MainFlutterWindow] initialize called, ensured textureId: %lld", tid)
+                result(["success": true, "textureId": tid])
 
             case "requestCameraPermission":
                 CameraEngine.requestCameraPermission { granted in
@@ -59,6 +61,7 @@ class MainFlutterWindow: NSWindow {
                 let fps = args["fps"] as? Int ?? 30
 
                 engine.startCamera(deviceId: deviceId, width: width, height: height, fps: fps) { success, error, textureId in
+                    NSLog("[MainFlutterWindow] startCamera completed: success=\(success), textureId=\(textureId), error=\(String(describing: error))")
                     if success {
                         result(["success": true, "textureId": textureId])
                     } else {

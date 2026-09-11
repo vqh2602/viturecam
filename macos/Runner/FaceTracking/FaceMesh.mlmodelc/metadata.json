@@ -1,0 +1,70 @@
+[
+  {
+    "metadataOutputVersion" : "3.0",
+    "storagePrecision" : "Float32",
+    "outputSchema" : [
+      {
+        "hasShapeFlexibility" : "0",
+        "isOptional" : "0",
+        "dataType" : "Float32",
+        "formattedType" : "MultiArray (Float32 1 × 1405)",
+        "shortDescription" : "",
+        "shape" : "[1, 1405]",
+        "name" : "points_confidence",
+        "type" : "MultiArray"
+      }
+    ],
+    "modelParameters" : [
+
+    ],
+    "specificationVersion" : 4,
+    "computePrecision" : "Float16",
+    "isUpdatable" : "0",
+    "stateSchema" : [
+
+    ],
+    "availability" : {
+      "macOS" : "10.15",
+      "tvOS" : "13.0",
+      "visionOS" : "1.0",
+      "watchOS" : "6.0",
+      "iOS" : "13.0",
+      "macCatalyst" : "13.0"
+    },
+    "modelType" : {
+      "name" : "MLModelType_neuralNetwork"
+    },
+    "userDefinedMetadata" : {
+      "coremltoolsVersion" : "3.4"
+    },
+    "inputSchema" : [
+      {
+        "height" : "192",
+        "colorspace" : "RGB",
+        "isOptional" : "0",
+        "width" : "192",
+        "isColor" : "1",
+        "formattedType" : "Image (Color 192 × 192)",
+        "hasSizeFlexibility" : "0",
+        "type" : "Image",
+        "shortDescription" : "",
+        "name" : "input_image"
+      }
+    ],
+    "generatedClassName" : "facemesh",
+    "neuralNetworkLayerTypeHistogram" : {
+      "MultiplyBroadcastable" : 23,
+      "ConstantPad" : 3,
+      "Multiply" : 23,
+      "ActivationReLU" : 46,
+      "ReshapeStatic" : 2,
+      "Transpose" : 57,
+      "Add" : 43,
+      "LoadConstantND" : 26,
+      "PoolingINVALID" : 6,
+      "Convolution" : 45,
+      "ConcatND" : 1
+    },
+    "method" : "predict"
+  }
+]

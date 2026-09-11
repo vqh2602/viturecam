@@ -62,108 +62,112 @@ class PresetPanel extends ConsumerWidget {
     final controller = ref.read(cameraControllerProvider.notifier);
     final presets = state.presets;
     final activeId = state.activePresetId;
+    final activePreset = presets.where((p) => p.id == activeId).firstOrNull;
 
-    return Container(
-      height: 96,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: presets.length + 1,
-        itemBuilder: (context, idx) {
-          // "+ Save" button at the start
-          if (idx == 0) {
-            return GestureDetector(
-              onTap: () => _showSavePresetDialog(context, ref),
-              child: Container(
-                width: 72,
-                margin: const EdgeInsets.only(right: 10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF232328),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white12),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Row 1: Active Preset Info + Save Current Button
+        SizedBox(
+          height: 56,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                const Icon(Icons.auto_awesome, color: Color(0xFFFF7597), size: 16),
+                const SizedBox(width: 8),
+                Text(
+                  activePreset != null ? 'Active Preset: ${activePreset.name}' : 'Custom Settings Active',
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white,
+                  ),
                 ),
-                child: const Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.add, color: Color(0xFFFF7597), size: 24),
-                    SizedBox(height: 4),
-                    Text(
-                      'Save New',
-                      style: TextStyle(fontSize: 11, color: Colors.white70),
+                const Spacer(),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF28282E),
+                    foregroundColor: const Color(0xFFFF8DA1),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      side: const BorderSide(color: Color(0xFFFF7597), width: 0.8),
                     ),
-                  ],
+                    elevation: 0,
+                  ),
+                  icon: const Icon(Icons.bookmark_add_outlined, size: 14),
+                  label: const Text('Save Current', style: TextStyle(fontSize: 11.5)),
+                  onPressed: () => _showSavePresetDialog(context, ref),
                 ),
-              ),
-            );
-          }
+              ],
+            ),
+          ),
+        ),
 
-          final preset = presets[idx - 1];
-          final isSel = preset.id == activeId;
+        const Divider(height: 1, color: Colors.white10),
 
-          return GestureDetector(
-            onTap: () => controller.applyPreset(preset),
-            child: Container(
-              width: 82,
-              margin: const EdgeInsets.only(right: 10),
-              decoration: BoxDecoration(
-                color: isSel ? const Color(0xFF2C2528) : const Color(0xFF202024),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isSel ? const Color(0xFFFF7597) : Colors.white12,
-                  width: isSel ? 1.5 : 1.0,
-                ),
-              ),
-              child: Stack(
-                children: [
-                  Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          preset.isBuiltIn ? Icons.auto_awesome : Icons.person_outline,
-                          size: 20,
-                          color: isSel ? const Color(0xFFFF8DA1) : Colors.white70,
-                        ),
-                        const SizedBox(height: 6),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Text(
-                            preset.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: isSel ? FontWeight.w600 : FontWeight.w400,
-                              color: isSel ? Colors.white : Colors.white70,
-                            ),
-                          ),
-                        ),
-                      ],
+        // Row 2: Presets Cards Strip
+        SizedBox(
+          height: 56,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            itemCount: presets.length,
+            itemBuilder: (context, idx) {
+              final preset = presets[idx];
+              final isSel = preset.id == activeId;
+
+              return GestureDetector(
+                onTap: () => controller.applyPreset(preset),
+                child: Container(
+                  width: 96,
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isSel ? const Color(0xFF2E262A) : const Color(0xFF222227),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: isSel ? const Color(0xFFFF7597) : Colors.white12,
+                      width: isSel ? 1.5 : 1.0,
                     ),
                   ),
-                  if (!preset.isBuiltIn)
-                    Positioned(
-                      top: 2,
-                      right: 2,
-                      child: GestureDetector(
-                        onTap: () => controller.deleteCustomPreset(preset.id),
-                        child: Container(
-                          padding: const EdgeInsets.all(3),
-                          decoration: const BoxDecoration(
-                            color: Colors.black45,
-                            shape: BoxShape.circle,
+                  child: Row(
+                    children: [
+                      Icon(
+                        preset.isBuiltIn ? Icons.auto_awesome : Icons.person_outline,
+                        size: 15,
+                        color: isSel ? const Color(0xFFFF8DA1) : Colors.white70,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          preset.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: isSel ? FontWeight.w600 : FontWeight.w400,
+                            color: isSel ? Colors.white : Colors.white70,
                           ),
-                          child: const Icon(Icons.close, size: 12, color: Colors.white70),
                         ),
                       ),
-                    ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
+                      if (!preset.isBuiltIn)
+                        GestureDetector(
+                          onTap: () => controller.deleteCustomPreset(preset.id),
+                          child: const Padding(
+                            padding: EdgeInsets.only(left: 2),
+                            child: Icon(Icons.close, size: 12, color: Colors.white54),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

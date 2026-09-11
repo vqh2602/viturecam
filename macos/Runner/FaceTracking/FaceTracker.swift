@@ -26,6 +26,7 @@ public final class FaceTracker {
     private let trackingQueue = DispatchQueue(label: "com.beautycamera.facetracking", qos: .userInteractive)
     private var isProcessing: Bool = false
     private var previousLandmarks = SmoothedFaceLandmarks()
+    private var missedFrames: Int = 0
     private let lock = NSLock()
 
     public init() {}
@@ -49,11 +50,11 @@ public final class FaceTracker {
 
             let request = VNDetectFaceLandmarksRequest { [weak self] (req, err) in
                 guard let self = self, err == nil else { return }
-                guard let results = req.results as? [VNFaceObservation], let face = results.first, let landmarks = face.landmarks else {
+                guard let results = req.results as? [VNFaceObservation], let face = results.first else {
                     self.updateNoFace()
                     return
                 }
-                self.updateLandmarks(face: face, landmarks: landmarks)
+                self.updateLandmarks(face: face, landmarks: face.landmarks)
             }
 
             // High performance Vision request options
@@ -66,13 +67,16 @@ public final class FaceTracker {
     private func updateNoFace() {
         lock.lock()
         defer { lock.unlock() }
-        // Gradual fade rather than instant snap
-        previousLandmarks.hasFace = false
+        missedFrames += 1
+        if missedFrames > 8 {
+            previousLandmarks.hasFace = false
+        }
     }
 
-    private func updateLandmarks(face: VNFaceObservation, landmarks: VNFaceLandmarks2D) {
+    private func updateLandmarks(face: VNFaceObservation, landmarks: VNFaceLandmarks2D?) {
         lock.lock()
         defer { lock.unlock() }
+        missedFrames = 0
 
         let box = face.boundingBox
 
@@ -113,15 +117,15 @@ public final class FaceTracker {
             return CGPoint(x: sum.x / CGFloat(pts.count), y: sum.y / CGFloat(pts.count))
         }
 
-        let newContour = convertPoints(landmarks.faceContour?.normalizedPoints)
-        let newLeftEye = convertPoints(landmarks.leftEye?.normalizedPoints)
-        let newRightEye = convertPoints(landmarks.rightEye?.normalizedPoints)
-        let newLeftEyebrow = convertPoints(landmarks.leftEyebrow?.normalizedPoints)
-        let newRightEyebrow = convertPoints(landmarks.rightEyebrow?.normalizedPoints)
-        let newNose = convertPoints(landmarks.nose?.normalizedPoints)
-        let newNoseCrest = convertPoints(landmarks.noseCrest?.normalizedPoints)
-        let newOuterLips = convertPoints(landmarks.outerLips?.normalizedPoints)
-        let newInnerLips = convertPoints(landmarks.innerLips?.normalizedPoints)
+        let newContour = convertPoints(landmarks?.faceContour?.normalizedPoints)
+        let newLeftEye = convertPoints(landmarks?.leftEye?.normalizedPoints)
+        let newRightEye = convertPoints(landmarks?.rightEye?.normalizedPoints)
+        let newLeftEyebrow = convertPoints(landmarks?.leftEyebrow?.normalizedPoints)
+        let newRightEyebrow = convertPoints(landmarks?.rightEyebrow?.normalizedPoints)
+        let newNose = convertPoints(landmarks?.nose?.normalizedPoints)
+        let newNoseCrest = convertPoints(landmarks?.noseCrest?.normalizedPoints)
+        let newOuterLips = convertPoints(landmarks?.outerLips?.normalizedPoints)
+        let newInnerLips = convertPoints(landmarks?.innerLips?.normalizedPoints)
 
         var result = SmoothedFaceLandmarks()
         result.hasFace = true
@@ -157,6 +161,27 @@ public final class FaceTracker {
         result.leftEyeCenter = calculateCenter(result.leftEye)
         result.rightEyeCenter = calculateCenter(result.rightEye)
         result.mouthCenter = calculateCenter(result.outerLips)
+
+        // Robust fallbacks if specific landmark clusters were missing
+        if result.leftEyeCenter == .zero {
+            result.leftEyeCenter = CGPoint(
+                x: result.boundingBox.midX - result.boundingBox.width * 0.18,
+                y: result.boundingBox.minY + result.boundingBox.height * 0.35
+            )
+        }
+        if result.rightEyeCenter == .zero {
+            result.rightEyeCenter = CGPoint(
+                x: result.boundingBox.midX + result.boundingBox.width * 0.18,
+                y: result.boundingBox.minY + result.boundingBox.height * 0.35
+            )
+        }
+        if result.mouthCenter == .zero {
+            result.mouthCenter = CGPoint(
+                x: result.boundingBox.midX,
+                y: result.boundingBox.minY + result.boundingBox.height * 0.72
+            )
+        }
+
         if let chin = result.faceContour.indices.contains(result.faceContour.count / 2) ? result.faceContour[result.faceContour.count / 2] : nil {
             result.chinPoint = chin
         }

@@ -39,18 +39,64 @@ void main() {
     // Tap on Reshape category
     await tester.tap(find.text('Reshape'));
     await tester.pump();
-
-    // Verify Reshape subtools appear
     expect(find.text('Slim Face'), findsWidgets);
     expect(find.text('V Face'), findsOneWidget);
+
+    // Tap on Makeup category
+    await tester.tap(find.text('Makeup'));
+    await tester.pump();
+    expect(find.text('Lipstick'), findsWidgets);
+    expect(find.text('Blush'), findsOneWidget);
 
     // Tap on Filter category
     await tester.tap(find.text('Filter'));
     await tester.pump();
-
-    // Verify Filters appear
     expect(find.text('Original'), findsOneWidget);
     expect(find.text('Clear'), findsOneWidget);
     expect(find.text('Milk'), findsOneWidget);
+
+    // Tap on Color category
+    await tester.tap(find.text('Color'));
+    await tester.pump();
+    expect(find.text('Exposure'), findsWidgets);
+    expect(find.text('Brightness'), findsOneWidget);
+
+    // Tap on Background category
+    await tester.tap(find.text('Background'));
+    await tester.pump();
+    expect(find.text('Portrait Blur'), findsOneWidget);
+
+    // Tap on Presets category
+    await tester.tap(find.text('Presets'));
+    await tester.pump();
+    expect(find.text('Save Current'), findsOneWidget);
+  });
+
+  testWidgets('Bottom dock maintains strictly fixed height across all tab switches', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: BeautyCameraApp(),
+      ),
+    );
+    await tester.pump();
+
+    final dockFinder = find.byWidgetPredicate(
+      (w) => w is Container && w.constraints?.maxHeight == 168.0,
+    );
+    expect(dockFinder, findsOneWidget);
+
+    final tabs = ['Beauty', 'Reshape', 'Makeup', 'Filter', 'Color', 'Background', 'Presets'];
+    for (final tab in tabs) {
+      await tester.tap(find.text(tab));
+      await tester.pump();
+      expect(tester.takeException(), isNull, reason: 'Tab $tab caused layout exception');
+      final size = tester.getSize(dockFinder);
+      expect(size.height, equals(168.0), reason: 'Dock height must be 168.0 for tab $tab');
+    }
   });
 }

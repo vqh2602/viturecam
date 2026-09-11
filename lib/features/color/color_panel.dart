@@ -110,17 +110,27 @@ class ColorPanel extends ConsumerWidget {
             onChanged: (v) => controller.updateColor(c.copyWith(sharpness: v)),
           );
         default:
-          return const SizedBox.shrink();
+          return BeautySlider(
+            label: 'Exposure',
+            value: c.exposure,
+            min: -100,
+            max: 100,
+            defaultValue: 0,
+            onChanged: (v) => controller.updateColor(c.copyWith(exposure: v)),
+          );
       }
     }
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        buildCurrentSlider(),
+        SizedBox(
+          height: 56,
+          child: buildCurrentSlider(),
+        ),
         const Divider(height: 1, color: Colors.white10),
         SizedBox(
-          height: 52,
+          height: 56,
           child: ListView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

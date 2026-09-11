@@ -5,7 +5,7 @@ import Foundation
 
 public final class BeautyEngine: NSObject, CameraEngineDelegate {
     public let cameraEngine = CameraEngine()
-    public let faceTracker = FaceTracker()
+    public let faceMeshTracker = FaceMeshTracker()
     public let beautyRenderer = BeautyRenderer()
     public let bufferPool = PixelBufferPool()
     public let flutterTexture = BeautyFlutterTexture()
@@ -36,22 +36,34 @@ public final class BeautyEngine: NSObject, CameraEngineDelegate {
         self.textureRegistry = textureRegistry
         super.init()
         self.cameraEngine.delegate = self
-        self.textureId = textureRegistry.register(self.flutterTexture)
     }
 
     deinit {
-        if textureId >= 0 {
+        if textureId > 0 {
             textureRegistry.unregisterTexture(textureId)
         }
     }
 
+    @discardableResult
+    public func ensureTextureRegistered() -> Int64 {
+        if textureId > 0 {
+            return textureId
+        }
+        let id = textureRegistry.register(self.flutterTexture)
+        NSLog("[BeautyEngine] Registered Flutter texture with id: %lld", id)
+        self.textureId = id
+        return id
+    }
+
     public func startCamera(deviceId: String?, width: Int = 1920, height: Int = 1080, fps: Int = 30, completion: @escaping (Bool, String?, Int64) -> Void) {
+        let registeredId = ensureTextureRegistered()
         cameraEngine.start(deviceId: deviceId, targetWidth: width, targetHeight: height, fps: fps) { [weak self] success, error in
             guard let self = self else { return }
             if success {
                 self.bufferPool.prepare(width: self.cameraEngine.currentWidth, height: self.cameraEngine.currentHeight)
             }
-            completion(success, error, self.textureId)
+            let validId = self.textureId > 0 ? self.textureId : registeredId
+            completion(success, error, validId)
         }
     }
 
@@ -87,12 +99,12 @@ public final class BeautyEngine: NSObject, CameraEngineDelegate {
 
         let targetPixelBuffer = bufferPool.getPixelBuffer() ?? sourcePixelBuffer
 
-        // Asynchronously track face landmarks (runs on background thread, non-blocking)
-        faceTracker.processFrameAsync(pixelBuffer: sourcePixelBuffer)
+        // Asynchronously track 468 3D face mesh landmarks (runs on background queue via CoreML on ANE)
+        faceMeshTracker.processFrameAsync(pixelBuffer: sourcePixelBuffer)
 
         let startTime = CACurrentMediaTime()
 
-        // Real-time GPU Beauty & Color rendering
+        // Real-time GPU Beauty, 3D Reshape & Color rendering
         beautyRenderer.processFrame(
             sourceBuffer: sourcePixelBuffer,
             targetBuffer: targetPixelBuffer,
@@ -105,7 +117,7 @@ public final class BeautyEngine: NSObject, CameraEngineDelegate {
             filter: filterSettings,
             color: colorSettings,
             background: backgroundSettings,
-            landmarks: faceTracker.currentLandmarks
+            landmarks: faceMeshTracker.currentLandmarks
         )
 
         let elapsedMs = (CACurrentMediaTime() - startTime) * 1000.0
@@ -113,7 +125,7 @@ public final class BeautyEngine: NSObject, CameraEngineDelegate {
 
         // Push to zero-copy Flutter Texture
         flutterTexture.updatePixelBuffer(targetPixelBuffer)
-        if textureId >= 0 {
+        if textureId > 0 {
             self.textureRegistry.textureFrameAvailable(self.textureId)
         }
 

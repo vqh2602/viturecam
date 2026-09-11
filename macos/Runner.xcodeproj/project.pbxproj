@@ -37,6 +37,11 @@
 		BC0000012C00000000000008 /* VirtualCameraManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000008 /* VirtualCameraManager.swift */; };
 		76B89E82D335015BFBFBF9D6 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E71D364EEE73765DB040D2E9 /* Pods_RunnerTests.framework */; };
 		F292EF164D47EA6A8C4A152B /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 45063C308804A57C28039AEF /* Pods_Runner.framework */; };
+		BC0000012C00000000000009 /* FaceMeshTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000009 /* FaceMeshTracker.swift */; };
+		BC0000012C00000000000010 /* FaceMeshGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000010 /* FaceMeshGeometry.swift */; };
+		BC0000012C00000000000011 /* FaceMeshRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000011 /* FaceMeshRenderer.swift */; };
+		BC0000012C00000000000012 /* FaceMeshShaders.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000012 /* FaceMeshShaders.swift */; };
+		BC0000012C00000000000013 /* FaceMesh.mlmodelc in Resources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000013 /* FaceMesh.mlmodelc */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -88,6 +93,11 @@
 		BC0000022C00000000000006 /* BeautySettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Beauty/BeautySettings.swift"; sourceTree = "<group>"; };
 		BC0000022C00000000000007 /* BeautyEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Beauty/BeautyEngine.swift"; sourceTree = "<group>"; };
 		BC0000022C00000000000008 /* VirtualCameraManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "VirtualCamera/VirtualCameraManager.swift"; sourceTree = "<group>"; };
+		BC0000022C00000000000009 /* FaceMeshTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FaceTracking/FaceMeshTracker.swift"; sourceTree = "<group>"; };
+		BC0000022C00000000000010 /* FaceMeshGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FaceTracking/FaceMeshGeometry.swift"; sourceTree = "<group>"; };
+		BC0000022C00000000000011 /* FaceMeshRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Rendering/FaceMeshRenderer.swift"; sourceTree = "<group>"; };
+		BC0000022C00000000000012 /* FaceMeshShaders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Rendering/FaceMeshShaders.swift"; sourceTree = "<group>"; };
+		BC0000022C00000000000013 /* FaceMesh.mlmodelc */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = "FaceTracking/FaceMesh.mlmodelc"; sourceTree = "<group>"; };
 		33CEB47222A05771004F2AC0 /* Flutter-Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Flutter-Debug.xcconfig"; sourceTree = "<group>"; };
 		33CEB47422A05771004F2AC0 /* Flutter-Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Flutter-Release.xcconfig"; sourceTree = "<group>"; };
 		33CEB47722A0578A004F2AC0 /* Flutter-Generated.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = "Flutter-Generated.xcconfig"; path = "ephemeral/Flutter-Generated.xcconfig"; sourceTree = "<group>"; };
@@ -201,6 +211,12 @@
 				BC0000022C00000000000006 /* BeautySettings.swift */,
 				BC0000022C00000000000007 /* BeautyEngine.swift */,
 				BC0000022C00000000000008 /* VirtualCameraManager.swift */,
+				BC0000022C00000000000009 /* FaceMeshTracker.swift */,
+				BC0000022C00000000000010 /* FaceMeshGeometry.swift */,
+				BC0000022C00000000000011 /* FaceMeshRenderer.swift */,
+				BC0000022C00000000000012 /* FaceMeshShaders.swift */,
+				BC0000022C00000000000013 /* FaceMesh.mlmodelc */,
+
 				33E51913231747F40026EE4D /* DebugProfile.entitlements */,
 				33E51914231749380026EE4D /* Release.entitlements */,
 				33CC11242044D66E0003C045 /* Resources */,
@@ -341,6 +357,8 @@
 			files = (
 				33CC10F32044A3C60003C045 /* Assets.xcassets in Resources */,
 				33CC10F62044A3C60003C045 /* MainMenu.xib in Resources */,
+				BC0000012C00000000000013 /* FaceMesh.mlmodelc in Resources */,
+
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -470,6 +488,11 @@
 				BC0000012C00000000000006 /* BeautySettings.swift in Sources */,
 				BC0000012C00000000000007 /* BeautyEngine.swift in Sources */,
 				BC0000012C00000000000008 /* VirtualCameraManager.swift in Sources */,
+				BC0000012C00000000000009 /* FaceMeshTracker.swift in Sources */,
+				BC0000012C00000000000010 /* FaceMeshGeometry.swift in Sources */,
+				BC0000012C00000000000011 /* FaceMeshRenderer.swift in Sources */,
+				BC0000012C00000000000012 /* FaceMeshShaders.swift in Sources */,
+
 				33CC10F12044A3C60003C045 /* AppDelegate.swift in Sources */,
 				335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */,
 			);
