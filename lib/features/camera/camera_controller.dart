@@ -304,34 +304,114 @@ class CameraController extends StateNotifier<CameraState> {
     state = state.copyWith(activeSubTool: tool);
   }
 
-  // --- Parameter Updates ---
+  // --- Parameter Updates with Trailing-Edge Coalescing (Zero Slider Lag) ---
+  bool _beautyPending = false;
+  BeautySettings? _nextBeauty;
   Future<void> updateBeauty(BeautySettings beauty) async {
     state = state.copyWith(beauty: beauty, activePresetId: null);
-    await _api.setBeautySettings(beauty.toMap());
+    if (_beautyPending) {
+      _nextBeauty = beauty;
+      return;
+    }
+    _beautyPending = true;
+    try {
+      await _api.setBeautySettings(beauty.toMap());
+    } finally {
+      _beautyPending = false;
+      if (_nextBeauty != null) {
+        final n = _nextBeauty!;
+        _nextBeauty = null;
+        unawaited(updateBeauty(n));
+      }
+    }
   }
 
+  bool _facePending = false;
+  FaceSettings? _nextFace;
   Future<void> updateFace(FaceSettings face) async {
     state = state.copyWith(face: face, activePresetId: null);
-    await _api.setFaceSettings(face.toMap());
+    if (_facePending) {
+      _nextFace = face;
+      return;
+    }
+    _facePending = true;
+    try {
+      await _api.setFaceSettings(face.toMap());
+    } finally {
+      _facePending = false;
+      if (_nextFace != null) {
+        final n = _nextFace!;
+        _nextFace = null;
+        unawaited(updateFace(n));
+      }
+    }
   }
 
+  bool _makeupPending = false;
+  MakeupSettings? _nextMakeup;
   Future<void> updateMakeup(MakeupSettings makeup) async {
     state = state.copyWith(makeup: makeup, activePresetId: null);
-    await _api.setMakeupSettings(makeup.toMap());
+    if (_makeupPending) {
+      _nextMakeup = makeup;
+      return;
+    }
+    _makeupPending = true;
+    try {
+      await _api.setMakeupSettings(makeup.toMap());
+    } finally {
+      _makeupPending = false;
+      if (_nextMakeup != null) {
+        final n = _nextMakeup!;
+        _nextMakeup = null;
+        unawaited(updateMakeup(n));
+      }
+    }
   }
 
+  bool _filterPending = false;
+  (String, double)? _nextFilter;
   Future<void> updateFilter(String filterId, double intensity) async {
     state = state.copyWith(
       filterId: filterId,
       filterIntensity: intensity,
       activePresetId: null,
     );
-    await _api.setFilter(filterId: filterId, intensity: intensity / 100.0);
+    if (_filterPending) {
+      _nextFilter = (filterId, intensity);
+      return;
+    }
+    _filterPending = true;
+    try {
+      await _api.setFilter(filterId: filterId, intensity: intensity / 100.0);
+    } finally {
+      _filterPending = false;
+      if (_nextFilter != null) {
+        final n = _nextFilter!;
+        _nextFilter = null;
+        unawaited(updateFilter(n.$1, n.$2));
+      }
+    }
   }
 
+  bool _colorPending = false;
+  ColorSettings? _nextColor;
   Future<void> updateColor(ColorSettings color) async {
     state = state.copyWith(color: color, activePresetId: null);
-    await _api.setColorSettings(color.toMap());
+    if (_colorPending) {
+      _nextColor = color;
+      return;
+    }
+    _colorPending = true;
+    try {
+      await _api.setColorSettings(color.toMap());
+    } finally {
+      _colorPending = false;
+      if (_nextColor != null) {
+        final n = _nextColor!;
+        _nextColor = null;
+        unawaited(updateColor(n));
+      }
+    }
   }
 
   Future<void> updateBackground(BackgroundSettings background) async {

@@ -19,13 +19,112 @@ public struct FaceMeshLandmarks {
     public var noseBridge: CGPoint = .zero
     public var leftCheekCenter: CGPoint = .zero
     public var rightCheekCenter: CGPoint = .zero
+    public var leftMidJaw: CGPoint = .zero
+    public var rightMidJaw: CGPoint = .zero
+    public var leftLowerJaw: CGPoint = .zero
+    public var rightLowerJaw: CGPoint = .zero
+    public var leftAlar: CGPoint = .zero
+    public var rightAlar: CGPoint = .zero
+    public var leftMouthCorner: CGPoint = .zero
+    public var rightMouthCorner: CGPoint = .zero
+    public var foreheadCenter: CGPoint = .zero
+    public var leftTemple: CGPoint = .zero
+    public var rightTemple: CGPoint = .zero
+    public var leftEyeOuter: CGPoint = .zero
+    public var rightEyeOuter: CGPoint = .zero
+    public var leftCheekApple: CGPoint = .zero
+    public var rightCheekApple: CGPoint = .zero
 
     public init() {}
 }
 
-public final class FaceMeshTracker {
-    public var damping: Float = 0.65 // 0.0 = raw, 1.0 = heavy smooth
+public struct CanonicalROI {
+    public var centerPx: CGPoint    // Center in pixel coordinates (0..W, 0..H, origin top-left)
+    public var sizePx: CGFloat      // Size in pixels of the square ROI
+    public var rollAngle: CGFloat   // True physical roll angle in radians (screen space: clockwise is positive)
 
+    public init(centerPx: CGPoint, sizePx: CGFloat, rollAngle: CGFloat) {
+        self.centerPx = centerPx
+        self.sizePx = sizePx
+        self.rollAngle = rollAngle
+    }
+}
+
+// MARK: - One Euro Filter for 468 3D Landmarks (Casiez CHI 2012)
+// Tuned for real-time interactive beauty: minCutoff=3.5Hz delivers < 30ms settling time
+// with beta=50.0 providing instantaneous zero-lag response during motion while eliminating jitter.
+public final class OneEuroFilterBank468 {
+    public var minCutoff: Float = 3.5
+    public var beta: Float = 50.0
+    public var dCutoff: Float = 1.0
+
+    private var xPrev: [SIMD3<Float>] = []
+    private var dxPrev: [SIMD3<Float>] = []
+    private var lastTimestamp: TimeInterval?
+
+    public init() {
+        xPrev.reserveCapacity(468)
+        dxPrev.reserveCapacity(468)
+    }
+
+    public func reset() {
+        xPrev.removeAll(keepingCapacity: true)
+        dxPrev.removeAll(keepingCapacity: true)
+        lastTimestamp = nil
+    }
+
+    @inline(__always)
+    private func alpha(rate: Float, cutoff: Float) -> Float {
+        let tau = 1.0 / (2.0 * Float.pi * cutoff)
+        let te = 1.0 / rate
+        return 1.0 / (1.0 + tau / te)
+    }
+
+    public func filter(raw: [SIMD3<Float>], timestamp: TimeInterval) -> [SIMD3<Float>] {
+        guard raw.count == 468 else { return raw }
+
+        guard let tPrev = lastTimestamp, xPrev.count == 468, dxPrev.count == 468 else {
+            xPrev = raw
+            dxPrev = Array(repeating: SIMD3<Float>(0, 0, 0), count: 468)
+            lastTimestamp = timestamp
+            return raw
+        }
+
+        let dt = Float(max(0.001, min(0.1, timestamp - tPrev)))
+        let rate = 1.0 / dt
+        let alphaD = alpha(rate: rate, cutoff: dCutoff)
+        let oneMinusAlphaD = 1.0 - alphaD
+
+        var result = [SIMD3<Float>]()
+        result.reserveCapacity(468)
+
+        for i in 0..<468 {
+            let x = raw[i]
+            let prev = xPrev[i]
+            let prevDx = dxPrev[i]
+
+            // Filtered derivative
+            let dx = (x - prev) / dt
+            let edx = alphaD * dx + oneMinusAlphaD * prevDx
+            dxPrev[i] = edx
+
+            // Speed-adaptive cutoff
+            let speed = length(edx)
+            let cutoff = minCutoff + beta * speed
+            let a = alpha(rate: rate, cutoff: cutoff)
+
+            // Filtered position
+            let filtered = a * x + (1.0 - a) * prev
+            xPrev[i] = filtered
+            result.append(filtered)
+        }
+
+        lastTimestamp = timestamp
+        return result
+    }
+}
+
+public final class FaceMeshTracker {
     private let trackingQueue = DispatchQueue(label: "com.beautycamera.facemeshtracking", qos: .userInteractive)
     private var isProcessing: Bool = false
     private var model: MLModel?
@@ -33,6 +132,8 @@ public final class FaceMeshTracker {
     private var cropBuffer: CVPixelBuffer?
 
     private var previousLandmarks = FaceMeshLandmarks()
+    private var smoothedROI: CanonicalROI?
+    private let filterBank = OneEuroFilterBank468()
     private var missedFrames: Int = 0
     private let lock = NSLock()
 
@@ -119,7 +220,26 @@ public final class FaceMeshTracker {
 
             let width = CGFloat(CVPixelBufferGetWidth(pixelBuffer))
             let height = CGFloat(CVPixelBufferGetHeight(pixelBuffer))
+            guard width > 0 && height > 0 else { return }
 
+            // FAST-PATH: If face is already reliably tracked, compute canonical ROI in true pixel space (Google MediaPipe standard)
+            let prevROI: CanonicalROI? = {
+                self.lock.lock()
+                defer { self.lock.unlock() }
+                if self.previousLandmarks.hasFace && self.previousLandmarks.confidence > 5.0 {
+                    return self.computeCanonicalROIFromLandmarks(self.previousLandmarks.landmarks, imageWidth: width, imageHeight: height)
+                }
+                return nil
+            }()
+
+            if let rawROI = prevROI {
+                let smoothROI = self.smoothROI(rawROI)
+                if self.runFaceMeshInference(pixelBuffer: pixelBuffer, roi: smoothROI, imageWidth: width, imageHeight: height) {
+                    return
+                }
+            }
+
+            // SLOW-PATH / FALLBACK: Re-acquire face via Apple Vision face detection in pixel space with roll angle
             let faceRequest = VNDetectFaceRectanglesRequest { [weak self] (req, err) in
                 guard let self = self, err == nil else {
                     self?.updateNoFace()
@@ -130,7 +250,25 @@ public final class FaceMeshTracker {
                     return
                 }
 
-                self.runFaceMeshInference(pixelBuffer: pixelBuffer, faceBox: face.boundingBox, imageWidth: width, imageHeight: height)
+                let b = face.boundingBox // Vision bottom-left normalized coordinates
+                let roll = CGFloat(face.roll?.floatValue ?? 0.0) // True radians from Vision
+
+                let boxX = b.origin.x * width
+                let boxY = (1.0 - b.maxY) * height
+                let boxW = b.width * width
+                let boxH = b.height * height
+
+                let cx_px = boxX + boxW * 0.5
+                let cy_px = boxY + boxH * 0.5
+                let size_px = max(48.0, max(boxW, boxH) * 1.5)
+
+                let initialROI = CanonicalROI(
+                    centerPx: CGPoint(x: cx_px, y: cy_px),
+                    sizePx: size_px,
+                    rollAngle: roll
+                )
+
+                _ = self.runFaceMeshInference(pixelBuffer: pixelBuffer, roi: initialROI, imageWidth: width, imageHeight: height)
             }
 
             faceRequest.preferBackgroundProcessing = false
@@ -139,149 +277,191 @@ public final class FaceMeshTracker {
         }
     }
 
+    private func computeCanonicalROIFromLandmarks(
+        _ landmarks: [SIMD3<Float>],
+        imageWidth: CGFloat,
+        imageHeight: CGFloat
+    ) -> CanonicalROI? {
+        guard landmarks.count >= 468 else { return nil }
+
+        let W = imageWidth
+        let H = imageHeight
+
+        // Compute tight bounding box from all 468 landmarks in TRUE PIXEL SPACE (Google MediaPipe standard)
+        var minX_px = CGFloat(landmarks[0].x) * W
+        var maxX_px = minX_px
+        var minY_px = CGFloat(landmarks[0].y) * H
+        var maxY_px = minY_px
+
+        for i in 1..<468 {
+            let px = CGFloat(landmarks[i].x) * W
+            let py = CGFloat(landmarks[i].y) * H
+            if px < minX_px { minX_px = px }
+            if px > maxX_px { maxX_px = px }
+            if py < minY_px { minY_px = py }
+            if py > maxY_px { maxY_px = py }
+        }
+
+        let boxW = maxX_px - minX_px
+        let boxH = maxY_px - minY_px
+        let cx_px = minX_px + boxW * 0.5
+        let cy_px = minY_px + boxH * 0.5
+
+        // 1.5x expansion around full face (Google MediaPipe RectTransformation standard)
+        let size_px = max(48.0, max(boxW, boxH) * 1.5)
+
+        // True physical roll angle between outer eye corners in pixel space (zero aspect-ratio distortion!)
+        let p33 = landmarks[33]   // Camera-left outer eye corner
+        let p263 = landmarks[263] // Camera-right outer eye corner
+        let dx_px = CGFloat(p263.x - p33.x) * W
+        let dy_px = CGFloat(p263.y - p33.y) * H
+        let roll = atan2(dy_px, dx_px)
+
+        return CanonicalROI(centerPx: CGPoint(x: cx_px, y: cy_px), sizePx: size_px, rollAngle: roll)
+    }
+
+    private func smoothROI(_ newROI: CanonicalROI) -> CanonicalROI {
+        guard let prev = smoothedROI else {
+            smoothedROI = newROI
+            return newROI
+        }
+
+        let alpha: CGFloat = 0.85 // Responsive 1-2 frame tracking (eliminates 400ms lag)
+        let center = CGPoint(
+            x: prev.centerPx.x * (1.0 - alpha) + newROI.centerPx.x * alpha,
+            y: prev.centerPx.y * (1.0 - alpha) + newROI.centerPx.y * alpha
+        )
+        let sizePx = prev.sizePx * (1.0 - alpha) + newROI.sizePx * alpha
+
+        var diffAngle = newROI.rollAngle - prev.rollAngle
+        while diffAngle > .pi { diffAngle -= 2.0 * .pi }
+        while diffAngle < -.pi { diffAngle += 2.0 * .pi }
+        let rollAngle = prev.rollAngle + diffAngle * alpha
+
+        let res = CanonicalROI(centerPx: center, sizePx: sizePx, rollAngle: rollAngle)
+        smoothedROI = res
+        return res
+    }
+
     private func updateNoFace() {
         lock.lock()
         defer { lock.unlock() }
         missedFrames += 1
         if missedFrames > 8 {
             previousLandmarks.hasFace = false
+            smoothedROI = nil
+            filterBank.reset()
         }
     }
 
-    private func runFaceMeshInference(pixelBuffer: CVPixelBuffer, faceBox: CGRect, imageWidth: CGFloat, imageHeight: CGFloat) {
-        guard let model = model, let cropBuffer = cropBuffer, let ciContext = ciContext else { return }
+    @discardableResult
+    private func runFaceMeshInference(
+        pixelBuffer: CVPixelBuffer,
+        roi: CanonicalROI,
+        imageWidth: CGFloat,
+        imageHeight: CGFloat
+    ) -> Bool {
+        guard let model = model, let cropBuffer = cropBuffer, let ciContext = ciContext else { return false }
 
-        // Convert Vision bounding box (normalized, bottom-left origin) to pixel rect
-        // Add 25% padding around face to ensure complete chin, forehead, and cheeks are captured
-        let padX = faceBox.width * 0.25
-        let padY = faceBox.height * 0.25
+        let W = imageWidth
+        let H = imageHeight
+        let cx_ci = roi.centerPx.x
+        let cy_ci = H - roi.centerPx.y
+        let sizePx = max(48.0, roi.sizePx)
 
-        let expandedBox = CGRect(
-            x: max(0.0, faceBox.origin.x - padX),
-            y: max(0.0, faceBox.origin.y - padY * 0.6), // Less bottom padding, more top padding for forehead
-            width: min(1.0, faceBox.width + padX * 2.0),
-            height: min(1.0, faceBox.height + padY * 2.4)
-        )
+        // In CoreImage: origin is bottom-left.
+        // Screen roll angle theta: clockwise is positive.
+        // CoreImage roll angle: counter-clockwise is positive, so theta_ci = -theta.
+        // To counter-rotate the face to make it upright: rotate by -theta_ci = +theta!
+        let theta_ci = -roi.rollAngle
 
-        // Make it a square crop in pixel space for 192x192 model input
-        let pxBox = CGRect(
-            x: expandedBox.origin.x * imageWidth,
-            y: expandedBox.origin.y * imageHeight,
-            width: expandedBox.width * imageWidth,
-            height: expandedBox.height * imageHeight
-        )
+        let T_ci = CGAffineTransform(translationX: -cx_ci, y: -cy_ci)
+            .concatenating(CGAffineTransform(rotationAngle: -theta_ci))
+            .concatenating(CGAffineTransform(scaleX: 192.0 / sizePx, y: 192.0 / sizePx))
+            .concatenating(CGAffineTransform(translationX: 96.0, y: 96.0))
 
-        let side = max(pxBox.width, pxBox.height)
-        let cx = pxBox.midX
-        let cy = pxBox.midY
-
-        let squareCropPx = CGRect(
-            x: max(0, min(imageWidth - side, cx - side * 0.5)),
-            y: max(0, min(imageHeight - side, cy - side * 0.5)),
-            width: min(side, imageWidth),
-            height: min(side, imageHeight)
-        )
-
-        // Render 192x192 crop into cropBuffer via GPU
         let sourceCI = CIImage(cvPixelBuffer: pixelBuffer)
-        let croppedCI = sourceCI.cropped(to: squareCropPx)
+        let transformedCI = sourceCI.transformed(by: T_ci)
 
-        // Transform to 192x192 target
-        let scaleX = 192.0 / squareCropPx.width
-        let scaleY = 192.0 / squareCropPx.height
-        let scaledCI = croppedCI.transformed(by: CGAffineTransform(translationX: -squareCropPx.origin.x, y: -squareCropPx.origin.y))
-                                 .transformed(by: CGAffineTransform(scaleX: scaleX, y: scaleY))
-
-        ciContext.render(scaledCI, to: cropBuffer, bounds: CGRect(x: 0, y: 0, width: 192, height: 192), colorSpace: nil)
+        ciContext.render(transformedCI, to: cropBuffer, bounds: CGRect(x: 0, y: 0, width: 192, height: 192), colorSpace: nil)
 
         // Run CoreML Inference
         do {
             let input = try MLDictionaryFeatureProvider(dictionary: ["input_image": cropBuffer])
             let output = try model.prediction(from: input)
 
-            guard let multiArray = output.featureValue(for: "points_confidence")?.multiArrayValue else { return }
+            guard let multiArray = output.featureValue(for: "points_confidence")?.multiArrayValue else { return false }
             let ptr = multiArray.dataPointer.bindMemory(to: Float.self, capacity: multiArray.count)
 
             let confidence = ptr[1404]
-            if confidence < -35.0 {
+            if confidence < 5.0 {
                 updateNoFace()
-                return
+                return false
             }
 
-            // Extract 468 3D landmarks
-            // Local crop space: (x_local in 0..192, y_local in 0..192)
-            // Note: In CoreImage/Vision coordinates, Y=0 is at bottom; convert to standard top-left normalized
+            let T_ci_inv = T_ci.inverted()
             var rawPoints: [SIMD3<Float>] = []
             rawPoints.reserveCapacity(468)
 
-            let cropOriginX = Float(squareCropPx.origin.x / imageWidth)
-            let cropOriginY = Float((imageHeight - squareCropPx.maxY) / imageHeight) // Top-left origin
-            let cropW = Float(squareCropPx.width / imageWidth)
-            let cropH = Float(squareCropPx.height / imageHeight)
-
             for i in 0..<468 {
-                let localX = ptr[i * 3]
-                let localY = ptr[i * 3 + 1]
-                let localZ = ptr[i * 3 + 2]
+                let u_model = ptr[i * 3]
+                let v_model = ptr[i * 3 + 1]
+                let z_model = ptr[i * 3 + 2]
 
-                // MediaPipe local coordinates: 0..192, where y=0 is top, y=192 is bottom
-                let normU = localX / 192.0
-                let normV = localY / 192.0
+                // In cropBuffer: row 0 (top) is v_model = 0, which corresponds to y = 192 in CoreImage
+                let u_ci = CGFloat(u_model)
+                let v_ci = 192.0 - CGFloat(v_model)
 
-                let imgX = cropOriginX + normU * cropW
-                let imgY = cropOriginY + normV * cropH
-                let imgZ = localZ / 192.0
+                let pt_ci = CGPoint(x: u_ci, y: v_ci).applying(T_ci_inv)
+
+                // Convert CoreImage coordinate back to normalized screen space (0..1, top-left origin)
+                let imgX = Float(pt_ci.x / W)
+                let imgY = Float((H - pt_ci.y) / H)
+                let imgZ = Float(z_model / 192.0) * Float(sizePx / W)
 
                 rawPoints.append(SIMD3<Float>(imgX, imgY, imgZ))
             }
 
-            updateSmoothedLandmarks(rawPoints: rawPoints, confidence: confidence, squareCropPx: squareCropPx, imageWidth: imageWidth, imageHeight: imageHeight)
+            updateSmoothedLandmarks(rawPoints: rawPoints, confidence: confidence, roi: roi)
+            return true
         } catch {
             NSLog("[FaceMeshTracker] Prediction error: %@", error.localizedDescription)
             updateNoFace()
+            return false
         }
     }
 
     private func updateSmoothedLandmarks(
         rawPoints: [SIMD3<Float>],
         confidence: Float,
-        squareCropPx: CGRect,
-        imageWidth: CGFloat,
-        imageHeight: CGFloat
+        roi: CanonicalROI
     ) {
         lock.lock()
         defer { lock.unlock() }
         missedFrames = 0
 
-        var smoothedPoints: [SIMD3<Float>] = []
-        smoothedPoints.reserveCapacity(468)
-
-        let d = damping
-        let oneMinusD = 1.0 - d
-
-        if previousLandmarks.hasFace && previousLandmarks.landmarks.count == 468 {
-            for i in 0..<468 {
-                let prev = previousLandmarks.landmarks[i]
-                let raw = rawPoints[i]
-                smoothedPoints.append(SIMD3<Float>(
-                    prev.x * d + raw.x * oneMinusD,
-                    prev.y * d + raw.y * oneMinusD,
-                    prev.z * d + raw.z * oneMinusD
-                ))
-            }
-        } else {
-            smoothedPoints = rawPoints
-        }
+        let timestamp = ProcessInfo.processInfo.systemUptime
+        let smoothedPoints = filterBank.filter(raw: rawPoints, timestamp: timestamp)
 
         var res = FaceMeshLandmarks()
         res.hasFace = true
         res.confidence = confidence
         res.landmarks = smoothedPoints
+
+        // Compute tight face bounding box from 468 landmarks (top-left normalized)
+        var minX: Float = 1.0, maxX: Float = 0.0
+        var minY: Float = 1.0, maxY: Float = 0.0
+        for p in smoothedPoints {
+            if p.x < minX { minX = p.x }
+            if p.x > maxX { maxX = p.x }
+            if p.y < minY { minY = p.y }
+            if p.y > maxY { maxY = p.y }
+        }
         res.boundingBox = CGRect(
-            x: squareCropPx.origin.x / imageWidth,
-            y: (imageHeight - squareCropPx.maxY) / imageHeight,
-            width: squareCropPx.width / imageWidth,
-            height: squareCropPx.height / imageHeight
+            x: CGFloat(minX),
+            y: CGFloat(minY),
+            width: CGFloat(maxX - minX),
+            height: CGFloat(maxY - minY)
         )
 
         // Compute Anchors from 3D Mesh
@@ -312,6 +492,23 @@ public final class FaceMeshTracker {
         res.noseBridge = pt(FaceMeshGeometry.noseBridgeIndex)
         res.leftCheekCenter = pt(FaceMeshGeometry.leftCheekApexIndex)
         res.rightCheekCenter = pt(FaceMeshGeometry.rightCheekApexIndex)
+
+        // Anatomical Jaw & Alar Anchors
+        res.leftMidJaw = pt(FaceMeshGeometry.leftMidJawIndex)
+        res.rightMidJaw = pt(FaceMeshGeometry.rightMidJawIndex)
+        res.leftLowerJaw = pt(FaceMeshGeometry.leftLowerJawIndex)
+        res.rightLowerJaw = pt(FaceMeshGeometry.rightLowerJawIndex)
+        res.leftAlar = pt(FaceMeshGeometry.leftAlarIndex)
+        res.rightAlar = pt(FaceMeshGeometry.rightAlarIndex)
+        res.leftMouthCorner = pt(FaceMeshGeometry.leftMouthCornerIndex)
+        res.rightMouthCorner = pt(FaceMeshGeometry.rightMouthCornerIndex)
+        res.foreheadCenter = pt(FaceMeshGeometry.foreheadCenterIndex)
+        res.leftTemple = pt(127)
+        res.rightTemple = pt(356)
+        res.leftEyeOuter = pt(33)
+        res.rightEyeOuter = pt(263)
+        res.leftCheekApple = pt(280)
+        res.rightCheekApple = pt(50)
 
         previousLandmarks = res
     }

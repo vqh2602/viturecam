@@ -328,4 +328,10 @@ public enum FaceMeshGeometry {
     public static let mouthLowerCenterIndex: Int = 14
     public static let leftCheekApexIndex: Int = 205
     public static let rightCheekApexIndex: Int = 425
+    public static let leftMidJawIndex: Int = 172
+    public static let rightMidJawIndex: Int = 397
+    public static let leftLowerJawIndex: Int = 150
+    public static let rightLowerJawIndex: Int = 379
+    public static let leftAlarIndex: Int = 48
+    public static let rightAlarIndex: Int = 278
 }

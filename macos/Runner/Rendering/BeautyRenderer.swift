@@ -31,107 +31,401 @@ public final class BeautyRenderer {
     private func setupReshapeKernel() {
         let kernelString = """
         kernel vec2 faceReshapeWarp(
-            vec2 leftEyeCenter,
-            vec2 rightEyeCenter,
-            float eyeRadius,
-            float eyeFactor,
-            vec2 leftCheek,
-            vec2 rightCheek,
-            float cheekRadius,
-            float cheekFactor,
-            vec2 chinCenter,
-            float chinRadius,
-            float chinDy,
-            float chinDx,
-            vec2 noseCenter,
-            float noseRadius,
-            float noseFactor,
-            vec2 leftMouth,
-            vec2 rightMouth,
-            float mouthRadius,
-            float smileFactor
+            vec4 axisNormalAndW,
+            vec4 foreheadAndAxis,
+            vec4 centralPts1,
+            vec4 centralPts2,
+            vec4 midJawPts,
+            vec4 lowerJawPts,
+            vec4 cheekPts,
+            vec4 alarPts,
+            vec4 mouthCornerPts,
+            vec4 eyeCenterPts,
+            vec4 eyeOuterPts,
+            vec4 templePts,
+            vec4 faceParams1,
+            vec4 faceParams2,
+            vec4 eyeParams,
+            vec4 noseParams,
+            vec4 mouthParams,
+            vec4 miscParams
         ) {
             vec2 p = destCoord();
             vec2 offset = vec2(0.0, 0.0);
 
-            // 1. Left Eye Magnification
-            if (eyeFactor > 0.001) {
-                vec2 d = p - leftEyeCenter;
-                float dist = length(d);
-                if (dist < eyeRadius) {
-                    float t = dist / eyeRadius;
-                    float weight = (1.0 - t * t);
-                    offset -= d * (eyeFactor * 0.26 * weight * weight);
+            vec2 axisNormal = axisNormalAndW.xy;
+            float faceW = axisNormalAndW.z;
+            vec2 foreheadCenter = foreheadAndAxis.xy;
+            vec2 faceAxisDir = foreheadAndAxis.zw;
+
+            vec2 noseCenter = centralPts1.xy;
+            vec2 mouthCenter = centralPts1.zw;
+            vec2 chinCenter = centralPts2.xy;
+            vec2 noseBridgePt = centralPts2.zw;
+
+            vec2 leftMidJaw = midJawPts.xy;
+            vec2 rightMidJaw = midJawPts.zw;
+            vec2 leftLowerJaw = lowerJawPts.xy;
+            vec2 rightLowerJaw = lowerJawPts.zw;
+            vec2 leftCheekCenter = cheekPts.xy;
+            vec2 rightCheekCenter = cheekPts.zw;
+
+            vec2 leftAlar = alarPts.xy;
+            vec2 rightAlar = alarPts.zw;
+            vec2 leftMouthCorner = mouthCornerPts.xy;
+            vec2 rightMouthCorner = mouthCornerPts.zw;
+
+            vec2 leftEyeCenter = eyeCenterPts.xy;
+            vec2 rightEyeCenter = eyeCenterPts.zw;
+            vec2 leftEyeOuter = eyeOuterPts.xy;
+            vec2 rightEyeOuter = eyeOuterPts.zw;
+
+            vec2 leftTemple = templePts.xy;
+            vec2 rightTemple = templePts.zw;
+
+            // 0. Inner Facial Core Protection Guard
+            float distToInnerCore = min(length(p - noseCenter), length(p - mouthCenter));
+            float innerGuard = smoothstep(faceW * 0.12, faceW * 0.24, distToInnerCore);
+
+            // ==========================================
+            // GROUP 1: MẶT (FACE)
+            // ==========================================
+            // A. Mid-Jaw Slimming (slimMid)
+            float slimMidFactor = faceParams1.x;
+            float jawRad = faceW * 0.22;
+            if (abs(slimMidFactor) > 0.001) {
+                float distLM = length(p - leftMidJaw);
+                if (distLM < jawRad) {
+                    float t = distLM / jawRad;
+                    float w = (1.0 - t * t) * (1.0 - t * t);
+                    offset -= axisNormal * (slimMidFactor * 0.22 * w * innerGuard * jawRad);
+                }
+                float distRM = length(p - rightMidJaw);
+                if (distRM < jawRad) {
+                    float t = distRM / jawRad;
+                    float w = (1.0 - t * t) * (1.0 - t * t);
+                    offset += axisNormal * (slimMidFactor * 0.22 * w * innerGuard * jawRad);
                 }
             }
 
-            // 2. Right Eye Magnification
-            if (eyeFactor > 0.001) {
-                vec2 d = p - rightEyeCenter;
-                float dist = length(d);
-                if (dist < eyeRadius) {
-                    float t = dist / eyeRadius;
-                    float weight = (1.0 - t * t);
-                    offset -= d * (eyeFactor * 0.26 * weight * weight);
+            // B. Lower-Jaw (V-Face)
+            float vFaceFactor = faceParams1.y;
+            if (abs(vFaceFactor) > 0.001) {
+                float distLL = length(p - leftLowerJaw);
+                if (distLL < jawRad) {
+                    float t = distLL / jawRad;
+                    float w = (1.0 - t * t) * (1.0 - t * t);
+                    offset -= axisNormal * (vFaceFactor * 0.22 * w * innerGuard * jawRad);
+                }
+                float distRL = length(p - rightLowerJaw);
+                if (distRL < jawRad) {
+                    float t = distRL / jawRad;
+                    float w = (1.0 - t * t) * (1.0 - t * t);
+                    offset += axisNormal * (vFaceFactor * 0.22 * w * innerGuard * jawRad);
                 }
             }
 
-            // 3. Cheeks Slimming (V-Face, Slim Face, Cheek, Jaw)
-            if (abs(cheekFactor) > 0.001) {
-                vec2 dL = p - leftCheek;
-                float distL = length(dL);
-                if (distL < cheekRadius) {
-                    float t = distL / cheekRadius;
-                    float weight = (1.0 - t * t);
-                    offset.x -= cheekFactor * 0.22 * weight * weight * cheekRadius;
-                }
-
-                vec2 dR = p - rightCheek;
-                float distR = length(dR);
-                if (distR < cheekRadius) {
-                    float t = distR / cheekRadius;
-                    float weight = (1.0 - t * t);
-                    offset.x += cheekFactor * 0.22 * weight * weight * cheekRadius;
-                }
-            }
-
-            // 4. Chin Length and Width
+            // C. Chin Length & Width
+            float chinDy = faceParams1.z;
+            float chinDx = faceParams1.w;
             if (abs(chinDy) > 0.001 || abs(chinDx) > 0.001) {
-                vec2 d = p - chinCenter;
-                float dist = length(d);
-                if (dist < chinRadius) {
-                    float t = dist / chinRadius;
-                    float weight = (1.0 - t * t);
-                    offset.y += chinDy * 0.24 * weight * weight * chinRadius;
-                    offset.x += (p.x - chinCenter.x) * chinDx * 0.20 * weight;
+                float distChin = length(p - chinCenter);
+                float chinRad = faceW * 0.20;
+                if (distChin < chinRad) {
+                    float t = distChin / chinRad;
+                    float w = (1.0 - t * t) * (1.0 - t * t);
+                    float distToLip = length(p - mouthCenter);
+                    float chinLipGuard = smoothstep(faceW * 0.08, faceW * 0.16, distToLip);
+                    offset += faceAxisDir * (chinDy * 0.22 * w * chinLipGuard * chinRad);
+                    vec2 toP = p - chinCenter;
+                    float projNorm = dot(toP, axisNormal);
+                    offset += axisNormal * (projNorm * chinDx * 0.35 * w);
                 }
             }
 
-            // 5. Nose Slimming
-            if (abs(noseFactor) > 0.001) {
-                vec2 d = p - noseCenter;
-                float dist = length(d);
-                if (dist < noseRadius) {
-                    float t = dist / noseRadius;
-                    float weight = (1.0 - t * t);
-                    float dir = (p.x < noseCenter.x) ? -1.0 : 1.0;
-                    offset.x += dir * noseFactor * 0.16 * weight * weight * noseRadius;
+            // D. Small Face (overall contraction toward face centroid)
+            float smallFace = faceParams2.x;
+            if (smallFace > 0.001) {
+                vec2 faceCenter = (noseCenter + mouthCenter) * 0.5;
+                float distFC = length(p - faceCenter);
+                float faceRadius = faceW * 0.70;
+                if (distFC < faceRadius) {
+                    float t = distFC / faceRadius;
+                    float w = (1.0 - t * t);
+                    offset += (p - faceCenter) * (smallFace * 0.12 * w * innerGuard);
                 }
             }
 
-            // 6. Smile (Mouth corner lifting)
-            if (smileFactor > 0.001) {
-                vec2 dL = p - leftMouth;
-                if (length(dL) < mouthRadius) {
-                    float t = length(dL) / mouthRadius;
-                    float weight = (1.0 - t * t);
-                    offset.y -= smileFactor * 0.15 * weight * weight * mouthRadius;
+            // E. Cheek Width (Gò má)
+            float cheekWidth = faceParams2.y;
+            if (abs(cheekWidth) > 0.001) {
+                float cheekRad = faceW * 0.18;
+                float distLC = length(p - leftCheekCenter);
+                if (distLC < cheekRad) {
+                    float t = distLC / cheekRad;
+                    float w = (1.0 - t * t) * (1.0 - t * t);
+                    offset -= axisNormal * (cheekWidth * 0.20 * w * innerGuard * cheekRad);
                 }
-                vec2 dR = p - rightMouth;
-                if (length(dR) < mouthRadius) {
-                    float t = length(dR) / mouthRadius;
-                    float weight = (1.0 - t * t);
-                    offset.y -= smileFactor * 0.15 * weight * weight * mouthRadius;
+                float distRC = length(p - rightCheekCenter);
+                if (distRC < cheekRad) {
+                    float t = distRC / cheekRad;
+                    float w = (1.0 - t * t) * (1.0 - t * t);
+                    offset += axisNormal * (cheekWidth * 0.20 * w * innerGuard * cheekRad);
+                }
+            }
+
+            // F. Forehead Height (Trán)
+            float forehead = faceParams2.z;
+            if (abs(forehead) > 0.001) {
+                float fhRad = faceW * 0.25;
+                float distFH = length(p - foreheadCenter);
+                if (distFH < fhRad) {
+                    float t = distFH / fhRad;
+                    float w = (1.0 - t * t) * (1.0 - t * t);
+                    offset -= faceAxisDir * (forehead * 0.20 * w * fhRad);
+                }
+            }
+
+            // G. Temple Width (Thái dương)
+            float templeWidth = faceParams2.w;
+            if (abs(templeWidth) > 0.001) {
+                float tempRad = faceW * 0.18;
+                float distLT = length(p - leftTemple);
+                if (distLT < tempRad) {
+                    float t = distLT / tempRad;
+                    float w = (1.0 - t * t) * (1.0 - t * t);
+                    offset -= axisNormal * (templeWidth * 0.20 * w * tempRad);
+                }
+                float distRT = length(p - rightTemple);
+                if (distRT < tempRad) {
+                    float t = distRT / tempRad;
+                    float w = (1.0 - t * t) * (1.0 - t * t);
+                    offset += axisNormal * (templeWidth * 0.20 * w * tempRad);
+                }
+            }
+
+            // ==========================================
+            // GROUP 2: MŨI (NOSE)
+            // ==========================================
+            // A. Nose Width & Nostril Width
+            float noseWidth = noseParams.x;
+            float nostrilWidth = miscParams.y;
+            float effectiveNoseWidth = noseWidth + nostrilWidth * 0.6;
+            if (abs(effectiveNoseWidth) > 0.001) {
+                float alarRad = faceW * 0.11;
+                float distAL = length(p - leftAlar);
+                if (distAL < alarRad) {
+                    float t = distAL / alarRad;
+                    float w = (1.0 - t * t);
+                    offset += (noseCenter - leftAlar) * (effectiveNoseWidth * 0.30 * w);
+                }
+                float distAR = length(p - rightAlar);
+                if (distAR < alarRad) {
+                    float t = distAR / alarRad;
+                    float w = (1.0 - t * t);
+                    offset += (noseCenter - rightAlar) * (effectiveNoseWidth * 0.30 * w);
+                }
+            }
+
+            // B. Nose Bridge (Sống mũi)
+            float noseBridge = noseParams.y;
+            if (abs(noseBridge) > 0.001) {
+                vec2 midBridge = (noseCenter + noseBridgePt) * 0.5;
+                float bridgeRad = faceW * 0.10;
+                float distNB = length(p - midBridge);
+                if (distNB < bridgeRad) {
+                    float t = distNB / bridgeRad;
+                    float w = (1.0 - t * t);
+                    float projN = dot(p - midBridge, axisNormal);
+                    offset += axisNormal * (projN * noseBridge * 0.35 * w);
+                }
+            }
+
+            // C. Nose Tip (Đầu mũi)
+            float noseTip = noseParams.z;
+            if (abs(noseTip) > 0.001) {
+                float tipRad = faceW * 0.08;
+                float distNT = length(p - noseCenter);
+                if (distNT < tipRad) {
+                    float t = distNT / tipRad;
+                    float w = (1.0 - t * t) * (1.0 - t * t);
+                    offset += (p - noseCenter) * (noseTip * 0.25 * w);
+                }
+            }
+
+            // D. Nose Length (Chiều dài mũi)
+            float noseLength = noseParams.w;
+            if (abs(noseLength) > 0.001) {
+                float lenRad = faceW * 0.12;
+                float distNL = length(p - noseCenter);
+                if (distNL < lenRad) {
+                    float t = distNL / lenRad;
+                    float w = (1.0 - t * t);
+                    offset -= faceAxisDir * (noseLength * 0.18 * w * lenRad);
+                }
+            }
+
+            // ==========================================
+            // GROUP 3: MẮT (EYES)
+            // ==========================================
+            // A. Eye Size
+            float eyeSize = eyeParams.x;
+            if (eyeSize > 0.001) {
+                float eyeRad = faceW * 0.16;
+                float distEL = length(p - leftEyeCenter);
+                if (distEL < eyeRad) {
+                    float t = distEL / eyeRad;
+                    float w = (1.0 - t * t) * (1.0 - t * t);
+                    offset -= (p - leftEyeCenter) * (eyeSize * 0.24 * w);
+                }
+                float distER = length(p - rightEyeCenter);
+                if (distER < eyeRad) {
+                    float t = distER / eyeRad;
+                    float w = (1.0 - t * t) * (1.0 - t * t);
+                    offset -= (p - rightEyeCenter) * (eyeSize * 0.24 * w);
+                }
+            }
+
+            // B. Eye Distance
+            float eyeDist = eyeParams.y;
+            if (abs(eyeDist) > 0.001) {
+                float eyeRad = faceW * 0.16;
+                float distEL = length(p - leftEyeCenter);
+                if (distEL < eyeRad) {
+                    float t = distEL / eyeRad;
+                    float w = (1.0 - t * t);
+                    offset += axisNormal * (eyeDist * 0.16 * w * eyeRad);
+                }
+                float distER = length(p - rightEyeCenter);
+                if (distER < eyeRad) {
+                    float t = distER / eyeRad;
+                    float w = (1.0 - t * t);
+                    offset -= axisNormal * (eyeDist * 0.16 * w * eyeRad);
+                }
+            }
+
+            // C. Eye Height
+            float eyeHeight = eyeParams.z;
+            if (abs(eyeHeight) > 0.001) {
+                float eyeRad = faceW * 0.16;
+                float distEL = length(p - leftEyeCenter);
+                if (distEL < eyeRad) {
+                    float t = distEL / eyeRad;
+                    float w = (1.0 - t * t);
+                    offset += faceAxisDir * (eyeHeight * 0.18 * w * eyeRad);
+                }
+                float distER = length(p - rightEyeCenter);
+                if (distER < eyeRad) {
+                    float t = distER / eyeRad;
+                    float w = (1.0 - t * t);
+                    offset += faceAxisDir * (eyeHeight * 0.18 * w * eyeRad);
+                }
+            }
+
+            // D. Eye Angle
+            float eyeAngle = eyeParams.w;
+            if (abs(eyeAngle) > 0.001) {
+                float outerRad = faceW * 0.12;
+                float distOL = length(p - leftEyeOuter);
+                if (distOL < outerRad) {
+                    float t = distOL / outerRad;
+                    float w = (1.0 - t * t);
+                    offset += faceAxisDir * (eyeAngle * 0.20 * w * outerRad);
+                }
+                float distOR = length(p - rightEyeOuter);
+                if (distOR < outerRad) {
+                    float t = distOR / outerRad;
+                    float w = (1.0 - t * t);
+                    offset += faceAxisDir * (eyeAngle * 0.20 * w * outerRad);
+                }
+            }
+
+            // ==========================================
+            // GROUP 4: MIỆNG (MOUTH)
+            // ==========================================
+            // A. Smile (Anatomical smile arc - lifts lip wings upward and outward, zero dent/shadow on cheek)
+            float smile = mouthParams.x;
+            if (smile > 0.001) {
+                vec2 mouthVec = p - mouthCenter;
+                float uNorm = dot(mouthVec, axisNormal);
+                float halfW = faceW * 0.16;
+                float tx = abs(uNorm) / max(1.0, halfW);
+                float vVert = abs(dot(mouthVec, faceAxisDir));
+                float lipHalfH = faceW * 0.06;
+
+                // Lift is active strictly on the lips and commissure (never high onto cheek)
+                if (tx <= 1.35 && vVert <= lipHalfH * 1.8) {
+                    float wy = smoothstep(lipHalfH * 1.8, 0.0, vVert);
+                    // Smooth quadratic smile curve along mouth width, peaking at the corners (tx ~ 1.0)
+                    float wx = tx * tx * smoothstep(1.35, 0.95, tx);
+
+                    float liftMag = smile * 0.22 * faceW * wx * wy;
+                    if (uNorm < 0.0) {
+                        // Left corner of face: lift up (-faceAxisDir) & out (-axisNormal)
+                        // Inverse offset added to p: +faceAxisDir & +axisNormal
+                        vec2 smileOffset = faceAxisDir * 0.70 + axisNormal * 0.25;
+                        offset += smileOffset * liftMag;
+                    } else {
+                        // Right corner of face: lift up (-faceAxisDir) & out (+axisNormal)
+                        // Inverse offset added to p: +faceAxisDir & -axisNormal
+                        vec2 smileOffset = faceAxisDir * 0.70 - axisNormal * 0.25;
+                        offset += smileOffset * liftMag;
+                    }
+                }
+            }
+
+            // B. Mouth Width
+            float mouthWidth = mouthParams.y;
+            if (abs(mouthWidth) > 0.001) {
+                float cornerRad = faceW * 0.11;
+                float distML = length(p - leftMouthCorner);
+                if (distML < cornerRad) {
+                    float t = distML / cornerRad;
+                    float w = (1.0 - t * t);
+                    offset += axisNormal * (mouthWidth * 0.22 * w * cornerRad);
+                }
+                float distMR = length(p - rightMouthCorner);
+                if (distMR < cornerRad) {
+                    float t = distMR / cornerRad;
+                    float w = (1.0 - t * t);
+                    offset -= axisNormal * (mouthWidth * 0.22 * w * cornerRad);
+                }
+            }
+
+            // C. Mouth Size
+            float mouthSize = mouthParams.z;
+            if (abs(mouthSize) > 0.001) {
+                float mRad = faceW * 0.16;
+                float distMC = length(p - mouthCenter);
+                if (distMC < mRad) {
+                    float t = distMC / mRad;
+                    float w = (1.0 - t * t) * (1.0 - t * t);
+                    offset -= (p - mouthCenter) * (mouthSize * 0.20 * w);
+                }
+            }
+
+            // D. Lip Thickness
+            float lipThickness = mouthParams.w;
+            if (abs(lipThickness) > 0.001) {
+                float mRad = faceW * 0.14;
+                float distMC = length(p - mouthCenter);
+                if (distMC < mRad) {
+                    float t = distMC / mRad;
+                    float w = (1.0 - t * t);
+                    float projDir = dot(p - mouthCenter, faceAxisDir);
+                    offset += faceAxisDir * (sign(projDir) * lipThickness * 0.18 * w * (faceW * 0.05));
+                }
+            }
+
+            // E. Mouth Position
+            float mouthPos = miscParams.x;
+            if (abs(mouthPos) > 0.001) {
+                float mRad = faceW * 0.18;
+                float distMC = length(p - mouthCenter);
+                if (distMC < mRad) {
+                    float t = distMC / mRad;
+                    float w = (1.0 - t * t) * (1.0 - t * t);
+                    offset += faceAxisDir * (mouthPos * 0.22 * w * mRad);
                 }
             }
 
@@ -241,7 +535,15 @@ public final class BeautyRenderer {
         let hasReshape = face.slimFace > 0.01 || face.smallFace > 0.01 || face.vFace > 0.01 ||
                          abs(face.jawWidth) > 0.01 || abs(face.cheekWidth) > 0.01 ||
                          abs(face.chinLength) > 0.01 || abs(face.chinWidth) > 0.01 ||
-                         face.eyeSize > 0.01 || abs(face.noseWidth) > 0.01 || face.smile > 0.01
+                         abs(face.forehead) > 0.01 || abs(face.templeWidth) > 0.01 ||
+                         face.eyeSize > 0.01 || abs(face.eyeDistance) > 0.01 ||
+                         abs(face.eyeHeight) > 0.01 || abs(face.eyeAngle) > 0.01 ||
+                         abs(face.noseWidth) > 0.01 || abs(face.noseBridge) > 0.01 ||
+                         abs(face.noseTip) > 0.01 || abs(face.noseLength) > 0.01 ||
+                         abs(face.nostrilWidth) > 0.01 ||
+                         face.smile > 0.01 || abs(face.mouthWidth) > 0.01 ||
+                         abs(face.mouthSize) > 0.01 || abs(face.lipThickness) > 0.01 ||
+                         abs(face.mouthPosition) > 0.01
 
         if hasReshape && landmarks.hasFace {
             processedImage = applyFaceReshape(image: processedImage, face: face, landmarks: landmarks, extent: extent)
@@ -251,19 +553,26 @@ public final class BeautyRenderer {
         let hasSkinBeauty = beauty.smooth > 0.01 || beauty.whitening > 0.01 ||
                             beauty.skinBrightness > 0.01 || beauty.redness > 0.01 ||
                             beauty.darkCircle > 0.01 || beauty.eyeBag > 0.01 ||
-                            beauty.teethWhitening > 0.01
+                            beauty.teethWhitening > 0.01 || face.eyeBrightness > 0.01
 
         if hasSkinBeauty && landmarks.hasFace {
             processedImage = applySkinBeauty(
                 image: processedImage,
                 beauty: beauty,
+                face: face,
                 landmarks: landmarks,
                 extent: extent
             )
         }
 
-        // 3. 3D Makeup (Lipstick & Blush mapped onto face mesh)
-        if (makeup.lipPreset != "none" && makeup.lipOpacity > 0.01) || (makeup.blushPreset != "none" && makeup.blushOpacity > 0.01) {
+        // 3. 3D Face Makeup (Lipstick, Blush, Eyebrows, Eyeliner, Eyeshadow)
+        let hasMakeup = (makeup.lipPreset != "none" && makeup.lipOpacity > 0.01) ||
+                        (makeup.blushPreset != "none" && makeup.blushOpacity > 0.01) ||
+                        (makeup.eyebrowPreset != "none" && makeup.eyebrowOpacity > 0.01) ||
+                        (makeup.eyelinerPreset != "none" && makeup.eyelinerOpacity > 0.01) ||
+                        (makeup.eyeshadowPreset != "none" && makeup.eyeshadowOpacity > 0.01)
+
+        if hasMakeup && landmarks.hasFace {
             processedImage = applyMakeup(
                 image: processedImage,
                 makeup: makeup,
@@ -300,64 +609,102 @@ public final class BeautyRenderer {
         ciContext.render(finalImage, to: targetBuffer, bounds: extent, colorSpace: colorSpace)
     }
 
-    // MARK: - Face Reshaping (GPU Warp Kernel anchored on 468 landmarks)
+    // MARK: - Face Reshaping (Anatomical GPU Warp Kernel anchored on 468 landmarks)
     private func applyFaceReshape(
         image: CIImage,
         face: FaceSettings,
         landmarks: FaceMeshLandmarks,
         extent: CGRect
     ) -> CIImage {
-        guard let kernel = reshapeKernel else { return image }
+        guard let kernel = reshapeKernel, landmarks.hasFace else { return image }
 
         let width = extent.width
         let height = extent.height
         let box = landmarks.boundingBox
         let faceW = max(50.0, box.width * width)
 
-        let leftEye = CGPoint(x: landmarks.leftEyeCenter.x * width, y: (1.0 - landmarks.leftEyeCenter.y) * height)
-        let rightEye = CGPoint(x: landmarks.rightEyeCenter.x * width, y: (1.0 - landmarks.rightEyeCenter.y) * height)
-        let eyeRad = max(35.0, faceW * 0.20)
-        let eyeFactor = CGFloat(face.eyeSize)
+        // Feature Anchors in Core Image coordinate space (origin bottom-left)
+        func ciPt(_ p: CGPoint) -> CGPoint {
+            return CGPoint(x: p.x * width, y: (1.0 - p.y) * height)
+        }
 
-        let leftCheek = CGPoint(x: landmarks.leftCheekCenter.x * width, y: (1.0 - landmarks.leftCheekCenter.y) * height)
-        let rightCheek = CGPoint(x: landmarks.rightCheekCenter.x * width, y: (1.0 - landmarks.rightCheekCenter.y) * height)
-        let cheekRad = max(45.0, faceW * 0.28)
-        let cheekFactor = CGFloat(face.slimFace * 0.50 + face.vFace * 0.60 + face.smallFace * 0.30 - face.cheekWidth * 0.35)
+        let noseBridge = ciPt(landmarks.noseBridge)
+        let noseCenter = ciPt(landmarks.noseTip)
+        let chinCenter = ciPt(landmarks.chinTip)
+        let mouthCenter = ciPt(landmarks.mouthCenter)
+        let leftMidJaw = ciPt(landmarks.leftMidJaw)
+        let rightMidJaw = ciPt(landmarks.rightMidJaw)
+        let leftLowerJaw = ciPt(landmarks.leftLowerJaw)
+        let rightLowerJaw = ciPt(landmarks.rightLowerJaw)
+        let leftCheekCenter = ciPt(landmarks.leftCheekCenter)
+        let rightCheekCenter = ciPt(landmarks.rightCheekCenter)
+        let leftAlar = ciPt(landmarks.leftAlar)
+        let rightAlar = ciPt(landmarks.rightAlar)
+        let leftMouthCorner = ciPt(landmarks.leftMouthCorner)
+        let rightMouthCorner = ciPt(landmarks.rightMouthCorner)
+        let leftEyeCenter = ciPt(landmarks.leftEyeCenter)
+        let rightEyeCenter = ciPt(landmarks.rightEyeCenter)
+        let leftEyeOuter = ciPt(landmarks.leftEyeOuter)
+        let rightEyeOuter = ciPt(landmarks.rightEyeOuter)
+        let foreheadCenter = ciPt(landmarks.foreheadCenter)
+        let leftTemple = ciPt(landmarks.leftTemple)
+        let rightTemple = ciPt(landmarks.rightTemple)
 
-        let chinCenter = CGPoint(x: landmarks.chinTip.x * width, y: (1.0 - landmarks.chinTip.y) * height)
-        let chinRad = max(40.0, faceW * 0.24)
+        // Central Facial Axis (points downward from nose bridge to chin tip)
+        let axisVec = CGPoint(x: chinCenter.x - noseBridge.x, y: chinCenter.y - noseBridge.y)
+        let axisLen = max(1.0, hypot(axisVec.x, axisVec.y))
+        let axisDir = CGPoint(x: axisVec.x / axisLen, y: axisVec.y / axisLen)
+        // Normal points 90 degrees to the right of the face axis
+        let axisNormal = CGPoint(x: -axisDir.y, y: axisDir.x)
+
+        // Reshape Factors
+        let slimMidFactor = CGFloat(face.slimFace * 0.55 + face.jawWidth * 0.45)
+        let vFaceFactor = CGFloat(face.vFace * 0.65 + face.slimFace * 0.25)
         let chinDy = CGFloat(face.chinLength)
-        let chinDx = CGFloat(face.chinWidth + face.jawWidth * 0.5)
+        let chinDx = CGFloat(face.chinWidth)
 
-        let noseCenter = CGPoint(x: landmarks.noseTip.x * width, y: (1.0 - landmarks.noseTip.y) * height)
-        let noseRad = max(25.0, faceW * 0.16)
-        let noseFactor = CGFloat(face.noseWidth)
+        let smallFace = CGFloat(face.smallFace)
+        let cheekWidth = CGFloat(face.cheekWidth)
+        let forehead = CGFloat(face.forehead)
+        let templeWidth = CGFloat(face.templeWidth)
 
-        let leftMouth = CGPoint(x: (landmarks.mouthCenter.x - box.width * 0.12) * width, y: (1.0 - landmarks.mouthCenter.y) * height)
-        let rightMouth = CGPoint(x: (landmarks.mouthCenter.x + box.width * 0.12) * width, y: (1.0 - landmarks.mouthCenter.y) * height)
-        let mouthRad = max(28.0, faceW * 0.18)
-        let smileFactor = CGFloat(face.smile)
+        let eyeSize = CGFloat(face.eyeSize)
+        let eyeDist = CGFloat(face.eyeDistance)
+        let eyeHeight = CGFloat(face.eyeHeight)
+        let eyeAngle = CGFloat(face.eyeAngle)
+
+        let noseWidth = CGFloat(face.noseWidth)
+        let noseBridgeVal = CGFloat(face.noseBridge)
+        let noseTip = CGFloat(face.noseTip)
+        let noseLength = CGFloat(face.noseLength)
+
+        let smile = CGFloat(face.smile)
+        let mouthWidth = CGFloat(face.mouthWidth)
+        let mouthSize = CGFloat(face.mouthSize)
+        let lipThickness = CGFloat(face.lipThickness)
+
+        let mouthPos = CGFloat(face.mouthPosition)
+        let nostrilWidth = CGFloat(face.nostrilWidth)
 
         let args: [Any] = [
-            CIVector(cgPoint: leftEye),
-            CIVector(cgPoint: rightEye),
-            eyeRad,
-            eyeFactor,
-            CIVector(cgPoint: leftCheek),
-            CIVector(cgPoint: rightCheek),
-            cheekRad,
-            cheekFactor,
-            CIVector(cgPoint: chinCenter),
-            chinRad,
-            chinDy,
-            chinDx,
-            CIVector(cgPoint: noseCenter),
-            noseRad,
-            noseFactor,
-            CIVector(cgPoint: leftMouth),
-            CIVector(cgPoint: rightMouth),
-            mouthRad,
-            smileFactor
+            CIVector(x: axisNormal.x, y: axisNormal.y, z: faceW, w: 0.0),
+            CIVector(x: foreheadCenter.x, y: foreheadCenter.y, z: axisDir.x, w: axisDir.y),
+            CIVector(x: noseCenter.x, y: noseCenter.y, z: mouthCenter.x, w: mouthCenter.y),
+            CIVector(x: chinCenter.x, y: chinCenter.y, z: noseBridge.x, w: noseBridge.y),
+            CIVector(x: leftMidJaw.x, y: leftMidJaw.y, z: rightMidJaw.x, w: rightMidJaw.y),
+            CIVector(x: leftLowerJaw.x, y: leftLowerJaw.y, z: rightLowerJaw.x, w: rightLowerJaw.y),
+            CIVector(x: leftCheekCenter.x, y: leftCheekCenter.y, z: rightCheekCenter.x, w: rightCheekCenter.y),
+            CIVector(x: leftAlar.x, y: leftAlar.y, z: rightAlar.x, w: rightAlar.y),
+            CIVector(x: leftMouthCorner.x, y: leftMouthCorner.y, z: rightMouthCorner.x, w: rightMouthCorner.y),
+            CIVector(x: leftEyeCenter.x, y: leftEyeCenter.y, z: rightEyeCenter.x, w: rightEyeCenter.y),
+            CIVector(x: leftEyeOuter.x, y: leftEyeOuter.y, z: rightEyeOuter.x, w: rightEyeOuter.y),
+            CIVector(x: leftTemple.x, y: leftTemple.y, z: rightTemple.x, w: rightTemple.y),
+            CIVector(x: slimMidFactor, y: vFaceFactor, z: chinDy, w: chinDx),
+            CIVector(x: smallFace, y: cheekWidth, z: forehead, w: templeWidth),
+            CIVector(x: eyeSize, y: eyeDist, z: eyeHeight, w: eyeAngle),
+            CIVector(x: noseWidth, y: noseBridgeVal, z: noseTip, w: noseLength),
+            CIVector(x: smile, y: mouthWidth, z: mouthSize, w: lipThickness),
+            CIVector(x: mouthPos, y: nostrilWidth, z: 0.0, w: 0.0)
         ]
 
         if let warped = kernel.apply(extent: extent, roiCallback: { _, rect in rect }, image: image, arguments: args) {
@@ -430,6 +777,7 @@ public final class BeautyRenderer {
     private func applySkinBeauty(
         image: CIImage,
         beauty: BeautySettings,
+        face: FaceSettings,
         landmarks: FaceMeshLandmarks,
         extent: CGRect
     ) -> CIImage {
@@ -644,73 +992,97 @@ public final class BeautyRenderer {
             }
         }
 
+        // 6. Eye Brightness & Clarity (face.eyeBrightness)
+        if face.eyeBrightness > 0.01 {
+            let leftEye = CGPoint(x: landmarks.leftEyeCenter.x * width, y: (1.0 - landmarks.leftEyeCenter.y) * height)
+            let rightEye = CGPoint(x: landmarks.rightEyeCenter.x * width, y: (1.0 - landmarks.rightEyeCenter.y) * height)
+            let rx = faceW * 0.08
+            let ry = faceH * 0.045
+            if let eyeMask = createUnderEyeMask(extent: extent, leftCenter: leftEye, rightCenter: rightEye, rx: rx, ry: ry, intensity: face.eyeBrightness * 0.75) {
+                var brightened = current
+                if let ccFilter = CIFilter(name: "CIColorControls") {
+                    ccFilter.setValue(current, forKey: kCIInputImageKey)
+                    ccFilter.setValue(0.10 * face.eyeBrightness, forKey: kCIInputBrightnessKey)
+                    ccFilter.setValue(1.0 + 0.16 * face.eyeBrightness, forKey: kCIInputContrastKey)
+                    if let out = ccFilter.outputImage { brightened = out }
+                }
+                if let blend = CIFilter(name: "CIBlendWithMask") {
+                    blend.setValue(brightened, forKey: kCIInputImageKey)
+                    blend.setValue(current, forKey: kCIInputBackgroundImageKey)
+                    blend.setValue(eyeMask, forKey: kCIInputMaskImageKey)
+                    if let out = blend.outputImage { current = out }
+                }
+            }
+        }
+
         return current
     }
 
-    // MARK: - Makeup (Lipstick & Blush)
+    // MARK: - Makeup (Lipstick, Blush, Eyebrows, Eyeliner, Eyeshadow)
     private func applyMakeup(image: CIImage, makeup: MakeupSettings, landmarks: FaceMeshLandmarks, extent: CGRect) -> CIImage {
-        guard landmarks.hasFace else { return image }
+        guard landmarks.hasFace, landmarks.landmarks.count >= 468 else { return image }
         var result = image
 
         let width = extent.width
         let height = extent.height
-        let faceW = max(50.0, landmarks.boundingBox.width * width)
-        let faceH = max(60.0, landmarks.boundingBox.height * height)
+        let box = landmarks.boundingBox
+        let faceW = max(50.0, box.width * width)
 
-        // 1. Lipstick (Exact mouth center from 3D Mesh)
+        func ciPt(_ p: CGPoint) -> CGPoint {
+            return CGPoint(x: p.x * width, y: (1.0 - p.y) * height)
+        }
+
+        // 1. Lipstick (Exact 3D Contour Mask with Teeth & Oral Cavity Cutout)
         if makeup.lipPreset != "none" && makeup.lipOpacity > 0.01 {
-            let mouthCenter = CGPoint(x: landmarks.mouthCenter.x * width, y: (1.0 - landmarks.mouthCenter.y) * height)
-            let lipRx = faceW * 0.18
-            let lipRy = faceH * 0.09
-
             var lipR: CGFloat = 0.88; var lipG: CGFloat = 0.32; var lipB: CGFloat = 0.42
             switch makeup.lipPreset {
             case "nude":   lipR = 0.82; lipG = 0.50; lipB = 0.45
-            case "coral":  lipR = 0.95; lipG = 0.42; lipB = 0.35
-            case "red":    lipR = 0.90; lipG = 0.15; lipB = 0.20
-            case "berry":  lipR = 0.72; lipG = 0.18; lipB = 0.38
-            case "pink":   lipR = 0.95; lipG = 0.45; lipB = 0.60
-            case "brown":  lipR = 0.65; lipG = 0.35; lipB = 0.30
+            case "rose":   lipR = 0.80; lipG = 0.32; lipB = 0.44
+            case "coral":  lipR = 0.90; lipG = 0.38; lipB = 0.32
+            case "red":    lipR = 0.88; lipG = 0.12; lipB = 0.18
+            case "berry":  lipR = 0.68; lipG = 0.16; lipB = 0.32
+            case "pink":   lipR = 0.92; lipG = 0.42; lipB = 0.58
+            case "brown":  lipR = 0.62; lipG = 0.32; lipB = 0.28
             default: break
             }
 
-            let alpha = CGFloat(makeup.lipOpacity * 0.52)
-            if let lipGrad = CIFilter(name: "CIRadialGradient") {
-                lipGrad.setValue(CIVector(x: 0, y: 0), forKey: "inputCenter")
-                lipGrad.setValue(0.35, forKey: "inputRadius0")
-                lipGrad.setValue(1.0, forKey: "inputRadius1")
-                lipGrad.setValue(CIColor(red: lipR, green: lipG, blue: lipB, alpha: alpha), forKey: "inputColor0")
-                lipGrad.setValue(CIColor(red: lipR, green: lipG, blue: lipB, alpha: 0.0), forKey: "inputColor1")
-
-                var t = CGAffineTransform.identity
-                t = t.translatedBy(x: mouthCenter.x, y: mouthCenter.y)
-                t = t.scaledBy(x: lipRx, y: lipRy)
-
-                if let lipOverlay = lipGrad.outputImage?.transformed(by: t).cropped(to: extent) {
-                    if let blend = CIFilter(name: "CISoftLightBlendMode") {
-                        blend.setValue(lipOverlay, forKey: kCIInputImageKey)
-                        blend.setValue(result, forKey: kCIInputBackgroundImageKey)
-                        if let out = blend.outputImage?.cropped(to: extent) {
-                            result = out
+            if let lipMask = createLipMask(landmarks: landmarks, extent: extent) {
+                let colorImg = CIImage(color: CIColor(red: lipR, green: lipG, blue: lipB, alpha: 1.0)).cropped(to: extent)
+                if let softLight = CIFilter(name: "CISoftLightBlendMode") {
+                    softLight.setValue(colorImg, forKey: kCIInputImageKey)
+                    softLight.setValue(result, forKey: kCIInputBackgroundImageKey)
+                    if let tintedLips = softLight.outputImage {
+                        var effMask = lipMask
+                        let opacity = CGFloat(min(1.0, makeup.lipOpacity * 0.90))
+                        if let matrix = CIFilter(name: "CIColorMatrix") {
+                            matrix.setValue(lipMask, forKey: kCIInputImageKey)
+                            matrix.setValue(CIVector(x: 0, y: 0, z: 0, w: opacity), forKey: "inputAVector")
+                            if let out = matrix.outputImage { effMask = out }
+                        }
+                        if let blend = CIFilter(name: "CIBlendWithMask") {
+                            blend.setValue(tintedLips, forKey: kCIInputImageKey)
+                            blend.setValue(result, forKey: kCIInputBackgroundImageKey)
+                            blend.setValue(effMask, forKey: kCIInputMaskImageKey)
+                            if let blended = blend.outputImage { result = blended }
                         }
                     }
                 }
             }
         }
 
-        // 2. Blush (Targeted to left and right cheekbones from 3D Mesh)
+        // 2. Blush (Targeted strictly at true cheek apples: landmarks 50 & 280)
         if makeup.blushPreset != "none" && makeup.blushOpacity > 0.01 {
-            let leftCheek = CGPoint(x: landmarks.leftCheekCenter.x * width, y: (1.0 - landmarks.leftCheekCenter.y) * height)
-            let rightCheek = CGPoint(x: landmarks.rightCheekCenter.x * width, y: (1.0 - landmarks.rightCheekCenter.y) * height)
-            let cheekRadius = faceW * 0.18
+            let rightCheek = ciPt(landmarks.rightCheekApple) // landmark 50 (camera left)
+            let leftCheek = ciPt(landmarks.leftCheekApple)   // landmark 280 (camera right)
+            let cheekRadius = faceW * 0.16
 
-            var bR: CGFloat = 0.98; var bG: CGFloat = 0.35; var bB: CGFloat = 0.45
-            if makeup.blushPreset == "coral" {
-                bR = 0.98; bG = 0.45; bB = 0.35
-            } else if makeup.blushPreset == "peach" {
-                bR = 0.98; bG = 0.50; bB = 0.40
-            } else if makeup.blushPreset == "orange" {
-                bR = 0.98; bG = 0.40; bB = 0.25
+            var bR: CGFloat = 0.98; var bG: CGFloat = 0.42; var bB: CGFloat = 0.52
+            switch makeup.blushPreset {
+            case "peach": bR = 0.98; bG = 0.54; bB = 0.42
+            case "coral": bR = 0.98; bG = 0.46; bB = 0.38
+            case "mauve": bR = 0.88; bG = 0.48; bB = 0.65
+            case "rosy":  fallthrough
+            default:      bR = 0.98; bG = 0.42; bB = 0.52
             }
 
             if let blushOverlay = createCheekBlush(
@@ -718,7 +1090,7 @@ public final class BeautyRenderer {
                 leftCheek: leftCheek,
                 rightCheek: rightCheek,
                 radius: cheekRadius,
-                intensity: makeup.blushOpacity * 0.45,
+                intensity: makeup.blushOpacity * 0.50,
                 colorR: bR, colorG: bG, colorB: bB
             ) {
                 if let softLight = CIFilter(name: "CISoftLightBlendMode") {
@@ -731,7 +1103,360 @@ public final class BeautyRenderer {
             }
         }
 
+        // 3. Eyebrows (Enhanced contour & tinting)
+        if makeup.eyebrowPreset != "none" && makeup.eyebrowOpacity > 0.01 {
+            var eR: CGFloat = 0.30; var eG: CGFloat = 0.22; var eB: CGFloat = 0.18
+            switch makeup.eyebrowPreset {
+            case "soft":    eR = 0.25; eG = 0.25; eB = 0.25
+            case "brown":   eR = 0.24; eG = 0.15; eB = 0.12
+            case "natural": fallthrough
+            default:        eR = 0.30; eG = 0.22; eB = 0.18
+            }
+
+            if let browMask = createEyebrowMask(landmarks: landmarks, extent: extent) {
+                let colorImg = CIImage(color: CIColor(red: eR, green: eG, blue: eB, alpha: 1.0)).cropped(to: extent)
+                if let multiply = CIFilter(name: "CIMultiplyBlendMode") {
+                    multiply.setValue(colorImg, forKey: kCIInputImageKey)
+                    multiply.setValue(result, forKey: kCIInputBackgroundImageKey)
+                    if let tinted = multiply.outputImage {
+                        var effMask = browMask
+                        let opacity = CGFloat(makeup.eyebrowOpacity * 0.50)
+                        if let matrix = CIFilter(name: "CIColorMatrix") {
+                            matrix.setValue(browMask, forKey: kCIInputImageKey)
+                            matrix.setValue(CIVector(x: 0, y: 0, z: 0, w: opacity), forKey: "inputAVector")
+                            if let out = matrix.outputImage { effMask = out }
+                        }
+                        if let blend = CIFilter(name: "CIBlendWithMask") {
+                            blend.setValue(tinted, forKey: kCIInputImageKey)
+                            blend.setValue(result, forKey: kCIInputBackgroundImageKey)
+                            blend.setValue(effMask, forKey: kCIInputMaskImageKey)
+                            if let out = blend.outputImage { result = out }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 4. Eyeliner (Lash line definition & cat eye wing)
+        if makeup.eyelinerPreset != "none" && makeup.eyelinerOpacity > 0.01 {
+            let isCat = makeup.eyelinerPreset == "cat"
+            var lR: CGFloat = 0.12; var lG: CGFloat = 0.12; var lB: CGFloat = 0.12
+            if makeup.eyelinerPreset == "brown" {
+                lR = 0.22; lG = 0.16; lB = 0.14
+            }
+
+            if let linerMask = createEyelinerMask(landmarks: landmarks, isCatEye: isCat, extent: extent) {
+                let colorImg = CIImage(color: CIColor(red: lR, green: lG, blue: lB, alpha: 1.0)).cropped(to: extent)
+                if let multiply = CIFilter(name: "CIMultiplyBlendMode") {
+                    multiply.setValue(colorImg, forKey: kCIInputImageKey)
+                    multiply.setValue(result, forKey: kCIInputBackgroundImageKey)
+                    if let tinted = multiply.outputImage {
+                        var effMask = linerMask
+                        let opacity = CGFloat(makeup.eyelinerOpacity * 0.75)
+                        if let matrix = CIFilter(name: "CIColorMatrix") {
+                            matrix.setValue(linerMask, forKey: kCIInputImageKey)
+                            matrix.setValue(CIVector(x: 0, y: 0, z: 0, w: opacity), forKey: "inputAVector")
+                            if let out = matrix.outputImage { effMask = out }
+                        }
+                        if let blend = CIFilter(name: "CIBlendWithMask") {
+                            blend.setValue(tinted, forKey: kCIInputImageKey)
+                            blend.setValue(result, forKey: kCIInputBackgroundImageKey)
+                            blend.setValue(effMask, forKey: kCIInputMaskImageKey)
+                            if let out = blend.outputImage { result = out }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 5. Eyeshadow (Upper eyelid gradient tone)
+        if makeup.eyeshadowPreset != "none" && makeup.eyeshadowOpacity > 0.01 {
+            var sR: CGFloat = 0.65; var sG: CGFloat = 0.52; var sB: CGFloat = 0.45
+            switch makeup.eyeshadowPreset {
+            case "sunset": sR = 0.95; sG = 0.55; sB = 0.42
+            case "pink":   sR = 0.92; sG = 0.52; sB = 0.65
+            case "smoky":  sR = 0.35; sG = 0.35; sB = 0.35
+            case "earth":  fallthrough
+            default:       sR = 0.65; sG = 0.52; sB = 0.45
+            }
+
+            if let shadowMask = createEyeshadowMask(landmarks: landmarks, extent: extent) {
+                let colorImg = CIImage(color: CIColor(red: sR, green: sG, blue: sB, alpha: 1.0)).cropped(to: extent)
+                if let softLight = CIFilter(name: "CISoftLightBlendMode") {
+                    softLight.setValue(colorImg, forKey: kCIInputImageKey)
+                    softLight.setValue(result, forKey: kCIInputBackgroundImageKey)
+                    if let tinted = softLight.outputImage {
+                        var effMask = shadowMask
+                        let opacity = CGFloat(makeup.eyeshadowOpacity * 0.55)
+                        if let matrix = CIFilter(name: "CIColorMatrix") {
+                            matrix.setValue(shadowMask, forKey: kCIInputImageKey)
+                            matrix.setValue(CIVector(x: 0, y: 0, z: 0, w: opacity), forKey: "inputAVector")
+                            if let out = matrix.outputImage { effMask = out }
+                        }
+                        if let blend = CIFilter(name: "CIBlendWithMask") {
+                            blend.setValue(tinted, forKey: kCIInputImageKey)
+                            blend.setValue(result, forKey: kCIInputBackgroundImageKey)
+                            blend.setValue(effMask, forKey: kCIInputMaskImageKey)
+                            if let out = blend.outputImage { result = out }
+                        }
+                    }
+                }
+            }
+        }
+
         return result
+    }
+
+    // MARK: - 3D Face Makeup Masks
+    private func createLipMask(landmarks: FaceMeshLandmarks, extent: CGRect) -> CIImage? {
+        guard landmarks.landmarks.count >= 468 else { return nil }
+        let width = Int(extent.width)
+        let height = Int(extent.height)
+        guard width > 0, height > 0 else { return nil }
+
+        let colorSpace = CGColorSpaceCreateDeviceGray()
+        guard let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.none.rawValue
+        ) else { return nil }
+
+        context.setFillColor(gray: 0.0, alpha: 1.0)
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+
+        func pt(_ idx: Int) -> CGPoint {
+            let lm = landmarks.landmarks[idx]
+            return CGPoint(x: CGFloat(lm.x) * CGFloat(width), y: CGFloat(1.0 - lm.y) * CGFloat(height))
+        }
+
+        let outer = [61, 185, 40, 39, 37, 0, 267, 269, 270, 409, 291, 375, 321, 405, 314, 17, 84, 181, 91, 146]
+        let inner = [78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 308, 324, 318, 402, 317, 14, 87, 178, 88, 95]
+
+        let path = CGMutablePath()
+        if let first = outer.first {
+            path.move(to: pt(first))
+            for idx in outer.dropFirst() { path.addLine(to: pt(idx)) }
+            path.closeSubpath()
+        }
+        if let first = inner.first {
+            path.move(to: pt(first))
+            for idx in inner.dropFirst() { path.addLine(to: pt(idx)) }
+            path.closeSubpath()
+        }
+
+        context.addPath(path)
+        context.setFillColor(gray: 1.0, alpha: 1.0)
+        context.drawPath(using: .eoFill)
+
+        guard let cgImg = context.makeImage() else { return nil }
+        let ciMask = CIImage(cgImage: cgImg)
+
+        if let blur = CIFilter(name: "CIGaussianBlur") {
+            blur.setValue(ciMask, forKey: kCIInputImageKey)
+            blur.setValue(2.0, forKey: kCIInputRadiusKey)
+            return blur.outputImage?.cropped(to: extent)
+        }
+        return ciMask
+    }
+
+    private func createEyebrowMask(landmarks: FaceMeshLandmarks, extent: CGRect) -> CIImage? {
+        guard landmarks.landmarks.count >= 468 else { return nil }
+        let width = Int(extent.width)
+        let height = Int(extent.height)
+        guard width > 0, height > 0 else { return nil }
+
+        let colorSpace = CGColorSpaceCreateDeviceGray()
+        guard let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.none.rawValue
+        ) else { return nil }
+
+        context.setFillColor(gray: 0.0, alpha: 1.0)
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+
+        func pt(_ idx: Int) -> CGPoint {
+            let lm = landmarks.landmarks[idx]
+            return CGPoint(x: CGFloat(lm.x) * CGFloat(width), y: CGFloat(1.0 - lm.y) * CGFloat(height))
+        }
+
+        let rightBrow = [70, 63, 105, 66, 107, 55, 65, 52, 53, 46]
+        let leftBrow = [300, 293, 334, 296, 336, 285, 295, 282, 283, 276]
+
+        let path = CGMutablePath()
+        if let first = rightBrow.first {
+            path.move(to: pt(first))
+            for idx in rightBrow.dropFirst() { path.addLine(to: pt(idx)) }
+            path.closeSubpath()
+        }
+        if let first = leftBrow.first {
+            path.move(to: pt(first))
+            for idx in leftBrow.dropFirst() { path.addLine(to: pt(idx)) }
+            path.closeSubpath()
+        }
+
+        context.addPath(path)
+        context.setFillColor(gray: 1.0, alpha: 1.0)
+        context.fillPath()
+
+        guard let cgImg = context.makeImage() else { return nil }
+        let ciMask = CIImage(cgImage: cgImg)
+
+        if let blur = CIFilter(name: "CIGaussianBlur") {
+            blur.setValue(ciMask, forKey: kCIInputImageKey)
+            blur.setValue(3.5, forKey: kCIInputRadiusKey)
+            return blur.outputImage?.cropped(to: extent)
+        }
+        return ciMask
+    }
+
+    private func createEyelinerMask(landmarks: FaceMeshLandmarks, isCatEye: Bool, extent: CGRect) -> CIImage? {
+        guard landmarks.landmarks.count >= 468 else { return nil }
+        let width = Int(extent.width)
+        let height = Int(extent.height)
+        guard width > 0, height > 0 else { return nil }
+
+        let colorSpace = CGColorSpaceCreateDeviceGray()
+        guard let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.none.rawValue
+        ) else { return nil }
+
+        context.setFillColor(gray: 0.0, alpha: 1.0)
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+
+        func pt(_ idx: Int) -> CGPoint {
+            let lm = landmarks.landmarks[idx]
+            return CGPoint(x: CGFloat(lm.x) * CGFloat(width), y: CGFloat(1.0 - lm.y) * CGFloat(height))
+        }
+
+        // Full upper lash line from inner canthus to outer corner
+        // Camera-left (person's right eye): 133 (inner) -> ... -> 33 (outer)
+        let rightUpperLash = [133, 173, 157, 158, 159, 160, 161, 246, 33]
+        // Camera-right (person's left eye): 362 (inner) -> ... -> 263 (outer)
+        let leftUpperLash = [362, 398, 384, 385, 386, 387, 388, 466, 263]
+
+        context.setStrokeColor(gray: 1.0, alpha: 1.0)
+        context.setLineWidth(max(2.0, extent.width * 0.0028))
+        context.setLineCap(.round)
+        context.setLineJoin(.round)
+
+        let path = CGMutablePath()
+        if let first = rightUpperLash.first {
+            path.move(to: pt(first))
+            for idx in rightUpperLash.dropFirst() { path.addLine(to: pt(idx)) }
+            if isCatEye {
+                let pOuter = pt(33)
+                let pPrev = pt(246)
+                let dirX = pOuter.x - pPrev.x
+                let dirY = pOuter.y - pPrev.y
+                let len = max(1.0, hypot(dirX, dirY))
+                let wing = CGPoint(
+                    x: pOuter.x + (dirX / len) * 14.0,
+                    y: pOuter.y + (dirY / len) * 14.0 + 5.0
+                )
+                path.addLine(to: wing)
+            }
+        }
+
+        if let first = leftUpperLash.first {
+            path.move(to: pt(first))
+            for idx in leftUpperLash.dropFirst() { path.addLine(to: pt(idx)) }
+            if isCatEye {
+                let pOuter = pt(263)
+                let pPrev = pt(466)
+                let dirX = pOuter.x - pPrev.x
+                let dirY = pOuter.y - pPrev.y
+                let len = max(1.0, hypot(dirX, dirY))
+                let wing = CGPoint(
+                    x: pOuter.x + (dirX / len) * 14.0,
+                    y: pOuter.y + (dirY / len) * 14.0 + 5.0
+                )
+                path.addLine(to: wing)
+            }
+        }
+
+        context.addPath(path)
+        context.strokePath()
+
+        guard let cgImg = context.makeImage() else { return nil }
+        let ciMask = CIImage(cgImage: cgImg)
+
+        if let blur = CIFilter(name: "CIGaussianBlur") {
+            blur.setValue(ciMask, forKey: kCIInputImageKey)
+            blur.setValue(1.5, forKey: kCIInputRadiusKey)
+            return blur.outputImage?.cropped(to: extent)
+        }
+        return ciMask
+    }
+
+    private func createEyeshadowMask(landmarks: FaceMeshLandmarks, extent: CGRect) -> CIImage? {
+        guard landmarks.landmarks.count >= 468 else { return nil }
+        let width = Int(extent.width)
+        let height = Int(extent.height)
+        guard width > 0, height > 0 else { return nil }
+
+        let colorSpace = CGColorSpaceCreateDeviceGray()
+        guard let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.none.rawValue
+        ) else { return nil }
+
+        context.setFillColor(gray: 0.0, alpha: 1.0)
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+
+        func pt(_ idx: Int) -> CGPoint {
+            let lm = landmarks.landmarks[idx]
+            return CGPoint(x: CGFloat(lm.x) * CGFloat(width), y: CGFloat(1.0 - lm.y) * CGFloat(height))
+        }
+
+        // Complete upper eyelid surface from lash line to palpebral crease
+        let rightEyelid = [33, 246, 161, 160, 159, 158, 157, 173, 133, 243, 190, 56, 28, 27, 29, 30, 247]
+        let leftEyelid = [263, 466, 388, 387, 386, 385, 384, 398, 362, 463, 414, 286, 258, 257, 259, 260, 467]
+
+        let path = CGMutablePath()
+        if let first = rightEyelid.first {
+            path.move(to: pt(first))
+            for idx in rightEyelid.dropFirst() { path.addLine(to: pt(idx)) }
+            path.closeSubpath()
+        }
+        if let first = leftEyelid.first {
+            path.move(to: pt(first))
+            for idx in leftEyelid.dropFirst() { path.addLine(to: pt(idx)) }
+            path.closeSubpath()
+        }
+
+        context.addPath(path)
+        context.setFillColor(gray: 1.0, alpha: 1.0)
+        context.fillPath()
+
+        guard let cgImg = context.makeImage() else { return nil }
+        let ciMask = CIImage(cgImage: cgImg)
+
+        if let blur = CIFilter(name: "CIGaussianBlur") {
+            blur.setValue(ciMask, forKey: kCIInputImageKey)
+            blur.setValue(5.0, forKey: kCIInputRadiusKey)
+            return blur.outputImage?.cropped(to: extent)
+        }
+        return ciMask
     }
 
     // MARK: - Face Mask Helpers
