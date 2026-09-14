@@ -2,7 +2,7 @@ class BeautySettings {
   final double smooth; // 0..100
   final double skinTexture; // 0..100
   final double skinTone; // 0..100
-  final String skinToneType; // 'natural', 'porcelain', 'rosy', 'peach', 'warm', 'tan'
+  final String skinToneType; // 'natural', 'porcelain', 'snow', 'rosy', 'cherry', 'peach', 'coral', 'warm', 'honey', 'wheat', 'olive', 'tan'
   final double skinBrightness; // 0..100
   final double whitening; // 0..100
   final double redness; // 0..100

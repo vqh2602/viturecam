@@ -147,7 +147,7 @@ class MakeupPanel extends ConsumerWidget {
                       )
                     : Center(
                         child: Text(
-                          'Select a $activeCategoryName style below',
+                          'Select a $activeCategoryName color below',
                           style: const TextStyle(color: Colors.white38, fontSize: 12),
                         ),
                       ),
@@ -158,7 +158,7 @@ class MakeupPanel extends ConsumerWidget {
 
         const Divider(height: 1, color: Colors.white10),
 
-        // Row 2: Reset Button & Preset Swatches Bar
+        // Row 2: Reset Button + Style Chips (if Lip or Blush) + Swatches Bar
         SizedBox(
           height: 56,
           child: Row(
@@ -169,7 +169,48 @@ class MakeupPanel extends ConsumerWidget {
                 tooltip: 'Reset Makeup',
                 onPressed: m.isModified ? () => controller.resetMakeup() : null,
               ),
+
+              // Style Chips for Lipstick, Blush, Eyebrow, Eyeliner, Eyeshadow
+              if (subTool == 'lip') ...[
+                const VerticalDivider(width: 12, indent: 12, endIndent: 12, color: Colors.white12),
+                _buildStyleSelector(
+                  options: MakeupPresets.lipStyles,
+                  selectedId: m.lipStyle,
+                  onSelect: (id) => controller.updateMakeup(m.copyWith(lipStyle: id)),
+                ),
+              ] else if (subTool == 'blush') ...[
+                const VerticalDivider(width: 12, indent: 12, endIndent: 12, color: Colors.white12),
+                _buildStyleSelector(
+                  options: MakeupPresets.blushStyles,
+                  selectedId: m.blushStyle,
+                  onSelect: (id) => controller.updateMakeup(m.copyWith(blushStyle: id)),
+                ),
+              ] else if (subTool == 'eyebrow') ...[
+                const VerticalDivider(width: 12, indent: 12, endIndent: 12, color: Colors.white12),
+                _buildStyleSelector(
+                  options: MakeupPresets.eyebrowStyles,
+                  selectedId: m.eyebrowStyle,
+                  onSelect: (id) => controller.updateMakeup(m.copyWith(eyebrowStyle: id)),
+                ),
+              ] else if (subTool == 'eyeliner') ...[
+                const VerticalDivider(width: 12, indent: 12, endIndent: 12, color: Colors.white12),
+                _buildStyleSelector(
+                  options: MakeupPresets.eyelinerStyles,
+                  selectedId: m.eyelinerStyle,
+                  onSelect: (id) => controller.updateMakeup(m.copyWith(eyelinerStyle: id)),
+                ),
+              ] else if (subTool == 'eyeshadow') ...[
+                const VerticalDivider(width: 12, indent: 12, endIndent: 12, color: Colors.white12),
+                _buildStyleSelector(
+                  options: MakeupPresets.eyeshadowStyles,
+                  selectedId: m.eyeshadowStyle,
+                  onSelect: (id) => controller.updateMakeup(m.copyWith(eyeshadowStyle: id)),
+                ),
+              ],
+
               const VerticalDivider(width: 12, indent: 12, endIndent: 12, color: Colors.white12),
+
+              // Preset Color Swatches List
               Expanded(
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
@@ -229,6 +270,56 @@ class MakeupPanel extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildStyleSelector({
+    required List<MakeupStyleOption> options,
+    required String selectedId,
+    required ValueChanged<String> onSelect,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: const Color(0xFF222227),
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final opt in options)
+            GestureDetector(
+              onTap: () => onSelect(opt.id),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+                decoration: BoxDecoration(
+                  color: selectedId == opt.id ? const Color(0xFFFF7597) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      opt.icon,
+                      size: 13,
+                      color: selectedId == opt.id ? Colors.white : Colors.white70,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      opt.name,
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: selectedId == opt.id ? FontWeight.w600 : FontWeight.w400,
+                        color: selectedId == opt.id ? Colors.white : Colors.white70,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

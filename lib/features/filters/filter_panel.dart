@@ -16,6 +16,7 @@ class _FilterPanelState extends ConsumerState<FilterPanel> {
 
   final List<Map<String, String>> _categories = const [
     {'id': 'All', 'label': 'Tất cả'},
+    {'id': 'Douyin', 'label': 'Douyin ✨'},
     {'id': 'Natural', 'label': 'Tự nhiên'},
     {'id': 'Korean', 'label': 'Hàn Quốc'},
     {'id': 'Film', 'label': 'Film'},
@@ -53,39 +54,39 @@ class _FilterPanelState extends ConsumerState<FilterPanel> {
               const SizedBox(width: 12),
               // Category filter pills
               SizedBox(
-                width: 290,
-                child: ListView.builder(
+                width: 320,
+                child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(vertical: 12),
-                  itemCount: _categories.length,
-                  itemBuilder: (context, idx) {
-                    final cat = _categories[idx];
-                    final isSel = _selectedCategory == cat['id'];
-                    return GestureDetector(
-                      onTap: () => setState(() => _selectedCategory = cat['id']!),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        margin: const EdgeInsets.only(right: 6),
-                        decoration: BoxDecoration(
-                          color: isSel ? const Color(0xFFFF7597) : const Color(0xFF222227),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: isSel ? Colors.transparent : Colors.white10,
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            cat['label']!,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: isSel ? FontWeight.w600 : FontWeight.w400,
-                              color: isSel ? Colors.white : Colors.white70,
+                  child: Row(
+                    children: [
+                      for (final cat in _categories)
+                        GestureDetector(
+                          onTap: () => setState(() => _selectedCategory = cat['id']!),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            margin: const EdgeInsets.only(right: 6),
+                            decoration: BoxDecoration(
+                              color: _selectedCategory == cat['id'] ? const Color(0xFFFF7597) : const Color(0xFF222227),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: _selectedCategory == cat['id'] ? Colors.transparent : Colors.white10,
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                cat['label']!,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: _selectedCategory == cat['id'] ? FontWeight.w600 : FontWeight.w400,
+                                  color: _selectedCategory == cat['id'] ? Colors.white : Colors.white70,
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    );
-                  },
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(width: 6),

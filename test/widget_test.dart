@@ -58,18 +58,33 @@ void main() {
     await tester.pump();
     expect(find.text('Khóe cười (Smile Corners)'), findsOneWidget);
 
+    expect(find.text('Môi chữ M'), findsOneWidget);
+    await tester.tap(find.text('Môi chữ M'));
+    await tester.pump();
+    expect(find.text('Môi chữ M / Trái tim (Heart Lips)'), findsOneWidget);
+
     // Tap on Makeup category
     await tester.tap(find.text('Makeup'));
     await tester.pump();
     expect(find.text('Lipstick'), findsWidgets);
     expect(find.text('Blush'), findsOneWidget);
+    expect(find.text('Son bóng'), findsOneWidget);
+    expect(find.text('Lòng môi'), findsOneWidget);
+    expect(find.text('Viền môi'), findsOneWidget);
+
+    // Tap Blush tool
+    await tester.tap(find.text('Blush'));
+    await tester.pump();
+    expect(find.text('Gò má tròn'), findsOneWidget);
+    expect(find.text('Say rượu'), findsOneWidget);
+    expect(find.text('Kéo thái dương'), findsOneWidget);
 
     // Tap on Filter category
     await tester.tap(find.text('Filter'));
     await tester.pump();
     expect(find.text('Tất cả'), findsOneWidget);
     expect(find.text('Hàn Quốc'), findsOneWidget);
-    expect(find.text('Film'), findsOneWidget);
+    expect(find.text('Film'), findsWidgets);
     expect(find.text('Original'), findsOneWidget);
     expect(find.text('Clear'), findsOneWidget);
     expect(find.text('Milk'), findsOneWidget);

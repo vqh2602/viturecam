@@ -95,7 +95,7 @@ vertex ReshapeVertexOutput faceReshapeVertex(
 
     // 1. Cheek and Jaw slimming (V-Face, Slim Face)
     if (fType == 1 && w > 0.0) {
-        float factor = (uniforms.slimFace * 0.06 + uniforms.vFace * 0.07 + uniforms.smallFace * 0.04) * w;
+        float factor = (uniforms.slimFace * 0.06 + uniforms.vFace * 0.07) * w;
         deformed.x += (uniforms.faceCenter.x - pos.x) * factor;
     }
     // 2. Chin length and width
@@ -124,6 +124,11 @@ vertex ReshapeVertexOutput faceReshapeVertex(
     else if (fType == 6 && uniforms.smile > 0.01) {
         float dy = -uniforms.smile * 0.022 * w;
         deformed.y += dy;
+    }
+
+    // 7. Small Head / Whole Face contraction
+    if (uniforms.smallFace > 0.001) {
+        deformed += (uniforms.faceCenter - pos) * (uniforms.smallFace * 0.05 * w);
     }
 
     out.clipPosition = float4(deformed.x * 2.0 - 1.0, (1.0 - deformed.y) * 2.0 - 1.0, 0.0, 1.0);

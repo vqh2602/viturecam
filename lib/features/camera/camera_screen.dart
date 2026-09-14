@@ -20,16 +20,23 @@ class CameraScreen extends ConsumerStatefulWidget {
 
 class _CameraScreenState extends ConsumerState<CameraScreen> {
   bool _isHoldingRaw = false;
+  String _savedCompareModeBeforeHold = 'none';
 
   void _onBeforeAfterDown() {
+    if (_isHoldingRaw) return;
+    final currentMode = ref.read(cameraControllerProvider).compareMode;
+    if (currentMode != 'raw') {
+      _savedCompareModeBeforeHold = currentMode;
+    }
     setState(() => _isHoldingRaw = true);
     ref.read(cameraControllerProvider.notifier).setCompareMode('raw');
   }
 
   void _onBeforeAfterUp() {
+    if (!_isHoldingRaw) return;
     setState(() => _isHoldingRaw = false);
-    final prevMode = ref.read(cameraControllerProvider).compareMode == 'raw' ? 'none' : ref.read(cameraControllerProvider).compareMode;
-    ref.read(cameraControllerProvider.notifier).setCompareMode(prevMode);
+    final restoreMode = _savedCompareModeBeforeHold == 'raw' ? 'none' : _savedCompareModeBeforeHold;
+    ref.read(cameraControllerProvider.notifier).setCompareMode(restoreMode);
   }
 
   @override
@@ -71,6 +78,42 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
                     left: 20,
                     child: _buildCompareFloatingControls(state, controller),
                   ),
+
+                  // Floating Original Camera Banner when holding original
+                  if (_isHoldingRaw)
+                    Positioned(
+                      top: 14,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.85),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: const Color(0xFFFF7597), width: 1.2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFFF7597).withValues(alpha: 0.35),
+                              blurRadius: 10,
+                            ),
+                          ],
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.remove_red_eye, color: Color(0xFFFF7597), size: 14),
+                            SizedBox(width: 6),
+                            Text(
+                              'CAM GỐC (CHƯA CHỈNH SỬA)',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
 
                   // Floating Performance Stats Badge
                   Positioned(
@@ -394,8 +437,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
         children: [
           // Hold to view original
           Listener(
+            behavior: HitTestBehavior.opaque,
             onPointerDown: (_) => _onBeforeAfterDown(),
             onPointerUp: (_) => _onBeforeAfterUp(),
+            onPointerCancel: (_) => _onBeforeAfterUp(),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(

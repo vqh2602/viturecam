@@ -93,6 +93,14 @@ final class RunnerTests: XCTestCase {
         XCTAssertLessThanOrEqual(difference(high, x: 128, y: 114), 2)
     }
 
+    func testGradientLipMaskHasInnerIntensityAndExcludesSurrounding() throws {
+        let renderer = BeautyRenderer()
+        let mask = try XCTUnwrap(renderer.createLipMask(landmarks: mesh(), style: "gradient", extent: extent))
+        XCTAssertGreaterThan(pixel(mask, x: 128, y: 104)[0], 120)
+        XCTAssertLessThan(pixel(mask, x: 128, y: 89)[0], 2)
+        XCTAssertLessThan(pixel(mask, x: 128, y: 114)[0], 2)
+    }
+
     func testLipTintMovesWithMouthReshape() throws {
         let renderer = BeautyRenderer()
         let source = try buffer()

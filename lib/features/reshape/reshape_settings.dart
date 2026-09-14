@@ -33,6 +33,7 @@ class ReshapeSettings {
   final double lipThickness; // -50..50
   final double smile; // 0..100
   final double smileCorners; // 0..100
+  final double mShapeLips; // 0..100
   final double mouthPosition; // -50..50
 
   const ReshapeSettings({
@@ -61,6 +62,7 @@ class ReshapeSettings {
     this.lipThickness = 0,
     this.smile = 0,
     this.smileCorners = 0,
+    this.mShapeLips = 0,
     this.mouthPosition = 0,
   });
 
@@ -90,6 +92,7 @@ class ReshapeSettings {
       lipThickness != 0 ||
       smile != 0 ||
       smileCorners != 0 ||
+      mShapeLips != 0 ||
       mouthPosition != 0;
 
   bool isKeyActive(String key) {
@@ -144,6 +147,8 @@ class ReshapeSettings {
         return smile != 0;
       case 'smileCorners':
         return smileCorners != 0;
+      case 'mShapeLips':
+        return mShapeLips != 0;
       case 'mouthPosition':
         return mouthPosition != 0;
       default:
@@ -177,6 +182,7 @@ class ReshapeSettings {
     double? lipThickness,
     double? smile,
     double? smileCorners,
+    double? mShapeLips,
     double? mouthPosition,
   }) {
     return ReshapeSettings(
@@ -205,6 +211,7 @@ class ReshapeSettings {
       lipThickness: lipThickness ?? this.lipThickness,
       smile: smile ?? this.smile,
       smileCorners: smileCorners ?? this.smileCorners,
+      mShapeLips: mShapeLips ?? this.mShapeLips,
       mouthPosition: mouthPosition ?? this.mouthPosition,
     );
   }
@@ -236,6 +243,7 @@ class ReshapeSettings {
       'lipThickness': lipThickness / 50.0,
       'smile': smile / 100.0,
       'smileCorners': smileCorners / 100.0,
+      'mShapeLips': mShapeLips / 100.0,
       'mouthPosition': mouthPosition / 50.0,
     };
   }
@@ -267,6 +275,7 @@ class ReshapeSettings {
       lipThickness: (json['lipThickness'] as num?)?.toDouble() ?? 0,
       smile: (json['smile'] as num?)?.toDouble() ?? 0,
       smileCorners: (json['smileCorners'] as num?)?.toDouble() ?? 0,
+      mShapeLips: (json['mShapeLips'] as num?)?.toDouble() ?? 0,
       mouthPosition: (json['mouthPosition'] as num?)?.toDouble() ?? 0,
     );
   }
@@ -298,6 +307,7 @@ class ReshapeSettings {
       'lipThickness': lipThickness,
       'smile': smile,
       'smileCorners': smileCorners,
+      'mShapeLips': mShapeLips,
       'mouthPosition': mouthPosition,
     };
   }

@@ -12,6 +12,7 @@ class ReshapePanel extends ConsumerWidget {
     final state = ref.watch(cameraControllerProvider);
     final controller = ref.read(cameraControllerProvider.notifier);
     final f = state.face;
+    final b = state.beauty;
     final subTool = state.activeSubTool;
 
     final faceTools = [
@@ -45,6 +46,8 @@ class ReshapePanel extends ConsumerWidget {
     final mouthTools = [
       {'id': 'smile', 'label': 'Smile', 'icon': Icons.sentiment_satisfied_alt},
       {'id': 'smileCorners', 'label': 'Khóe cười', 'icon': Icons.mood},
+      {'id': 'mShapeLips', 'label': 'Môi chữ M', 'icon': Icons.favorite_border},
+      {'id': 'teethWhitening', 'label': 'Trắng răng', 'icon': Icons.auto_awesome},
       {'id': 'mouthWidth', 'label': 'Mouth Wid', 'icon': Icons.panorama_horizontal},
       {'id': 'mouthSize', 'label': 'Mouth Size', 'icon': Icons.photo_size_select_small},
       {'id': 'lipThickness', 'label': 'Lip Thick', 'icon': Icons.line_weight},
@@ -92,7 +95,7 @@ class ReshapePanel extends ConsumerWidget {
         case 'eyes':
           return f.eyeSize != 0 || f.eyeDistance != 0 || f.eyeHeight != 0 || f.eyeAngle != 0 || f.eyeBrightness != 0;
         case 'mouth':
-          return f.smile != 0 || f.smileCorners != 0 || f.mouthWidth != 0 || f.mouthSize != 0 || f.lipThickness != 0 || f.mouthPosition != 0;
+          return f.smile != 0 || f.smileCorners != 0 || f.mShapeLips != 0 || f.mouthWidth != 0 || f.mouthSize != 0 || f.lipThickness != 0 || f.mouthPosition != 0 || b.teethWhitening > 0;
         case 'face':
         default:
           return f.slimFace != 0 || f.smallFace != 0 || f.vFace != 0 || f.jawWidth != 0 || f.cheekWidth != 0 || f.chinLength != 0 || f.chinWidth != 0 || f.forehead != 0 || f.templeWidth != 0;
@@ -300,6 +303,20 @@ class ReshapePanel extends ConsumerWidget {
             defaultValue: 0,
             onChanged: (v) => controller.updateFace(f.copyWith(smileCorners: v)),
           );
+        case 'mShapeLips':
+          return BeautySlider(
+            label: 'Môi chữ M / Trái tim (Heart Lips)',
+            value: f.mShapeLips,
+            defaultValue: 0,
+            onChanged: (v) => controller.updateFace(f.copyWith(mShapeLips: v)),
+          );
+        case 'teethWhitening':
+          return BeautySlider(
+            label: 'Trắng răng (Teeth Whitening)',
+            value: b.teethWhitening,
+            defaultValue: 0,
+            onChanged: (v) => controller.updateBeauty(b.copyWith(teethWhitening: v)),
+          );
         case 'mouthWidth':
           return BeautySlider(
             label: 'Mouth Width',
@@ -438,7 +455,9 @@ class ReshapePanel extends ConsumerWidget {
                   label: t['label'] as String,
                   icon: t['icon'] as IconData,
                   isSelected: subTool == t['id'],
-                  isActive: f.isKeyActive(t['id'] as String),
+                  isActive: t['id'] == 'teethWhitening'
+                      ? b.teethWhitening > 0
+                      : f.isKeyActive(t['id'] as String),
                   onTap: () => controller.selectSubTool(t['id'] as String),
                 ),
             ],

@@ -92,6 +92,57 @@ class FilterCatalog {
       defaultIntensity: 80,
     ),
 
+    // --- Douyin (Sáng Trong & Xinh Xắn) ---
+    FilterPreset(
+      id: 'douyin_fairy',
+      name: 'Tiên Nữ',
+      category: 'Douyin',
+      gradient: [Color(0xFFFFC3A0), Color(0xFFFFAFBD)],
+      defaultIntensity: 85,
+    ),
+    FilterPreset(
+      id: 'douyin_sweet',
+      name: 'Ngọt Ngào',
+      category: 'Douyin',
+      gradient: [Color(0xFFFF9A9E), Color(0xFFFECFEF)],
+      defaultIntensity: 85,
+    ),
+    FilterPreset(
+      id: 'douyin_moon',
+      name: 'Bạch Nguyệt',
+      category: 'Douyin',
+      gradient: [Color(0xFFE0C3FC), Color(0xFF8EC5FC)],
+      defaultIntensity: 85,
+    ),
+    FilterPreset(
+      id: 'douyin_dreamy',
+      name: 'Mộng Ảo',
+      category: 'Douyin',
+      gradient: [Color(0xFFFBC2EB), Color(0xFFA6C1EE)],
+      defaultIntensity: 80,
+    ),
+    FilterPreset(
+      id: 'douyin_doll',
+      name: 'Búp Bê',
+      category: 'Douyin',
+      gradient: [Color(0xFFFF758C), Color(0xFFFF7EB3)],
+      defaultIntensity: 85,
+    ),
+    FilterPreset(
+      id: 'douyin_radiant',
+      name: 'Phát Sáng',
+      category: 'Douyin',
+      gradient: [Color(0xFFFA709A), Color(0xFFFEE140)],
+      defaultIntensity: 85,
+    ),
+    FilterPreset(
+      id: 'douyin_vintage',
+      name: 'Cổ Điển Hồng',
+      category: 'Douyin',
+      gradient: [Color(0xFFEE9CA7), Color(0xFFFFDDE1)],
+      defaultIntensity: 80,
+    ),
+
     // --- Film (Điện ảnh & Vintage) ---
     FilterPreset(
       id: 'film',

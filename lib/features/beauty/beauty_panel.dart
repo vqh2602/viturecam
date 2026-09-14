@@ -20,10 +20,10 @@ class BeautyPanel extends ConsumerWidget {
       {'id': 'skinTone', 'label': 'Skin Tone', 'icon': Icons.palette_outlined},
       {'id': 'skinBrightness', 'label': 'Brighten', 'icon': Icons.brightness_6},
       {'id': 'whitening', 'label': 'Whitening', 'icon': Icons.wb_sunny_outlined},
+      {'id': 'teethWhitening', 'label': 'Trắng răng', 'icon': Icons.auto_awesome},
       {'id': 'redness', 'label': 'Redness', 'icon': Icons.spa_outlined},
       {'id': 'darkCircle', 'label': 'Dark Circle', 'icon': Icons.remove_red_eye_outlined},
       {'id': 'eyeBag', 'label': 'Eye Bag', 'icon': Icons.visibility_outlined},
-      {'id': 'teethWhitening', 'label': 'Teeth', 'icon': Icons.sentiment_very_satisfied},
     ];
 
     Widget buildCurrentSlider() {
@@ -46,68 +46,78 @@ class BeautyPanel extends ConsumerWidget {
           final toneTypes = [
             {'id': 'natural', 'label': 'Tự nhiên', 'color': const Color(0xFFF7D5C8)},
             {'id': 'porcelain', 'label': 'Trắng sứ', 'color': const Color(0xFFFFF0EA)},
+            {'id': 'snow', 'label': 'Tuyết lạnh', 'color': const Color(0xFFF5F5FF)},
             {'id': 'rosy', 'label': 'Trắng hồng', 'color': const Color(0xFFFFE0E5)},
+            {'id': 'cherry', 'label': 'Anh đào', 'color': const Color(0xFFFFDDE6)},
             {'id': 'peach', 'label': 'Hồng đào', 'color': const Color(0xFFFFD1BA)},
+            {'id': 'coral', 'label': 'San hô', 'color': const Color(0xFFFFCBA4)},
             {'id': 'warm', 'label': 'Nắng ấm', 'color': const Color(0xFFFFD4A0)},
+            {'id': 'honey', 'label': 'Mật ong', 'color': const Color(0xFFECC08C)},
+            {'id': 'wheat', 'label': 'Lúa mì', 'color': const Color(0xFFDEB887)},
+            {'id': 'olive', 'label': 'Ô-liu', 'color': const Color(0xFFD0C09E)},
             {'id': 'tan', 'label': 'Bánh mật', 'color': const Color(0xFFCF9C7A)},
           ];
           return Row(
             children: [
               const SizedBox(width: 12),
               Container(
+                width: 360,
+                height: 38,
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
                 decoration: BoxDecoration(
                   color: const Color(0xFF222227),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: Colors.white10),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (final tone in toneTypes)
-                      GestureDetector(
-                        onTap: () => controller.updateBeauty(b.copyWith(
-                          skinToneType: tone['id'] as String,
-                          skinTone: b.skinTone == 0 ? 60 : b.skinTone,
-                        )),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                          margin: const EdgeInsets.symmetric(horizontal: 2),
-                          decoration: BoxDecoration(
-                            color: b.skinToneType == tone['id']
-                                ? const Color(0xFFFF7597).withValues(alpha: 0.25)
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(7),
-                            border: b.skinToneType == tone['id']
-                                ? Border.all(color: const Color(0xFFFF7597), width: 1.2)
-                                : null,
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 9,
-                                height: 9,
-                                decoration: BoxDecoration(
-                                  color: tone['color'] as Color,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white38, width: 0.8),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      for (final tone in toneTypes)
+                        GestureDetector(
+                          onTap: () => controller.updateBeauty(b.copyWith(
+                            skinToneType: tone['id'] as String,
+                            skinTone: b.skinTone == 0 ? 60 : b.skinTone,
+                          )),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            margin: const EdgeInsets.symmetric(horizontal: 2),
+                            decoration: BoxDecoration(
+                              color: b.skinToneType == tone['id']
+                                  ? const Color(0xFFFF7597).withValues(alpha: 0.25)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(7),
+                              border: b.skinToneType == tone['id']
+                                  ? Border.all(color: const Color(0xFFFF7597), width: 1.2)
+                                  : null,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 9,
+                                  height: 9,
+                                  decoration: BoxDecoration(
+                                    color: tone['color'] as Color,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white38, width: 0.8),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 5),
-                              Text(
-                                tone['label'] as String,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: b.skinToneType == tone['id'] ? FontWeight.w600 : FontWeight.w400,
-                                  color: b.skinToneType == tone['id'] ? Colors.white : Colors.white70,
+                                const SizedBox(width: 5),
+                                Text(
+                                  tone['label'] as String,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: b.skinToneType == tone['id'] ? FontWeight.w600 : FontWeight.w400,
+                                    color: b.skinToneType == tone['id'] ? Colors.white : Colors.white70,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(width: 8),

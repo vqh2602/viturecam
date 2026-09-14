@@ -76,14 +76,40 @@ void main() {
 
   group('MakeupSettings', () {
     test('lipstick options and opacity', () {
-      const settings = MakeupSettings(lipPreset: 'rose', lipOpacity: 70);
+      const settings = MakeupSettings(
+        lipPreset: 'rose',
+        lipOpacity: 70,
+        lipStyle: 'gloss',
+        blushStyle: 'sunkissed',
+        eyebrowStyle: 'korean',
+        eyelinerStyle: 'fox',
+        eyeshadowStyle: 'douyin',
+      );
       expect(settings.isModified, true);
       expect(settings.isKeyActive('lip'), true);
       expect(settings.isKeyActive('blush'), false);
+      expect(settings.lipStyle, 'gloss');
+      expect(settings.blushStyle, 'sunkissed');
+      expect(settings.eyebrowStyle, 'korean');
+      expect(settings.eyelinerStyle, 'fox');
+      expect(settings.eyeshadowStyle, 'douyin');
 
       final map = settings.toMap();
       expect(map['lipPreset'], 'rose');
       expect(map['lipOpacity'], 0.7);
+      expect(map['lipStyle'], 'gloss');
+      expect(map['blushStyle'], 'sunkissed');
+      expect(map['eyebrowStyle'], 'korean');
+      expect(map['eyelinerStyle'], 'fox');
+      expect(map['eyeshadowStyle'], 'douyin');
+
+      final json = settings.toJson();
+      final restored = MakeupSettings.fromJson(json);
+      expect(restored.lipStyle, 'gloss');
+      expect(restored.blushStyle, 'sunkissed');
+      expect(restored.eyebrowStyle, 'korean');
+      expect(restored.eyelinerStyle, 'fox');
+      expect(restored.eyeshadowStyle, 'douyin');
     });
   });
 
@@ -126,6 +152,7 @@ void main() {
     test('contains rich presets with categories', () {
       expect(FilterCatalog.presets.length, greaterThanOrEqualTo(25));
       final categories = FilterCatalog.presets.map((p) => p.category).toSet();
+      expect(categories.contains('Douyin'), true);
       expect(categories.contains('Natural'), true);
       expect(categories.contains('Korean'), true);
       expect(categories.contains('Film'), true);
