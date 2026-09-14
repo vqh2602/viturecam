@@ -332,8 +332,9 @@ public final class FaceMeshTracker {
         let cx_px = minX_px + boxW * 0.5
         let cy_px = minY_px + boxH * 0.5
 
-        // 1.75x expansion around full face (avoids cutting off cheeks with headphones)
-        let size_px = max(48.0, max(boxW, boxH) * 1.75)
+        // The mesh already includes the full face; use a tighter crop than the Vision seed.
+        // Excess padding feeds scale error back into the next frame and makes the ROI grow.
+        let size_px = max(48.0, max(boxW, boxH) * 1.5)
 
         // True physical roll angle between outer eye corners in pixel space (zero aspect-ratio distortion!)
         let p33 = landmarks[33]   // Camera-left outer eye corner
