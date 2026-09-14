@@ -109,9 +109,9 @@ public final class FaceMeshRenderer {
             options: .storageModeShared
         )
 
-        // 2. Skin Weights (Cheeks, forehead, chin = 1.0; outer silhouette, eyes, lips, eyebrows, nostrils = 0.0)
+        // 2. Skin Weights (Full face coverage with soft boundary falloff)
         var weights = FaceMeshGeometry.skinWeights
-        for idx in FaceMeshGeometry.silhouetteIndices { weights[idx] = 0.0 }
+        for idx in FaceMeshGeometry.silhouetteIndices { weights[idx] = 0.85 }
         for idx in FaceMeshGeometry.eyeIndices { weights[idx] = 0.0 }
         for idx in FaceMeshGeometry.lipIndices { weights[idx] = 0.0 }
         for idx in FaceMeshGeometry.eyebrowIndices { weights[idx] = 0.0 }

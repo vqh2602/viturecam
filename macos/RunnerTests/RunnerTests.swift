@@ -186,4 +186,82 @@ final class RunnerTests: XCTestCase {
         let moved = bank.filter(raw: Array(repeating: SIMD3<Float>(0.6, 0.5, 0), count: 468), timestamp: 2)
         XCTAssertGreaterThan(moved[0].x, 0.57)
     }
+
+    func testCreateFullFaceSkinMaskCoversForeheadAndJawAndExcludesMouth() throws {
+        let renderer = BeautyRenderer()
+        var landmarks = mesh()
+        // Provide faceContour running along jawline
+        landmarks.faceContour = [
+            CGPoint(x: 0.25, y: 0.35),
+            CGPoint(x: 0.22, y: 0.50),
+            CGPoint(x: 0.28, y: 0.65),
+            CGPoint(x: 0.38, y: 0.78),
+            CGPoint(x: 0.50, y: 0.82), // chin
+            CGPoint(x: 0.62, y: 0.78),
+            CGPoint(x: 0.72, y: 0.65),
+            CGPoint(x: 0.78, y: 0.50),
+            CGPoint(x: 0.75, y: 0.35)
+        ]
+        landmarks.leftEyeCenter = CGPoint(x: 0.38, y: 0.38)
+        landmarks.rightEyeCenter = CGPoint(x: 0.62, y: 0.38)
+        landmarks.mouthCenter = CGPoint(x: 0.50, y: 0.65)
+
+        let mask = try XCTUnwrap(renderer.createFullFaceSkinMask(landmarks: landmarks, extent: extent))
+
+        // Skin on cheek should be covered with high mask weight
+        let cheekPx = pixel(mask, x: 128, y: 135)
+        XCTAssertGreaterThan(cheekPx[0], 150, "Full-face skin mask must cover face skin with high weight")
+
+        // Mouth center should be punched out (low weight) to protect lips/teeth
+        let mouthPx = pixel(mask, x: 128, y: 90) // y = 1 - 0.65 = 0.35 * 256 ~= 90 in CI
+        XCTAssertLessThan(mouthPx[0], 80, "Mouth cavity must be punched out to protect lips and teeth")
+
+        // Distant background corner must be zero
+        let bgPx = pixel(mask, x: 5, y: 5)
+        XCTAssertEqual(bgPx[0], 0, "Background should not have skin mask")
+    }
+
+    func testFaceTrackerLifecycle() {
+        let tracker = FaceTracker()
+        XCTAssertFalse(tracker.currentLandmarks.hasFace)
+        tracker.reset()
+        XCTAssertFalse(tracker.currentLandmarks.hasFace)
+    }
+
+    func testSkinSegmenterLifecycleAndInference() throws {
+        let segmenter = SkinSegmenter()
+        segmenter.reset()
+
+        let buf = try buffer()
+        let mask = segmenter.processFrame(pixelBuffer: buf, targetWidth: 256, targetHeight: 256)
+        // If model is loaded on the runner, mask should be generated
+        if let mask = mask {
+            XCTAssertEqual(mask.extent.width, 256)
+            XCTAssertEqual(mask.extent.height, 256)
+        }
+        segmenter.reset()
+    }
+
+    func testDualCoreFusionSkinMaskWithFeatureProtection() throws {
+        let renderer = BeautyRenderer()
+        let landmarks = mesh()
+
+        // Create a synthetic solid white skin segmentation mask (representing Class 3: Face-Skin)
+        let whiteCI = CIImage(color: CIColor(red: 1, green: 1, blue: 1, alpha: 1)).cropped(to: extent)
+
+        let fusedMask = try XCTUnwrap(renderer.createFaceSkinMask(
+            segmentationMask: whiteCI,
+            landmarks: landmarks,
+            extent: extent
+        ))
+
+        // Cheek skin area should remain high
+        let cheekPx = pixel(fusedMask, x: 128, y: 135)
+        XCTAssertGreaterThan(cheekPx[0], 180, "Fused mask must preserve face skin")
+
+        // Mouth cavity should be cleanly punched out from the skin mask
+        let mouthPx = pixel(fusedMask, x: 128, y: 90)
+        XCTAssertLessThan(mouthPx[0], 80, "Fused mask must punch out mouth cavity")
+    }
 }
+

@@ -35,6 +35,15 @@ public struct FaceMeshLandmarks {
     public var leftCheekApple: CGPoint = .zero
     public var rightCheekApple: CGPoint = .zero
 
+    // Contours for full-face skin mask & feature protection
+    public var faceContour: [CGPoint] = []
+    public var outerLipContour: [CGPoint] = []
+    public var innerLipContour: [CGPoint] = []
+    public var leftEyeContour: [CGPoint] = []
+    public var rightEyeContour: [CGPoint] = []
+    public var leftEyebrowContour: [CGPoint] = []
+    public var rightEyebrowContour: [CGPoint] = []
+
     public init() {}
 }
 
@@ -275,7 +284,7 @@ public final class FaceMeshTracker {
 
             let cx_px = boxX + boxW * 0.5
             let cy_px = boxY + boxH * 0.5
-            let size_px = max(48.0, max(boxW, boxH) * 1.5)
+            let size_px = max(48.0, max(boxW, boxH) * 1.75)
 
             let initialROI = CanonicalROI(
                 centerPx: CGPoint(x: cx_px, y: cy_px),
@@ -323,8 +332,8 @@ public final class FaceMeshTracker {
         let cx_px = minX_px + boxW * 0.5
         let cy_px = minY_px + boxH * 0.5
 
-        // 1.5x expansion around full face (Google MediaPipe RectTransformation standard)
-        let size_px = max(48.0, max(boxW, boxH) * 1.5)
+        // 1.75x expansion around full face (avoids cutting off cheeks with headphones)
+        let size_px = max(48.0, max(boxW, boxH) * 1.75)
 
         // True physical roll angle between outer eye corners in pixel space (zero aspect-ratio distortion!)
         let p33 = landmarks[33]   // Camera-left outer eye corner
@@ -530,6 +539,15 @@ public final class FaceMeshTracker {
         res.rightEyeOuter = pt(263)
         res.leftCheekApple = pt(280)
         res.rightCheekApple = pt(50)
+
+        // Contours for full-face mask, feature protection & makeup
+        res.faceContour = FaceMeshGeometry.silhouetteIndices.map { pt($0) }
+        res.outerLipContour = FaceMeshGeometry.outerLipContour.map { pt($0) }
+        res.innerLipContour = FaceMeshGeometry.innerLipContour.map { pt($0) }
+        res.rightEyeContour = FaceMeshGeometry.rightEyeLoop.map { pt($0) }
+        res.leftEyeContour = FaceMeshGeometry.leftEyeLoop.map { pt($0) }
+        res.rightEyebrowContour = FaceMeshGeometry.rightEyebrowIndices.map { pt($0) }
+        res.leftEyebrowContour = FaceMeshGeometry.leftEyebrowIndices.map { pt($0) }
 
         previousLandmarks = res
     }

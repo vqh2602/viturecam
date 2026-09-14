@@ -42,6 +42,8 @@
 		BC0000012C00000000000011 /* FaceMeshRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000011 /* FaceMeshRenderer.swift */; };
 		BC0000012C00000000000012 /* FaceMeshShaders.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000012 /* FaceMeshShaders.swift */; };
 		BC0000012C00000000000013 /* FaceMesh.mlmodelc in Resources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000013 /* FaceMesh.mlmodelc */; };
+		BC0000012C00000000000020 /* SkinSegmenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000020 /* SkinSegmenter.swift */; };
+		BC0000012C00000000000021 /* SelfieSegmenter.mlmodelc in Resources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000021 /* SelfieSegmenter.mlmodelc */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -98,6 +100,8 @@
 		BC0000022C00000000000011 /* FaceMeshRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Rendering/FaceMeshRenderer.swift"; sourceTree = "<group>"; };
 		BC0000022C00000000000012 /* FaceMeshShaders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Rendering/FaceMeshShaders.swift"; sourceTree = "<group>"; };
 		BC0000022C00000000000013 /* FaceMesh.mlmodelc */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = "FaceTracking/FaceMesh.mlmodelc"; sourceTree = "<group>"; };
+		BC0000022C00000000000020 /* SkinSegmenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FaceTracking/SkinSegmenter.swift"; sourceTree = "<group>"; };
+		BC0000022C00000000000021 /* SelfieSegmenter.mlmodelc */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = "FaceTracking/SelfieSegmenter.mlmodelc"; sourceTree = "<group>"; };
 		33CEB47222A05771004F2AC0 /* Flutter-Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Flutter-Debug.xcconfig"; sourceTree = "<group>"; };
 		33CEB47422A05771004F2AC0 /* Flutter-Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Flutter-Release.xcconfig"; sourceTree = "<group>"; };
 		33CEB47722A0578A004F2AC0 /* Flutter-Generated.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = "Flutter-Generated.xcconfig"; path = "ephemeral/Flutter-Generated.xcconfig"; sourceTree = "<group>"; };
@@ -216,6 +220,8 @@
 				BC0000022C00000000000011 /* FaceMeshRenderer.swift */,
 				BC0000022C00000000000012 /* FaceMeshShaders.swift */,
 				BC0000022C00000000000013 /* FaceMesh.mlmodelc */,
+				BC0000022C00000000000020 /* SkinSegmenter.swift */,
+				BC0000022C00000000000021 /* SelfieSegmenter.mlmodelc */,
 
 				33E51913231747F40026EE4D /* DebugProfile.entitlements */,
 				33E51914231749380026EE4D /* Release.entitlements */,
@@ -358,6 +364,7 @@
 				33CC10F32044A3C60003C045 /* Assets.xcassets in Resources */,
 				33CC10F62044A3C60003C045 /* MainMenu.xib in Resources */,
 				BC0000012C00000000000013 /* FaceMesh.mlmodelc in Resources */,
+				BC0000012C00000000000021 /* SelfieSegmenter.mlmodelc in Resources */,
 
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -492,6 +499,7 @@
 				BC0000012C00000000000010 /* FaceMeshGeometry.swift in Sources */,
 				BC0000012C00000000000011 /* FaceMeshRenderer.swift in Sources */,
 				BC0000012C00000000000012 /* FaceMeshShaders.swift in Sources */,
+				BC0000012C00000000000020 /* SkinSegmenter.swift in Sources */,
 
 				33CC10F12044A3C60003C045 /* AppDelegate.swift in Sources */,
 				335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */,

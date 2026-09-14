@@ -104,6 +104,12 @@ class MainFlutterWindow: NSWindow {
                 }
                 result(nil)
 
+            case "setTrackingEngine":
+                if let trackEngine = args["engine"] as? String {
+                    engine.trackingEngine = trackEngine
+                }
+                result(["success": true])
+
             case "setCompareMode":
                 if let mode = args["mode"] as? String {
                     engine.compareMode = mode
