@@ -11,6 +11,16 @@ public final class BeautyRenderer {
     public let faceMeshRenderer: FaceMeshRenderer
     private var reshapeKernel: CIWarpKernel?
     private var skinSmoothKernel: CIKernel?
+    private let teethSelectionKernel = CIColorKernel(source: """
+        kernel vec4 teethSelection(__sample image, __sample mouth, float strength) {
+            float brightness = dot(image.rgb, vec3(0.2126, 0.7152, 0.0722));
+            float saturation = (max(image.r, max(image.g, image.b)) - min(image.r, min(image.g, image.b)))
+                / max(0.001, max(image.r, max(image.g, image.b)));
+            float weight = mouth.r * smoothstep(0.08, 0.35, brightness)
+                * (1.0 - smoothstep(0.35, 0.65, saturation)) * strength;
+            return vec4(weight, weight, weight, 1.0);
+        }
+        """)
 
     public init() {
         guard let device = MTLCreateSystemDefaultDevice() else {
@@ -420,12 +430,38 @@ public final class BeautyRenderer {
             // E. Mouth Position
             float mouthPos = miscParams.x;
             if (abs(mouthPos) > 0.001) {
-                float mRad = faceW * 0.18;
+                float mRad = faceW * 0.20;
                 float distMC = length(p - mouthCenter);
                 if (distMC < mRad) {
                     float t = distMC / mRad;
                     float w = (1.0 - t * t) * (1.0 - t * t);
-                    offset += faceAxisDir * (mouthPos * 0.22 * w * mRad);
+                    offset += faceAxisDir * (mouthPos * 0.45 * w * mRad);
+                }
+            }
+
+            // F. Smile Corners (Tạo khóe cười / M-line smile corner lift)
+            float smileCorners = miscParams.z;
+            if (smileCorners > 0.001) {
+                float cornerRad = faceW * 0.095;
+                // Left mouth corner (camera left / person's right)
+                float distLC = length(p - leftMouthCorner);
+                if (distLC < cornerRad) {
+                    float t = distLC / cornerRad;
+                    float w = (1.0 - t * t) * (1.0 - t * t);
+                    // Lift upward (-faceAxisDir) and flare slightly outward (-axisNormal)
+                    // Inverse offset added to p: +faceAxisDir and +axisNormal
+                    vec2 curlOffset = faceAxisDir * 0.85 + axisNormal * 0.32;
+                    offset += curlOffset * (smileCorners * 0.26 * faceW * w);
+                }
+                // Right mouth corner (camera right / person's left)
+                float distRC = length(p - rightMouthCorner);
+                if (distRC < cornerRad) {
+                    float t = distRC / cornerRad;
+                    float w = (1.0 - t * t) * (1.0 - t * t);
+                    // Lift upward (-faceAxisDir) and flare slightly outward (+axisNormal)
+                    // Inverse offset added to p: +faceAxisDir and -axisNormal
+                    vec2 curlOffset = faceAxisDir * 0.85 - axisNormal * 0.32;
+                    offset += curlOffset * (smileCorners * 0.26 * faceW * w);
                 }
             }
 
@@ -439,10 +475,10 @@ public final class BeautyRenderer {
         let kernelString = """
         kernel vec4 naturalBeautySmooth(
             sampler originalImage,
-            sampler blurredGuide,
             float smoothFactor,
             float textureFactor,
-            float skinThreshold
+            float skinThreshold,
+            float sampleRadius
         ) {
             vec2 pos = samplerCoord(originalImage);
             vec4 center = sample(originalImage, pos);
@@ -451,53 +487,73 @@ public final class BeautyRenderer {
             vec3 accumColor = centerRGB;
             float totalWeight = 1.0;
 
-            vec2 d1 = vec2( 0.0,  3.0);
-            vec2 d2 = vec2( 3.0,  1.5);
-            vec2 d3 = vec2( 2.5, -2.5);
-            vec2 d4 = vec2(-1.5, -3.0);
-            vec2 d5 = vec2(-3.0,  0.0);
-            vec2 d6 = vec2(-2.0,  2.5);
+            // Concentric 20-sample pattern for smooth, natural coverage
+            vec2 d1  = vec2( 0.0,    1.0);
+            vec2 d2  = vec2( 0.866,  0.5);
+            vec2 d3  = vec2( 0.866, -0.5);
+            vec2 d4  = vec2( 0.0,   -1.0);
+            vec2 d5  = vec2(-0.866, -0.5);
+            vec2 d6  = vec2(-0.866,  0.5);
 
-            vec2 d7 = vec2( 0.0,  6.0);
-            vec2 d8 = vec2( 5.5,  2.8);
-            vec2 d9 = vec2( 4.5, -4.5);
-            vec2 d10 = vec2(-3.0, -5.5);
-            vec2 d11 = vec2(-5.5,  0.0);
-            vec2 d12 = vec2(-4.0,  4.5);
+            vec2 d7  = vec2( 1.414,  1.414);
+            vec2 d8  = vec2( 2.0,    0.0);
+            vec2 d9  = vec2( 1.414, -1.414);
+            vec2 d10 = vec2( 0.0,   -2.0);
+            vec2 d11 = vec2(-1.414, -1.414);
+            vec2 d12 = vec2(-2.0,    0.0);
+            vec2 d13 = vec2(-1.414,  1.414);
+            vec2 d14 = vec2( 0.0,    2.0);
+
+            vec2 d15 = vec2( 2.77,   1.6);
+            vec2 d16 = vec2( 2.77,  -1.6);
+            vec2 d17 = vec2( 0.0,   -3.2);
+            vec2 d18 = vec2(-2.77,  -1.6);
+            vec2 d19 = vec2(-2.77,   1.6);
+            vec2 d20 = vec2( 0.0,    3.2);
 
             vec3 col; vec3 diff; float distSq; float w;
 
-            col = sample(originalImage, pos + d1).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold); accumColor += col * w; totalWeight += w;
-            col = sample(originalImage, pos + d2).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold); accumColor += col * w; totalWeight += w;
-            col = sample(originalImage, pos + d3).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold); accumColor += col * w; totalWeight += w;
-            col = sample(originalImage, pos + d4).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold); accumColor += col * w; totalWeight += w;
-            col = sample(originalImage, pos + d5).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold); accumColor += col * w; totalWeight += w;
-            col = sample(originalImage, pos + d6).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold); accumColor += col * w; totalWeight += w;
-            col = sample(originalImage, pos + d7).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold); accumColor += col * w; totalWeight += w;
-            col = sample(originalImage, pos + d8).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold); accumColor += col * w; totalWeight += w;
-            col = sample(originalImage, pos + d9).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold); accumColor += col * w; totalWeight += w;
-            col = sample(originalImage, pos + d10).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold); accumColor += col * w; totalWeight += w;
-            col = sample(originalImage, pos + d11).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold); accumColor += col * w; totalWeight += w;
-            col = sample(originalImage, pos + d12).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold); accumColor += col * w; totalWeight += w;
+            col = sample(originalImage, pos + d1 * sampleRadius).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold) * 0.95; accumColor += col * w; totalWeight += w;
+            col = sample(originalImage, pos + d2 * sampleRadius).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold) * 0.95; accumColor += col * w; totalWeight += w;
+            col = sample(originalImage, pos + d3 * sampleRadius).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold) * 0.95; accumColor += col * w; totalWeight += w;
+            col = sample(originalImage, pos + d4 * sampleRadius).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold) * 0.95; accumColor += col * w; totalWeight += w;
+            col = sample(originalImage, pos + d5 * sampleRadius).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold) * 0.95; accumColor += col * w; totalWeight += w;
+            col = sample(originalImage, pos + d6 * sampleRadius).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold) * 0.95; accumColor += col * w; totalWeight += w;
+
+            col = sample(originalImage, pos + d7 * sampleRadius).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold) * 0.75; accumColor += col * w; totalWeight += w;
+            col = sample(originalImage, pos + d8 * sampleRadius).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold) * 0.75; accumColor += col * w; totalWeight += w;
+            col = sample(originalImage, pos + d9 * sampleRadius).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold) * 0.75; accumColor += col * w; totalWeight += w;
+            col = sample(originalImage, pos + d10 * sampleRadius).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold) * 0.75; accumColor += col * w; totalWeight += w;
+            col = sample(originalImage, pos + d11 * sampleRadius).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold) * 0.75; accumColor += col * w; totalWeight += w;
+            col = sample(originalImage, pos + d12 * sampleRadius).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold) * 0.75; accumColor += col * w; totalWeight += w;
+            col = sample(originalImage, pos + d13 * sampleRadius).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold) * 0.75; accumColor += col * w; totalWeight += w;
+            col = sample(originalImage, pos + d14 * sampleRadius).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold) * 0.75; accumColor += col * w; totalWeight += w;
+
+            col = sample(originalImage, pos + d15 * sampleRadius).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold) * 0.50; accumColor += col * w; totalWeight += w;
+            col = sample(originalImage, pos + d16 * sampleRadius).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold) * 0.50; accumColor += col * w; totalWeight += w;
+            col = sample(originalImage, pos + d17 * sampleRadius).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold) * 0.50; accumColor += col * w; totalWeight += w;
+            col = sample(originalImage, pos + d18 * sampleRadius).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold) * 0.50; accumColor += col * w; totalWeight += w;
+            col = sample(originalImage, pos + d19 * sampleRadius).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold) * 0.50; accumColor += col * w; totalWeight += w;
+            col = sample(originalImage, pos + d20 * sampleRadius).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold) * 0.50; accumColor += col * w; totalWeight += w;
 
             vec3 smoothed = accumColor / totalWeight;
 
-            // Deep blemishes smoothed via guide
-            vec3 guide = sample(blurredGuide, samplerTransform(blurredGuide, pos)).rgb;
-            vec3 baseSmooth = mix(smoothed, guide, smoothFactor * 0.40);
-            
-            // Edge-preserving contrast guard
-            vec3 edgeDiff = centerRGB - baseSmooth;
-            float edgeMag = dot(edgeDiff, edgeDiff);
-            float edgePreserve = exp(-edgeMag * 22.0);
-            vec3 finalSmooth = mix(centerRGB, baseSmooth, edgePreserve);
+            // Frequency Separation:
+            // highFreq isolates genuine micro-skin pores and fine textural detail
+            vec3 highFreq = centerRGB - smoothed;
+            float detailMagnitude = length(highFreq);
 
-            // Frequency-separated pore texture preservation
-            vec3 detail = centerRGB - finalSmooth;
-            vec3 microPore = clamp(detail, vec3(-0.04), vec3(0.04));
-            vec3 texturedSkin = finalSmooth + microPore * (textureFactor * 1.5);
+            // Edge guard protects facial contours, eyes, lips and brows from blurring
+            float edgeGuard = 1.0 - smoothstep(0.08, 0.30, detailMagnitude);
 
-            vec3 resultRGB = mix(centerRGB, texturedSkin, smoothFactor);
+            // Base smooth blends low/mid-frequency blotches and acne blemishes
+            vec3 smoothBase = mix(centerRGB, smoothed, smoothFactor * edgeGuard);
+
+            // Frequency-separated micro-texture restoration (eliminates plastic/wax face look)
+            vec3 pores = clamp(highFreq, vec3(-0.025), vec3(0.025));
+            float textureWeight = textureFactor * 0.65;
+            vec3 resultRGB = clamp(smoothBase + pores * (smoothFactor * textureWeight * edgeGuard), 0.0, 1.0);
+
             return vec4(resultRGB, center.a);
         }
         """
@@ -541,17 +597,15 @@ public final class BeautyRenderer {
                          abs(face.noseWidth) > 0.01 || abs(face.noseBridge) > 0.01 ||
                          abs(face.noseTip) > 0.01 || abs(face.noseLength) > 0.01 ||
                          abs(face.nostrilWidth) > 0.01 ||
-                         face.smile > 0.01 || abs(face.mouthWidth) > 0.01 ||
+                         face.smile > 0.01 || face.smileCorners > 0.01 || abs(face.mouthWidth) > 0.01 ||
                          abs(face.mouthSize) > 0.01 || abs(face.lipThickness) > 0.01 ||
                          abs(face.mouthPosition) > 0.01
 
-        if hasReshape && landmarks.hasFace {
-            processedImage = applyFaceReshape(image: processedImage, face: face, landmarks: landmarks, extent: extent)
-        }
+
 
         // 2. Skin Beautification (Natural Edge-Preserving Bilateral Smoothing, Pore Texture, Translucent Whitening)
-        let hasSkinBeauty = beauty.smooth > 0.01 || beauty.whitening > 0.01 ||
-                            beauty.skinBrightness > 0.01 || beauty.redness > 0.01 ||
+        let hasSkinBeauty = beauty.smooth > 0.01 || beauty.skinTone > 0.01 || beauty.skinToneType != "natural" ||
+                            beauty.whitening > 0.01 || beauty.skinBrightness > 0.01 || beauty.redness > 0.01 ||
                             beauty.darkCircle > 0.01 || beauty.eyeBag > 0.01 ||
                             beauty.teethWhitening > 0.01 || face.eyeBrightness > 0.01
 
@@ -579,6 +633,11 @@ public final class BeautyRenderer {
                 landmarks: landmarks,
                 extent: extent
             )
+        }
+
+        // Warp skin, makeup and their boundaries together, in the source landmark coordinate space.
+        if hasReshape && landmarks.hasFace {
+            processedImage = applyFaceReshape(image: processedImage, face: face, landmarks: landmarks, extent: extent)
         }
 
         // 4. Color adjustments (Real-time GPU)
@@ -679,6 +738,7 @@ public final class BeautyRenderer {
         let noseLength = CGFloat(face.noseLength)
 
         let smile = CGFloat(face.smile)
+        let smileCorners = CGFloat(face.smileCorners)
         let mouthWidth = CGFloat(face.mouthWidth)
         let mouthSize = CGFloat(face.mouthSize)
         let lipThickness = CGFloat(face.lipThickness)
@@ -704,7 +764,7 @@ public final class BeautyRenderer {
             CIVector(x: eyeSize, y: eyeDist, z: eyeHeight, w: eyeAngle),
             CIVector(x: noseWidth, y: noseBridgeVal, z: noseTip, w: noseLength),
             CIVector(x: smile, y: mouthWidth, z: mouthSize, w: lipThickness),
-            CIVector(x: mouthPos, y: nostrilWidth, z: 0.0, w: 0.0)
+            CIVector(x: mouthPos, y: nostrilWidth, z: smileCorners, w: 0.0)
         ]
 
         if let warped = kernel.apply(extent: extent, roiCallback: { _, rect in rect }, image: image, arguments: args) {
@@ -791,7 +851,6 @@ public final class BeautyRenderer {
 
         let faceW = max(50.0, box.width * width)
         let faceH = max(60.0, box.height * height)
-
         var current = image
 
         // Generate Exact 468-Mesh Skin Mask with Gaussian feathering
@@ -800,11 +859,13 @@ public final class BeautyRenderer {
             if let mtlMask = faceMeshRenderer.renderSkinMask(landmarks: landmarks, width: Int(width), height: Int(height)) {
                 let ci = CIImage(mtlTexture: mtlMask, options: nil)
                 if let flipped = ci?.transformed(by: CGAffineTransform(scaleX: 1.0, y: -1.0).translatedBy(x: 0, y: -height)) {
-                    // Feather the mask over 14px to guarantee invisible blending at the perimeter
+                    // Small, face-relative feather, clipped to the original feature exclusions.
                     if let blurFilter = CIFilter(name: "CIGaussianBlur") {
                         blurFilter.setValue(flipped, forKey: kCIInputImageKey)
-                        blurFilter.setValue(14.0, forKey: kCIInputRadiusKey)
-                        faceMask = blurFilter.outputImage?.cropped(to: extent)
+                        blurFilter.setValue(min(2.0, max(0.5, faceW * 0.003)), forKey: kCIInputRadiusKey)
+                        faceMask = blurFilter.outputImage?.applyingFilter("CIMinimumCompositing", parameters: [
+                            kCIInputBackgroundImageKey: flipped
+                        ]).cropped(to: extent)
                     } else {
                         faceMask = flipped.cropped(to: extent)
                     }
@@ -812,46 +873,33 @@ public final class BeautyRenderer {
             }
         }
 
-        let maskToUse = faceMask ?? createFaceOvalMask(
-            extent: extent,
-            center: CGPoint(x: box.midX * width, y: (1.0 - box.midY + 0.04 * box.height) * height),
-            rx: faceW * 0.52,
-            ry: faceH * 0.65,
-            strength: 1.0
-        )
 
-        // 1. Face Skin Smoothing + Pore Texture Recovery
+        // No oval fallback: it includes the mouth, eyes and background.
+        let maskToUse = faceMask
+
+        // Edge-aware natural smoothing with radius proportional to face scale & micro-pore retention
         if beauty.smooth > 0.01 {
-            let guideRadius = max(4.0, (faceW / 140.0) * (3.0 + beauty.smooth * 5.0))
-            var blurredGuide = current
-            if let blurFilter = CIFilter(name: "CIGaussianBlur") {
-                blurFilter.setValue(current, forKey: kCIInputImageKey)
-                blurFilter.setValue(guideRadius, forKey: kCIInputRadiusKey)
-                if let out = blurFilter.outputImage?.cropped(to: extent) {
-                    blurredGuide = out
-                }
-            }
-
+            let sampleRadius = min(8.5, max(1.8, faceW * 0.010))
             var smoothedSkin: CIImage?
             if let kernel = skinSmoothKernel {
-                let smoothFactor = Float(min(1.0, beauty.smooth * 0.95))
-                let textureFactor = Float(beauty.skinTexture)
-                let skinThreshold = Float(32.0 + (1.0 - beauty.smooth) * 28.0)
+                let smoothFactor = Float(min(1.0, max(0.0, beauty.smooth)))
+                let textureFactor = Float(min(1.0, max(0.0, beauty.skinTexture)))
+                let skinThreshold = Float(50.0 - beauty.smooth * 25.0)
                 let args: [Any] = [
-                    current,
-                    blurredGuide,
+                    current.clampedToExtent(),
                     smoothFactor,
                     textureFactor,
-                    skinThreshold
+                    skinThreshold,
+                    Float(sampleRadius)
                 ]
                 smoothedSkin = kernel.apply(
                     extent: extent,
-                    roiCallback: { _, rect in rect.insetBy(dx: -10, dy: -10) },
+                    roiCallback: { _, rect in rect.insetBy(dx: -32, dy: -32) },
                     arguments: args
                 )?.cropped(to: extent)
             }
 
-            let skinToBlend = smoothedSkin ?? blurredGuide
+            let skinToBlend = smoothedSkin ?? current
 
             if let mask = maskToUse {
                 if let blend = CIFilter(name: "CIBlendWithMask") {
@@ -863,6 +911,17 @@ public final class BeautyRenderer {
                     }
                 }
             }
+        }
+
+        // 1.5 Skin Tone Adjustment (Tông da chuyên biệt trên mặt nạ da 468 landmarks)
+        if (beauty.skinTone > 0.01 || beauty.skinToneType != "natural"), let mask = maskToUse {
+            current = applySkinTone(
+                image: current,
+                tone: beauty.skinTone,
+                type: beauty.skinToneType,
+                mask: mask,
+                extent: extent
+            )
         }
 
         // 2. Whitening & Radiance (Photographic Gamma midtone expansion - zero black level lift/fog)
@@ -945,10 +1004,10 @@ public final class BeautyRenderer {
 
         // 4. Teeth Whitening
         if beauty.teethWhitening > 0.01 {
-            let mouthPos = CGPoint(x: landmarks.mouthCenter.x * width, y: (1.0 - landmarks.mouthCenter.y) * height)
-            let mRx = faceW * 0.10
-            let mRy = faceH * 0.04
-            if let teethMask = createFaceOvalMask(extent: extent, center: mouthPos, rx: mRx, ry: mRy, strength: beauty.teethWhitening * 0.60) {
+            if let mouthMask = contourMask(landmarks: landmarks,
+                    outer: FaceMeshGeometry.innerLipContour, extent: extent),
+               let teethMask = teethSelectionKernel?.apply(extent: extent,
+                    arguments: [current, mouthMask, Float(beauty.teethWhitening * 0.60)]) {
                 var whitenedTeeth = current
                 if let ccFilter = CIFilter(name: "CIColorControls") {
                     ccFilter.setValue(current, forKey: kCIInputImageKey)
@@ -1018,6 +1077,134 @@ public final class BeautyRenderer {
         return current
     }
 
+    // MARK: - Skin Tone Adjustment (Tông da chuyên biệt trên lớp mặt nạ da)
+    private func applySkinTone(
+        image: CIImage,
+        tone: Double,
+        type: String,
+        mask: CIImage,
+        extent: CGRect
+    ) -> CIImage {
+        guard tone > 0.01 || type != "natural" else { return image }
+        let intensity = CGFloat(max(0.0, min(1.0, tone)))
+
+        var toned = image
+
+        switch type {
+        case "porcelain": // Trắng sứ: Alabaster cold-fair, giảm sắc vàng sạm, sáng mịn
+            if let matrix = CIFilter(name: "CIColorMatrix") {
+                matrix.setValue(toned, forKey: kCIInputImageKey)
+                let rGain = 1.0 + 0.04 * intensity
+                let gGain = 1.0 - 0.02 * intensity
+                let bGain = 1.0 + 0.12 * intensity
+                matrix.setValue(CIVector(x: rGain, y: 0.0, z: 0.0, w: 0.0), forKey: "inputRVector")
+                matrix.setValue(CIVector(x: 0.0, y: gGain, z: 0.0, w: 0.0), forKey: "inputGVector")
+                matrix.setValue(CIVector(x: 0.0, y: 0.0, z: bGain, w: 0.0), forKey: "inputBVector")
+                if let out = matrix.outputImage { toned = out }
+            }
+            if let gamma = CIFilter(name: "CIGammaAdjust") {
+                gamma.setValue(toned, forKey: kCIInputImageKey)
+                gamma.setValue(1.0 - 0.10 * intensity, forKey: "inputPower")
+                if let out = gamma.outputImage { toned = out }
+            }
+
+        case "rosy": // Trắng hồng: Ánh hồng đào tươi tắn, rạng rỡ trẻ trung
+            if let matrix = CIFilter(name: "CIColorMatrix") {
+                matrix.setValue(toned, forKey: kCIInputImageKey)
+                let rGain = 1.0 + 0.14 * intensity
+                let gGain = 1.0 - 0.03 * intensity
+                let bGain = 1.0 + 0.06 * intensity
+                matrix.setValue(CIVector(x: rGain, y: 0.0, z: 0.0, w: 0.0), forKey: "inputRVector")
+                matrix.setValue(CIVector(x: 0.0, y: gGain, z: 0.0, w: 0.0), forKey: "inputGVector")
+                matrix.setValue(CIVector(x: 0.0, y: 0.0, z: bGain, w: 0.0), forKey: "inputBVector")
+                if let out = matrix.outputImage { toned = out }
+            }
+            if let cc = CIFilter(name: "CIColorControls") {
+                cc.setValue(toned, forKey: kCIInputImageKey)
+                cc.setValue(0.02 * intensity, forKey: kCIInputBrightnessKey)
+                cc.setValue(1.0 + 0.08 * intensity, forKey: kCIInputSaturationKey)
+                if let out = cc.outputImage { toned = out }
+            }
+
+        case "peach": // Hồng đào: Tông cam đào ngọt ngào, ấm mượt
+            if let matrix = CIFilter(name: "CIColorMatrix") {
+                matrix.setValue(toned, forKey: kCIInputImageKey)
+                let rGain = 1.0 + 0.12 * intensity
+                let gGain = 1.0 + 0.03 * intensity
+                let bGain = 1.0 - 0.08 * intensity
+                matrix.setValue(CIVector(x: rGain, y: 0.0, z: 0.0, w: 0.0), forKey: "inputRVector")
+                matrix.setValue(CIVector(x: 0.0, y: gGain, z: 0.0, w: 0.0), forKey: "inputGVector")
+                matrix.setValue(CIVector(x: 0.0, y: 0.0, z: bGain, w: 0.0), forKey: "inputBVector")
+                if let out = matrix.outputImage { toned = out }
+            }
+            if let cc = CIFilter(name: "CIColorControls") {
+                cc.setValue(toned, forKey: kCIInputImageKey)
+                cc.setValue(1.0 + 0.10 * intensity, forKey: kCIInputSaturationKey)
+                if let out = cc.outputImage { toned = out }
+            }
+
+        case "warm": // Nắng ấm: Sắc nắng mật ong vàng óng, da khỏe khoắn
+            if let tt = CIFilter(name: "CITemperatureAndTint") {
+                tt.setValue(toned, forKey: kCIInputImageKey)
+                tt.setValue(CIVector(x: 6500, y: 0), forKey: "inputNeutral")
+                tt.setValue(CIVector(x: 6500.0 + 1600.0 * intensity, y: 15.0 * intensity), forKey: "inputTargetNeutral")
+                if let out = tt.outputImage { toned = out }
+            }
+            if let matrix = CIFilter(name: "CIColorMatrix") {
+                matrix.setValue(toned, forKey: kCIInputImageKey)
+                let rGain = 1.0 + 0.06 * intensity
+                let gGain = 1.0 + 0.04 * intensity
+                let bGain = 1.0 - 0.06 * intensity
+                matrix.setValue(CIVector(x: rGain, y: 0.0, z: 0.0, w: 0.0), forKey: "inputRVector")
+                matrix.setValue(CIVector(x: 0.0, y: gGain, z: 0.0, w: 0.0), forKey: "inputGVector")
+                matrix.setValue(CIVector(x: 0.0, y: 0.0, z: bGain, w: 0.0), forKey: "inputBVector")
+                if let out = matrix.outputImage { toned = out }
+            }
+
+        case "tan": // Bánh mật: Nâu rám nắng phương Tây sang trọng, tương phản cao
+            if let cc = CIFilter(name: "CIColorControls") {
+                cc.setValue(toned, forKey: kCIInputImageKey)
+                cc.setValue(-0.04 * intensity, forKey: kCIInputBrightnessKey)
+                cc.setValue(1.0 + 0.12 * intensity, forKey: kCIInputContrastKey)
+                cc.setValue(1.0 + 0.15 * intensity, forKey: kCIInputSaturationKey)
+                if let out = cc.outputImage { toned = out }
+            }
+            if let matrix = CIFilter(name: "CIColorMatrix") {
+                matrix.setValue(toned, forKey: kCIInputImageKey)
+                let rGain = 1.0 + 0.08 * intensity
+                let gGain = 1.0 - 0.02 * intensity
+                let bGain = 1.0 - 0.14 * intensity
+                matrix.setValue(CIVector(x: rGain, y: 0.0, z: 0.0, w: 0.0), forKey: "inputRVector")
+                matrix.setValue(CIVector(x: 0.0, y: gGain, z: 0.0, w: 0.0), forKey: "inputGVector")
+                matrix.setValue(CIVector(x: 0.0, y: 0.0, z: bGain, w: 0.0), forKey: "inputBVector")
+                if let out = matrix.outputImage { toned = out }
+            }
+
+        case "natural": // Tự nhiên: Cân bằng ấm/lạnh tinh tế
+            if intensity > 0.01 {
+                if let tt = CIFilter(name: "CITemperatureAndTint") {
+                    tt.setValue(toned, forKey: kCIInputImageKey)
+                    tt.setValue(CIVector(x: 6500, y: 0), forKey: "inputNeutral")
+                    tt.setValue(CIVector(x: 6500.0 + 1000.0 * intensity, y: 0.0), forKey: "inputTargetNeutral")
+                    if let out = tt.outputImage { toned = out }
+                }
+            }
+
+        default:
+            break
+        }
+
+        // Blend onto face skin with mesh mask (zero color bleed onto background/clothes)
+        if let blend = CIFilter(name: "CIBlendWithMask") {
+            blend.setValue(toned, forKey: kCIInputImageKey)
+            blend.setValue(image, forKey: kCIInputBackgroundImageKey)
+            blend.setValue(mask, forKey: kCIInputMaskImageKey)
+            if let out = blend.outputImage { return out }
+        }
+
+        return toned
+    }
+
     // MARK: - Makeup (Lipstick, Blush, Eyebrows, Eyeliner, Eyeshadow)
     private func applyMakeup(image: CIImage, makeup: MakeupSettings, landmarks: FaceMeshLandmarks, extent: CGRect) -> CIImage {
         guard landmarks.hasFace, landmarks.landmarks.count >= 468 else { return image }
@@ -1056,7 +1243,9 @@ public final class BeautyRenderer {
                         let opacity = CGFloat(min(1.0, makeup.lipOpacity * 0.90))
                         if let matrix = CIFilter(name: "CIColorMatrix") {
                             matrix.setValue(lipMask, forKey: kCIInputImageKey)
-                            matrix.setValue(CIVector(x: 0, y: 0, z: 0, w: opacity), forKey: "inputAVector")
+                            matrix.setValue(CIVector(x: opacity, y: 0, z: 0, w: 0), forKey: "inputRVector")
+                            matrix.setValue(CIVector(x: 0, y: opacity, z: 0, w: 0), forKey: "inputGVector")
+                            matrix.setValue(CIVector(x: 0, y: 0, z: opacity, w: 0), forKey: "inputBVector")
                             if let out = matrix.outputImage { effMask = out }
                         }
                         if let blend = CIFilter(name: "CIBlendWithMask") {
@@ -1123,7 +1312,9 @@ public final class BeautyRenderer {
                         let opacity = CGFloat(makeup.eyebrowOpacity * 0.50)
                         if let matrix = CIFilter(name: "CIColorMatrix") {
                             matrix.setValue(browMask, forKey: kCIInputImageKey)
-                            matrix.setValue(CIVector(x: 0, y: 0, z: 0, w: opacity), forKey: "inputAVector")
+                            matrix.setValue(CIVector(x: opacity, y: 0, z: 0, w: 0), forKey: "inputRVector")
+                            matrix.setValue(CIVector(x: 0, y: opacity, z: 0, w: 0), forKey: "inputGVector")
+                            matrix.setValue(CIVector(x: 0, y: 0, z: opacity, w: 0), forKey: "inputBVector")
                             if let out = matrix.outputImage { effMask = out }
                         }
                         if let blend = CIFilter(name: "CIBlendWithMask") {
@@ -1155,7 +1346,9 @@ public final class BeautyRenderer {
                         let opacity = CGFloat(makeup.eyelinerOpacity * 0.75)
                         if let matrix = CIFilter(name: "CIColorMatrix") {
                             matrix.setValue(linerMask, forKey: kCIInputImageKey)
-                            matrix.setValue(CIVector(x: 0, y: 0, z: 0, w: opacity), forKey: "inputAVector")
+                            matrix.setValue(CIVector(x: opacity, y: 0, z: 0, w: 0), forKey: "inputRVector")
+                            matrix.setValue(CIVector(x: 0, y: opacity, z: 0, w: 0), forKey: "inputGVector")
+                            matrix.setValue(CIVector(x: 0, y: 0, z: opacity, w: 0), forKey: "inputBVector")
                             if let out = matrix.outputImage { effMask = out }
                         }
                         if let blend = CIFilter(name: "CIBlendWithMask") {
@@ -1190,7 +1383,9 @@ public final class BeautyRenderer {
                         let opacity = CGFloat(makeup.eyeshadowOpacity * 0.55)
                         if let matrix = CIFilter(name: "CIColorMatrix") {
                             matrix.setValue(shadowMask, forKey: kCIInputImageKey)
-                            matrix.setValue(CIVector(x: 0, y: 0, z: 0, w: opacity), forKey: "inputAVector")
+                            matrix.setValue(CIVector(x: opacity, y: 0, z: 0, w: 0), forKey: "inputRVector")
+                            matrix.setValue(CIVector(x: 0, y: opacity, z: 0, w: 0), forKey: "inputGVector")
+                            matrix.setValue(CIVector(x: 0, y: 0, z: opacity, w: 0), forKey: "inputBVector")
                             if let out = matrix.outputImage { effMask = out }
                         }
                         if let blend = CIFilter(name: "CIBlendWithMask") {
@@ -1208,59 +1403,47 @@ public final class BeautyRenderer {
     }
 
     // MARK: - 3D Face Makeup Masks
-    private func createLipMask(landmarks: FaceMeshLandmarks, extent: CGRect) -> CIImage? {
-        guard landmarks.landmarks.count >= 468 else { return nil }
-        let width = Int(extent.width)
-        let height = Int(extent.height)
-        guard width > 0, height > 0 else { return nil }
+    func createLipMask(landmarks: FaceMeshLandmarks, extent: CGRect) -> CIImage? {
+        contourMask(landmarks: landmarks, outer: FaceMeshGeometry.outerLipContour,
+                    hole: FaceMeshGeometry.innerLipContour, extent: extent)
+    }
 
-        let colorSpace = CGColorSpaceCreateDeviceGray()
-        guard let context = CGContext(
-            data: nil,
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: width,
-            space: colorSpace,
-            bitmapInfo: CGImageAlphaInfo.none.rawValue
-        ) else { return nil }
-
-        context.setFillColor(gray: 0.0, alpha: 1.0)
-        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
-
+    /// Rasterize only the feature bounds. Keep blur inside the outer edge and outside the mouth hole.
+    private func contourMask(landmarks: FaceMeshLandmarks, outer: [Int], hole: [Int] = [], extent: CGRect) -> CIImage? {
+        guard landmarks.hasFace, landmarks.landmarks.count == 468 else { return nil }
         func pt(_ idx: Int) -> CGPoint {
             let lm = landmarks.landmarks[idx]
-            return CGPoint(x: CGFloat(lm.x) * CGFloat(width), y: CGFloat(1.0 - lm.y) * CGFloat(height))
+            return CGPoint(x: CGFloat(lm.x) * extent.width, y: CGFloat(1 - lm.y) * extent.height)
         }
-
-        let outer = [61, 185, 40, 39, 37, 0, 267, 269, 270, 409, 291, 375, 321, 405, 314, 17, 84, 181, 91, 146]
-        let inner = [78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 308, 324, 318, 402, 317, 14, 87, 178, 88, 95]
-
+        let points = (outer + hole).map(pt)
+        guard points.allSatisfy({ $0.x.isFinite && $0.y.isFinite }),
+              let minX = points.map(\.x).min(), let maxX = points.map(\.x).max(),
+              let minY = points.map(\.y).min(), let maxY = points.map(\.y).max(),
+              maxX - minX > 1, maxY - minY > 1 else { return nil }
+        let feather = min(1.5, max(0.5, (maxX - minX) * 0.008))
+        let bounds = CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
+            .insetBy(dx: -4, dy: -4).intersection(extent).integral
+        guard !bounds.isEmpty, let context = CGContext(
+            data: nil, width: Int(bounds.width), height: Int(bounds.height),
+            bitsPerComponent: 8, bytesPerRow: Int(bounds.width),
+            space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue
+        ) else { return nil }
+        context.translateBy(x: -bounds.minX, y: -bounds.minY)
         let path = CGMutablePath()
-        if let first = outer.first {
-            path.move(to: pt(first))
-            for idx in outer.dropFirst() { path.addLine(to: pt(idx)) }
+        for contour in [outer, hole] where !contour.isEmpty {
+            path.move(to: pt(contour[0]))
+            for idx in contour.dropFirst() { path.addLine(to: pt(idx)) }
             path.closeSubpath()
         }
-        if let first = inner.first {
-            path.move(to: pt(first))
-            for idx in inner.dropFirst() { path.addLine(to: pt(idx)) }
-            path.closeSubpath()
-        }
-
         context.addPath(path)
-        context.setFillColor(gray: 1.0, alpha: 1.0)
+        context.setFillColor(gray: 1, alpha: 1)
         context.drawPath(using: .eoFill)
-
-        guard let cgImg = context.makeImage() else { return nil }
-        let ciMask = CIImage(cgImage: cgImg)
-
-        if let blur = CIFilter(name: "CIGaussianBlur") {
-            blur.setValue(ciMask, forKey: kCIInputImageKey)
-            blur.setValue(2.0, forKey: kCIInputRadiusKey)
-            return blur.outputImage?.cropped(to: extent)
-        }
-        return ciMask
+        guard let bitmap = context.makeImage() else { return nil }
+        let ring = CIImage(cgImage: bitmap).transformed(by:
+            CGAffineTransform(translationX: bounds.minX, y: bounds.minY))
+        return ring.applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: feather])
+            .applyingFilter("CIMinimumCompositing", parameters: [kCIInputBackgroundImageKey: ring])
+            .cropped(to: extent)
     }
 
     private func createEyebrowMask(landmarks: FaceMeshLandmarks, extent: CGRect) -> CIImage? {
@@ -1567,6 +1750,54 @@ public final class BeautyRenderer {
                 f.setValue(1.12, forKey: kCIInputSaturationKey)
                 if let out = f.outputImage { filtered = out }
             }
+        case "pure":
+            if let matrix = CIFilter(name: "CIColorMatrix") {
+                matrix.setValue(filtered, forKey: kCIInputImageKey)
+                matrix.setValue(CIVector(x: 0.04, y: 0.05, z: 0.07, w: 0.0), forKey: "inputBiasVector")
+                if let out = matrix.outputImage {
+                    if let gamma = CIFilter(name: "CIGammaAdjust") {
+                        gamma.setValue(out, forKey: kCIInputImageKey)
+                        gamma.setValue(0.92, forKey: "inputPower")
+                        if let out2 = gamma.outputImage {
+                            if let cc = CIFilter(name: "CIColorControls") {
+                                cc.setValue(out2, forKey: kCIInputImageKey)
+                                cc.setValue(1.05, forKey: kCIInputContrastKey)
+                                cc.setValue(0.96, forKey: kCIInputSaturationKey)
+                                if let out3 = cc.outputImage { filtered = out3 }
+                            }
+                        }
+                    }
+                }
+            }
+        case "clean":
+            if let hs = CIFilter(name: "CIHighlightShadowAdjust") {
+                hs.setValue(filtered, forKey: kCIInputImageKey)
+                hs.setValue(0.85, forKey: "inputHighlightAmount")
+                hs.setValue(1.15, forKey: "inputShadowAmount")
+                if let out = hs.outputImage {
+                    if let cc = CIFilter(name: "CIColorControls") {
+                        cc.setValue(out, forKey: kCIInputImageKey)
+                        cc.setValue(0.02, forKey: kCIInputBrightnessKey)
+                        cc.setValue(1.10, forKey: kCIInputContrastKey)
+                        cc.setValue(1.06, forKey: kCIInputSaturationKey)
+                        if let out2 = cc.outputImage { filtered = out2 }
+                    }
+                }
+            }
+        case "dewy":
+            if let gamma = CIFilter(name: "CIGammaAdjust") {
+                gamma.setValue(filtered, forKey: kCIInputImageKey)
+                gamma.setValue(0.88, forKey: "inputPower")
+                if let out = gamma.outputImage {
+                    if let cc = CIFilter(name: "CIColorControls") {
+                        cc.setValue(out, forKey: kCIInputImageKey)
+                        cc.setValue(0.03, forKey: kCIInputBrightnessKey)
+                        cc.setValue(1.12, forKey: kCIInputContrastKey)
+                        cc.setValue(1.14, forKey: kCIInputSaturationKey)
+                        if let out2 = cc.outputImage { filtered = out2 }
+                    }
+                }
+            }
         case "milk":
             if let f = CIFilter(name: "CIColorMatrix") {
                 f.setValue(filtered, forKey: kCIInputImageKey)
@@ -1580,30 +1811,6 @@ public final class BeautyRenderer {
                     }
                 }
             }
-        case "film":
-            if let f = CIFilter(name: "CIPhotoEffectProcess") {
-                f.setValue(filtered, forKey: kCIInputImageKey)
-                if let out = f.outputImage { filtered = out }
-            }
-        case "warm":
-            if let f = CIFilter(name: "CITemperatureAndTint") {
-                f.setValue(filtered, forKey: kCIInputImageKey)
-                f.setValue(CIVector(x: 6500, y: 0), forKey: "inputNeutral")
-                f.setValue(CIVector(x: 8200, y: 15), forKey: "inputTargetNeutral")
-                if let out = f.outputImage { filtered = out }
-            }
-        case "cool":
-            if let f = CIFilter(name: "CITemperatureAndTint") {
-                f.setValue(filtered, forKey: kCIInputImageKey)
-                f.setValue(CIVector(x: 6500, y: 0), forKey: "inputNeutral")
-                f.setValue(CIVector(x: 5200, y: -10), forKey: "inputTargetNeutral")
-                if let out = f.outputImage { filtered = out }
-            }
-        case "retro":
-            if let f = CIFilter(name: "CIPhotoEffectTransfer") {
-                f.setValue(filtered, forKey: kCIInputImageKey)
-                if let out = f.outputImage { filtered = out }
-            }
         case "peach":
             if let f = CIFilter(name: "CIColorMatrix") {
                 f.setValue(filtered, forKey: kCIInputImageKey)
@@ -1616,10 +1823,228 @@ public final class BeautyRenderer {
                     }
                 }
             }
+        case "sakura":
+            if let matrix = CIFilter(name: "CIColorMatrix") {
+                matrix.setValue(filtered, forKey: kCIInputImageKey)
+                matrix.setValue(CIVector(x: 0.08, y: 0.02, z: 0.06, w: 0.0), forKey: "inputBiasVector")
+                if let out = matrix.outputImage {
+                    if let tt = CIFilter(name: "CITemperatureAndTint") {
+                        tt.setValue(out, forKey: kCIInputImageKey)
+                        tt.setValue(CIVector(x: 6500, y: 0), forKey: "inputNeutral")
+                        tt.setValue(CIVector(x: 6300, y: 18), forKey: "inputTargetNeutral")
+                        if let out2 = tt.outputImage {
+                            if let cc = CIFilter(name: "CIColorControls") {
+                                cc.setValue(out2, forKey: kCIInputImageKey)
+                                cc.setValue(0.02, forKey: kCIInputBrightnessKey)
+                                cc.setValue(1.06, forKey: kCIInputSaturationKey)
+                                if let out3 = cc.outputImage { filtered = out3 }
+                            }
+                        }
+                    }
+                }
+            }
+        case "cream":
+            if let tt = CIFilter(name: "CITemperatureAndTint") {
+                tt.setValue(filtered, forKey: kCIInputImageKey)
+                tt.setValue(CIVector(x: 6500, y: 0), forKey: "inputNeutral")
+                tt.setValue(CIVector(x: 7300, y: 8), forKey: "inputTargetNeutral")
+                if let out = tt.outputImage {
+                    if let cc = CIFilter(name: "CIColorControls") {
+                        cc.setValue(out, forKey: kCIInputImageKey)
+                        cc.setValue(0.03, forKey: kCIInputBrightnessKey)
+                        cc.setValue(0.94, forKey: kCIInputContrastKey)
+                        cc.setValue(1.02, forKey: kCIInputSaturationKey)
+                        if let out2 = cc.outputImage { filtered = out2 }
+                    }
+                }
+            }
+        case "idol":
+            if let cc = CIFilter(name: "CIColorControls") {
+                cc.setValue(filtered, forKey: kCIInputImageKey)
+                cc.setValue(0.05, forKey: kCIInputBrightnessKey)
+                cc.setValue(1.18, forKey: kCIInputContrastKey)
+                cc.setValue(1.22, forKey: kCIInputSaturationKey)
+                if let out = cc.outputImage {
+                    if let gamma = CIFilter(name: "CIGammaAdjust") {
+                        gamma.setValue(out, forKey: kCIInputImageKey)
+                        gamma.setValue(0.90, forKey: "inputPower")
+                        if let out2 = gamma.outputImage { filtered = out2 }
+                    }
+                }
+            }
+        case "film":
+            if let f = CIFilter(name: "CIPhotoEffectProcess") {
+                f.setValue(filtered, forKey: kCIInputImageKey)
+                if let out = f.outputImage { filtered = out }
+            }
+        case "kodak":
+            if let tt = CIFilter(name: "CITemperatureAndTint") {
+                tt.setValue(filtered, forKey: kCIInputImageKey)
+                tt.setValue(CIVector(x: 6500, y: 0), forKey: "inputNeutral")
+                tt.setValue(CIVector(x: 7700, y: 14), forKey: "inputTargetNeutral")
+                if let out = tt.outputImage {
+                    if let cc = CIFilter(name: "CIColorControls") {
+                        cc.setValue(out, forKey: kCIInputImageKey)
+                        cc.setValue(1.14, forKey: kCIInputContrastKey)
+                        cc.setValue(1.16, forKey: kCIInputSaturationKey)
+                        if let out2 = cc.outputImage { filtered = out2 }
+                    }
+                }
+            }
+        case "fuji":
+            if let matrix = CIFilter(name: "CIColorMatrix") {
+                matrix.setValue(filtered, forKey: kCIInputImageKey)
+                matrix.setValue(CIVector(x: 1.0, y: 0.0, z: 0.0, w: 0.0), forKey: "inputRVector")
+                matrix.setValue(CIVector(x: 0.0, y: 1.05, z: 0.0, w: 0.0), forKey: "inputGVector")
+                matrix.setValue(CIVector(x: 0.0, y: 0.0, z: 1.10, w: 0.0), forKey: "inputBVector")
+                matrix.setValue(CIVector(x: 0.01, y: 0.02, z: 0.04, w: 0.0), forKey: "inputBiasVector")
+                if let out = matrix.outputImage {
+                    if let cc = CIFilter(name: "CIColorControls") {
+                        cc.setValue(out, forKey: kCIInputImageKey)
+                        cc.setValue(1.10, forKey: kCIInputContrastKey)
+                        cc.setValue(1.08, forKey: kCIInputSaturationKey)
+                        if let out2 = cc.outputImage { filtered = out2 }
+                    }
+                }
+            }
+        case "retro":
+            if let f = CIFilter(name: "CIPhotoEffectTransfer") {
+                f.setValue(filtered, forKey: kCIInputImageKey)
+                if let out = f.outputImage { filtered = out }
+            }
+        case "vintage":
+            if let f = CIFilter(name: "CIPhotoEffectInstant") {
+                f.setValue(filtered, forKey: kCIInputImageKey)
+                if let out = f.outputImage { filtered = out }
+            }
+        case "cinema":
+            if let matrix = CIFilter(name: "CIColorMatrix") {
+                matrix.setValue(filtered, forKey: kCIInputImageKey)
+                matrix.setValue(CIVector(x: 1.12, y: 0.0, z: 0.0, w: 0.0), forKey: "inputRVector")
+                matrix.setValue(CIVector(x: 0.0, y: 1.02, z: 0.0, w: 0.0), forKey: "inputGVector")
+                matrix.setValue(CIVector(x: 0.0, y: 0.0, z: 1.16, w: 0.0), forKey: "inputBVector")
+                matrix.setValue(CIVector(x: -0.01, y: 0.01, z: 0.03, w: 0.0), forKey: "inputBiasVector")
+                if let out = matrix.outputImage {
+                    if let cc = CIFilter(name: "CIColorControls") {
+                        cc.setValue(out, forKey: kCIInputImageKey)
+                        cc.setValue(1.18, forKey: kCIInputContrastKey)
+                        cc.setValue(1.12, forKey: kCIInputSaturationKey)
+                        if let out2 = cc.outputImage { filtered = out2 }
+                    }
+                }
+            }
+        case "warm":
+            if let f = CIFilter(name: "CITemperatureAndTint") {
+                f.setValue(filtered, forKey: kCIInputImageKey)
+                f.setValue(CIVector(x: 6500, y: 0), forKey: "inputNeutral")
+                f.setValue(CIVector(x: 8200, y: 15), forKey: "inputTargetNeutral")
+                if let out = f.outputImage { filtered = out }
+            }
+        case "sunset":
+            if let tt = CIFilter(name: "CITemperatureAndTint") {
+                tt.setValue(filtered, forKey: kCIInputImageKey)
+                tt.setValue(CIVector(x: 6500, y: 0), forKey: "inputNeutral")
+                tt.setValue(CIVector(x: 8800, y: 22), forKey: "inputTargetNeutral")
+                if let out = tt.outputImage {
+                    if let cc = CIFilter(name: "CIColorControls") {
+                        cc.setValue(out, forKey: kCIInputImageKey)
+                        cc.setValue(1.10, forKey: kCIInputContrastKey)
+                        cc.setValue(1.20, forKey: kCIInputSaturationKey)
+                        if let out2 = cc.outputImage { filtered = out2 }
+                    }
+                }
+            }
+        case "latte":
+            if let matrix = CIFilter(name: "CIColorMatrix") {
+                matrix.setValue(filtered, forKey: kCIInputImageKey)
+                matrix.setValue(CIVector(x: 0.06, y: 0.04, z: 0.02, w: 0.0), forKey: "inputBiasVector")
+                if let out = matrix.outputImage {
+                    if let cc = CIFilter(name: "CIColorControls") {
+                        cc.setValue(out, forKey: kCIInputImageKey)
+                        cc.setValue(1.08, forKey: kCIInputContrastKey)
+                        cc.setValue(0.92, forKey: kCIInputSaturationKey)
+                        if let out2 = cc.outputImage { filtered = out2 }
+                    }
+                }
+            }
+        case "autumn":
+            if let tt = CIFilter(name: "CITemperatureAndTint") {
+                tt.setValue(filtered, forKey: kCIInputImageKey)
+                tt.setValue(CIVector(x: 6500, y: 0), forKey: "inputNeutral")
+                tt.setValue(CIVector(x: 8000, y: 12), forKey: "inputTargetNeutral")
+                if let out = tt.outputImage {
+                    if let matrix = CIFilter(name: "CIColorMatrix") {
+                        matrix.setValue(out, forKey: kCIInputImageKey)
+                        matrix.setValue(CIVector(x: 1.10, y: 0.0, z: 0.0, w: 0.0), forKey: "inputRVector")
+                        matrix.setValue(CIVector(x: 0.0, y: 0.98, z: 0.0, w: 0.0), forKey: "inputGVector")
+                        matrix.setValue(CIVector(x: 0.0, y: 0.0, z: 0.92, w: 0.0), forKey: "inputBVector")
+                        if let out2 = matrix.outputImage {
+                            if let cc = CIFilter(name: "CIColorControls") {
+                                cc.setValue(out2, forKey: kCIInputImageKey)
+                                cc.setValue(1.14, forKey: kCIInputContrastKey)
+                                cc.setValue(1.18, forKey: kCIInputSaturationKey)
+                                if let out3 = cc.outputImage { filtered = out3 }
+                            }
+                        }
+                    }
+                }
+            }
+        case "cool":
+            if let f = CIFilter(name: "CITemperatureAndTint") {
+                f.setValue(filtered, forKey: kCIInputImageKey)
+                f.setValue(CIVector(x: 6500, y: 0), forKey: "inputNeutral")
+                f.setValue(CIVector(x: 5200, y: -10), forKey: "inputTargetNeutral")
+                if let out = f.outputImage { filtered = out }
+            }
+        case "nordic":
+            if let tt = CIFilter(name: "CITemperatureAndTint") {
+                tt.setValue(filtered, forKey: kCIInputImageKey)
+                tt.setValue(CIVector(x: 6500, y: 0), forKey: "inputNeutral")
+                tt.setValue(CIVector(x: 4800, y: -8), forKey: "inputTargetNeutral")
+                if let out = tt.outputImage {
+                    if let cc = CIFilter(name: "CIColorControls") {
+                        cc.setValue(out, forKey: kCIInputImageKey)
+                        cc.setValue(1.12, forKey: kCIInputContrastKey)
+                        cc.setValue(0.85, forKey: kCIInputSaturationKey)
+                        if let out2 = cc.outputImage { filtered = out2 }
+                    }
+                }
+            }
+        case "cyber":
+            if let tt = CIFilter(name: "CITemperatureAndTint") {
+                tt.setValue(filtered, forKey: kCIInputImageKey)
+                tt.setValue(CIVector(x: 6500, y: 0), forKey: "inputNeutral")
+                tt.setValue(CIVector(x: 5000, y: 35), forKey: "inputTargetNeutral")
+                if let out = tt.outputImage {
+                    if let cc = CIFilter(name: "CIColorControls") {
+                        cc.setValue(out, forKey: kCIInputImageKey)
+                        cc.setValue(1.22, forKey: kCIInputContrastKey)
+                        cc.setValue(1.35, forKey: kCIInputSaturationKey)
+                        if let out2 = cc.outputImage { filtered = out2 }
+                    }
+                }
+            }
         case "bw":
             if let f = CIFilter(name: "CIPhotoEffectMono") {
                 f.setValue(filtered, forKey: kCIInputImageKey)
                 if let out = f.outputImage { filtered = out }
+            }
+        case "noir":
+            if let f = CIFilter(name: "CIPhotoEffectNoir") {
+                f.setValue(filtered, forKey: kCIInputImageKey)
+                if let out = f.outputImage { filtered = out }
+            }
+        case "silver":
+            if let f = CIFilter(name: "CIPhotoEffectTonal") {
+                f.setValue(filtered, forKey: kCIInputImageKey)
+                if let out = f.outputImage {
+                    if let cc = CIFilter(name: "CIColorControls") {
+                        cc.setValue(out, forKey: kCIInputImageKey)
+                        cc.setValue(0.04, forKey: kCIInputBrightnessKey)
+                        cc.setValue(1.26, forKey: kCIInputContrastKey)
+                        if let out2 = cc.outputImage { filtered = out2 }
+                    }
+                }
             }
         default: break
         }

@@ -34,13 +34,29 @@ void main() {
     // Verify Initial Sub-tools
     expect(find.text('Smooth'), findsOneWidget);
     expect(find.text('Texture'), findsOneWidget);
+    expect(find.text('Skin Tone'), findsOneWidget);
     expect(find.text('Skin Smoothing'), findsOneWidget);
+
+    // Tap Skin Tone tool
+    await tester.tap(find.text('Skin Tone'));
+    await tester.pump();
+    expect(find.text('Tự nhiên'), findsOneWidget);
+    expect(find.text('Trắng sứ'), findsOneWidget);
+    expect(find.text('Bánh mật'), findsOneWidget);
 
     // Tap on Reshape category
     await tester.tap(find.text('Reshape'));
     await tester.pump();
     expect(find.text('Slim Face'), findsWidgets);
     expect(find.text('V Face'), findsOneWidget);
+
+    // Switch to Mouth group
+    await tester.tap(find.text('Miệng'));
+    await tester.pump();
+    expect(find.text('Khóe cười'), findsOneWidget);
+    await tester.tap(find.text('Khóe cười'));
+    await tester.pump();
+    expect(find.text('Khóe cười (Smile Corners)'), findsOneWidget);
 
     // Tap on Makeup category
     await tester.tap(find.text('Makeup'));
@@ -51,6 +67,9 @@ void main() {
     // Tap on Filter category
     await tester.tap(find.text('Filter'));
     await tester.pump();
+    expect(find.text('Tất cả'), findsOneWidget);
+    expect(find.text('Hàn Quốc'), findsOneWidget);
+    expect(find.text('Film'), findsOneWidget);
     expect(find.text('Original'), findsOneWidget);
     expect(find.text('Clear'), findsOneWidget);
     expect(find.text('Milk'), findsOneWidget);

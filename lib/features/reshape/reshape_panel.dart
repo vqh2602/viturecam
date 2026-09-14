@@ -44,6 +44,7 @@ class ReshapePanel extends ConsumerWidget {
 
     final mouthTools = [
       {'id': 'smile', 'label': 'Smile', 'icon': Icons.sentiment_satisfied_alt},
+      {'id': 'smileCorners', 'label': 'Khóe cười', 'icon': Icons.mood},
       {'id': 'mouthWidth', 'label': 'Mouth Wid', 'icon': Icons.panorama_horizontal},
       {'id': 'mouthSize', 'label': 'Mouth Size', 'icon': Icons.photo_size_select_small},
       {'id': 'lipThickness', 'label': 'Lip Thick', 'icon': Icons.line_weight},
@@ -91,7 +92,7 @@ class ReshapePanel extends ConsumerWidget {
         case 'eyes':
           return f.eyeSize != 0 || f.eyeDistance != 0 || f.eyeHeight != 0 || f.eyeAngle != 0 || f.eyeBrightness != 0;
         case 'mouth':
-          return f.smile != 0 || f.mouthWidth != 0 || f.mouthSize != 0 || f.lipThickness != 0 || f.mouthPosition != 0;
+          return f.smile != 0 || f.smileCorners != 0 || f.mouthWidth != 0 || f.mouthSize != 0 || f.lipThickness != 0 || f.mouthPosition != 0;
         case 'face':
         default:
           return f.slimFace != 0 || f.smallFace != 0 || f.vFace != 0 || f.jawWidth != 0 || f.cheekWidth != 0 || f.chinLength != 0 || f.chinWidth != 0 || f.forehead != 0 || f.templeWidth != 0;
@@ -291,6 +292,13 @@ class ReshapePanel extends ConsumerWidget {
             value: f.smile,
             defaultValue: 0,
             onChanged: (v) => controller.updateFace(f.copyWith(smile: v)),
+          );
+        case 'smileCorners':
+          return BeautySlider(
+            label: 'Khóe cười (Smile Corners)',
+            value: f.smileCorners,
+            defaultValue: 0,
+            onChanged: (v) => controller.updateFace(f.copyWith(smileCorners: v)),
           );
         case 'mouthWidth':
           return BeautySlider(

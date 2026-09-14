@@ -29,6 +29,8 @@ public final class BeautyEngine: NSObject, CameraEngineDelegate {
     private var frameCount: Int = 0
     private var lastFpsUpdateTime: TimeInterval = CACurrentMediaTime()
     private(set) var currentFps: Double = 0.0
+    private(set) var lastTrackingTimeMs: Double = 0.0
+    private(set) var lastProcessingTimeMs: Double = 0.0
     private(set) var lastRenderTimeMs: Double = 0.0
     private(set) var droppedFrames: Int = 0
 
@@ -57,6 +59,7 @@ public final class BeautyEngine: NSObject, CameraEngineDelegate {
 
     public func startCamera(deviceId: String?, width: Int = 1920, height: Int = 1080, fps: Int = 30, completion: @escaping (Bool, String?, Int64) -> Void) {
         let registeredId = ensureTextureRegistered()
+        faceMeshTracker.reset()
         cameraEngine.start(deviceId: deviceId, targetWidth: width, targetHeight: height, fps: fps) { [weak self] success, error in
             guard let self = self else { return }
             if success {
@@ -78,10 +81,16 @@ public final class BeautyEngine: NSObject, CameraEngineDelegate {
         return [
             "fps": currentFps,
             "renderTimeMs": lastRenderTimeMs,
+            "trackingTimeMs": lastTrackingTimeMs,
+            "processingTimeMs": lastProcessingTimeMs,
             "droppedFrames": droppedFrames,
             "width": cameraEngine.currentWidth,
             "height": cameraEngine.currentHeight
         ]
+    }
+
+    public func cameraEngineDidDropFrame(_ engine: CameraEngine) {
+        droppedFrames += 1
     }
 
     // MARK: - CameraEngineDelegate
@@ -97,10 +106,18 @@ public final class BeautyEngine: NSObject, CameraEngineDelegate {
         // Ensure buffer pool matches current frame dimensions
         bufferPool.prepare(width: width, height: height)
 
-        let targetPixelBuffer = bufferPool.getPixelBuffer() ?? sourcePixelBuffer
+        guard let targetPixelBuffer = bufferPool.getPixelBuffer() else {
+            droppedFrames += 1
+            return
+        }
 
-        // Asynchronously track 468 3D face mesh landmarks (runs on background queue via CoreML on ANE)
-        faceMeshTracker.processFrameAsync(pixelBuffer: sourcePixelBuffer)
+        let processingStart = CACurrentMediaTime()
+        let timestamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer).seconds
+        let landmarks = faceMeshTracker.processFrame(
+            pixelBuffer: sourcePixelBuffer,
+            timestamp: timestamp.isFinite ? timestamp : processingStart
+        )
+        lastTrackingTimeMs = (CACurrentMediaTime() - processingStart) * 1000
 
         let startTime = CACurrentMediaTime()
 
@@ -117,11 +134,12 @@ public final class BeautyEngine: NSObject, CameraEngineDelegate {
             filter: filterSettings,
             color: colorSettings,
             background: backgroundSettings,
-            landmarks: faceMeshTracker.currentLandmarks
+            landmarks: landmarks
         )
 
         let elapsedMs = (CACurrentMediaTime() - startTime) * 1000.0
         self.lastRenderTimeMs = elapsedMs
+        self.lastProcessingTimeMs = (CACurrentMediaTime() - processingStart) * 1000
 
         // Push to zero-copy Flutter Texture
         flutterTexture.updatePixelBuffer(targetPixelBuffer)

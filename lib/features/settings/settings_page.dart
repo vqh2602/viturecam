@@ -127,7 +127,11 @@ class SettingsDialog extends ConsumerWidget {
               children: [
                 _StatCard(title: 'FPS', value: state.stats.fps.toStringAsFixed(1)),
                 const SizedBox(width: 8),
-                _StatCard(title: 'GPU Latency', value: '${state.stats.renderTimeMs.toStringAsFixed(1)} ms'),
+                _StatCard(title: 'Processing', value: '${state.stats.processingTimeMs.toStringAsFixed(1)} ms'),
+                const SizedBox(width: 8),
+                _StatCard(title: 'Tracking', value: '${state.stats.trackingTimeMs.toStringAsFixed(1)} ms'),
+                const SizedBox(width: 8),
+                _StatCard(title: 'Dropped', value: '${state.stats.droppedFrames}'),
                 const SizedBox(width: 8),
                 _StatCard(title: 'Resolution', value: '${state.stats.width}x${state.stats.height}'),
               ],

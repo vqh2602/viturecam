@@ -25,6 +25,8 @@ class CameraDevice {
 class PerformanceStats {
   final double fps;
   final double renderTimeMs;
+  final double trackingTimeMs;
+  final double processingTimeMs;
   final int droppedFrames;
   final int width;
   final int height;
@@ -32,6 +34,8 @@ class PerformanceStats {
   const PerformanceStats({
     required this.fps,
     required this.renderTimeMs,
+    this.trackingTimeMs = 0,
+    this.processingTimeMs = 0,
     required this.droppedFrames,
     required this.width,
     required this.height,
@@ -41,6 +45,9 @@ class PerformanceStats {
     return PerformanceStats(
       fps: (map['fps'] as num?)?.toDouble() ?? 0.0,
       renderTimeMs: (map['renderTimeMs'] as num?)?.toDouble() ?? 0.0,
+      trackingTimeMs: (map['trackingTimeMs'] as num?)?.toDouble() ?? 0.0,
+      processingTimeMs: (map['processingTimeMs'] as num?)?.toDouble() ??
+          (map['renderTimeMs'] as num?)?.toDouble() ?? 0.0,
       droppedFrames: (map['droppedFrames'] as num?)?.toInt() ?? 0,
       width: (map['width'] as num?)?.toInt() ?? 1920,
       height: (map['height'] as num?)?.toInt() ?? 1080,

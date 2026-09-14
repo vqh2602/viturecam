@@ -1,6 +1,8 @@
 class BeautySettings {
   final double smooth; // 0..100
   final double skinTexture; // 0..100
+  final double skinTone; // 0..100
+  final String skinToneType; // 'natural', 'porcelain', 'rosy', 'peach', 'warm', 'tan'
   final double skinBrightness; // 0..100
   final double whitening; // 0..100
   final double redness; // 0..100
@@ -11,6 +13,8 @@ class BeautySettings {
   const BeautySettings({
     this.smooth = 0,
     this.skinTexture = 50,
+    this.skinTone = 0,
+    this.skinToneType = 'natural',
     this.skinBrightness = 0,
     this.whitening = 0,
     this.redness = 0,
@@ -22,6 +26,8 @@ class BeautySettings {
   bool get isModified =>
       smooth > 0 ||
       skinTexture != 50 ||
+      skinTone > 0 ||
+      skinToneType != 'natural' ||
       skinBrightness > 0 ||
       whitening > 0 ||
       redness > 0 ||
@@ -35,6 +41,8 @@ class BeautySettings {
         return smooth > 0;
       case 'skinTexture':
         return skinTexture != 50;
+      case 'skinTone':
+        return skinTone > 0 || skinToneType != 'natural';
       case 'skinBrightness':
         return skinBrightness > 0;
       case 'whitening':
@@ -55,6 +63,8 @@ class BeautySettings {
   BeautySettings copyWith({
     double? smooth,
     double? skinTexture,
+    double? skinTone,
+    String? skinToneType,
     double? skinBrightness,
     double? whitening,
     double? redness,
@@ -65,6 +75,8 @@ class BeautySettings {
     return BeautySettings(
       smooth: smooth ?? this.smooth,
       skinTexture: skinTexture ?? this.skinTexture,
+      skinTone: skinTone ?? this.skinTone,
+      skinToneType: skinToneType ?? this.skinToneType,
       skinBrightness: skinBrightness ?? this.skinBrightness,
       whitening: whitening ?? this.whitening,
       redness: redness ?? this.redness,
@@ -78,6 +90,8 @@ class BeautySettings {
     return {
       'smooth': smooth / 100.0,
       'skinTexture': skinTexture / 100.0,
+      'skinTone': skinTone / 100.0,
+      'skinToneType': skinToneType,
       'skinBrightness': skinBrightness / 100.0,
       'whitening': whitening / 100.0,
       'redness': redness / 100.0,
@@ -91,6 +105,8 @@ class BeautySettings {
     return BeautySettings(
       smooth: (json['smooth'] as num?)?.toDouble() ?? 0,
       skinTexture: (json['skinTexture'] as num?)?.toDouble() ?? 50,
+      skinTone: (json['skinTone'] as num?)?.toDouble() ?? 0,
+      skinToneType: json['skinToneType'] as String? ?? 'natural',
       skinBrightness: (json['skinBrightness'] as num?)?.toDouble() ?? 0,
       whitening: (json['whitening'] as num?)?.toDouble() ?? 0,
       redness: (json['redness'] as num?)?.toDouble() ?? 0,
@@ -104,6 +120,8 @@ class BeautySettings {
     return {
       'smooth': smooth,
       'skinTexture': skinTexture,
+      'skinTone': skinTone,
+      'skinToneType': skinToneType,
       'skinBrightness': skinBrightness,
       'whitening': whitening,
       'redness': redness,

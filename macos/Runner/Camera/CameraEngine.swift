@@ -2,6 +2,7 @@ import AVFoundation
 import Foundation
 
 public protocol CameraEngineDelegate: AnyObject {
+    func cameraEngineDidDropFrame(_ engine: CameraEngine)
     func cameraEngine(_ engine: CameraEngine, didOutput sampleBuffer: CMSampleBuffer)
 }
 
@@ -202,6 +203,6 @@ public final class CameraEngine: NSObject, AVCaptureVideoDataOutputSampleBufferD
     }
 
     public func captureOutput(_ output: AVCaptureOutput, didDrop sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        // Late frame discarded, normal under high system load
+        delegate?.cameraEngineDidDropFrame(self)
     }
 }

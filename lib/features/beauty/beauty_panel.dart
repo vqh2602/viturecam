@@ -17,6 +17,7 @@ class BeautyPanel extends ConsumerWidget {
     final tools = [
       {'id': 'smooth', 'label': 'Smooth', 'icon': Icons.blur_on},
       {'id': 'skinTexture', 'label': 'Texture', 'icon': Icons.grain},
+      {'id': 'skinTone', 'label': 'Skin Tone', 'icon': Icons.palette_outlined},
       {'id': 'skinBrightness', 'label': 'Brighten', 'icon': Icons.brightness_6},
       {'id': 'whitening', 'label': 'Whitening', 'icon': Icons.wb_sunny_outlined},
       {'id': 'redness', 'label': 'Redness', 'icon': Icons.spa_outlined},
@@ -40,6 +41,85 @@ class BeautyPanel extends ConsumerWidget {
             value: b.skinTexture,
             defaultValue: 50,
             onChanged: (v) => controller.updateBeauty(b.copyWith(skinTexture: v)),
+          );
+        case 'skinTone':
+          final toneTypes = [
+            {'id': 'natural', 'label': 'Tự nhiên', 'color': const Color(0xFFF7D5C8)},
+            {'id': 'porcelain', 'label': 'Trắng sứ', 'color': const Color(0xFFFFF0EA)},
+            {'id': 'rosy', 'label': 'Trắng hồng', 'color': const Color(0xFFFFE0E5)},
+            {'id': 'peach', 'label': 'Hồng đào', 'color': const Color(0xFFFFD1BA)},
+            {'id': 'warm', 'label': 'Nắng ấm', 'color': const Color(0xFFFFD4A0)},
+            {'id': 'tan', 'label': 'Bánh mật', 'color': const Color(0xFFCF9C7A)},
+          ];
+          return Row(
+            children: [
+              const SizedBox(width: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF222227),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.white10),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final tone in toneTypes)
+                      GestureDetector(
+                        onTap: () => controller.updateBeauty(b.copyWith(
+                          skinToneType: tone['id'] as String,
+                          skinTone: b.skinTone == 0 ? 60 : b.skinTone,
+                        )),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                          margin: const EdgeInsets.symmetric(horizontal: 2),
+                          decoration: BoxDecoration(
+                            color: b.skinToneType == tone['id']
+                                ? const Color(0xFFFF7597).withValues(alpha: 0.25)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(7),
+                            border: b.skinToneType == tone['id']
+                                ? Border.all(color: const Color(0xFFFF7597), width: 1.2)
+                                : null,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 9,
+                                height: 9,
+                                decoration: BoxDecoration(
+                                  color: tone['color'] as Color,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white38, width: 0.8),
+                                ),
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                tone['label'] as String,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: b.skinToneType == tone['id'] ? FontWeight.w600 : FontWeight.w400,
+                                  color: b.skinToneType == tone['id'] ? Colors.white : Colors.white70,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: BeautySlider(
+                  label: 'Skin Tone Intensity',
+                  value: b.skinTone,
+                  defaultValue: 0,
+                  onChanged: (v) => controller.updateBeauty(b.copyWith(skinTone: v)),
+                ),
+              ),
+            ],
           );
         case 'skinBrightness':
           return BeautySlider(

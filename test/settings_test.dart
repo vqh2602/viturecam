@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:viturecam/features/background/background_settings.dart';
 import 'package:viturecam/features/beauty/beauty_settings.dart';
 import 'package:viturecam/features/color/color_settings.dart';
+import 'package:viturecam/features/filters/filter_model.dart';
 import 'package:viturecam/features/makeup/makeup_settings.dart';
 import 'package:viturecam/features/presets/preset_model.dart';
 import 'package:viturecam/features/reshape/reshape_settings.dart';
@@ -12,44 +13,64 @@ void main() {
       const settings = BeautySettings();
       expect(settings.smooth, 0);
       expect(settings.skinTexture, 50);
+      expect(settings.skinTone, 0);
+      expect(settings.skinToneType, 'natural');
       expect(settings.isModified, false);
 
-      final modified = settings.copyWith(smooth: 45);
+      final modified = settings.copyWith(smooth: 45, skinTone: 60, skinToneType: 'porcelain');
       expect(modified.smooth, 45);
+      expect(modified.skinTone, 60);
+      expect(modified.skinToneType, 'porcelain');
       expect(modified.isModified, true);
       expect(modified.isKeyActive('smooth'), true);
+      expect(modified.isKeyActive('skinTone'), true);
       expect(modified.isKeyActive('whitening'), false);
     });
 
     test('normalization toMap', () {
-      const settings = BeautySettings(smooth: 50, whitening: 80);
+      const settings = BeautySettings(smooth: 50, whitening: 80, skinTone: 70, skinToneType: 'peach');
       final map = settings.toMap();
       expect(map['smooth'], 0.5);
       expect(map['whitening'], 0.8);
+      expect(map['skinTone'], 0.7);
+      expect(map['skinToneType'], 'peach');
     });
 
     test('json roundtrip', () {
-      const settings = BeautySettings(smooth: 30, teethWhitening: 60);
+      const settings = BeautySettings(smooth: 30, teethWhitening: 60, skinTone: 55, skinToneType: 'rosy');
       final json = settings.toJson();
       final restored = BeautySettings.fromJson(json);
       expect(restored.smooth, 30);
       expect(restored.teethWhitening, 60);
+      expect(restored.skinTone, 55);
+      expect(restored.skinToneType, 'rosy');
     });
   });
 
   group('ReshapeSettings', () {
     test('defaults and normalization', () {
       const settings = ReshapeSettings();
+      expect(settings.smileCorners, 0);
       expect(settings.isModified, false);
 
-      final modified = settings.copyWith(slimFace: 40, jawWidth: -25);
+      final modified = settings.copyWith(slimFace: 40, jawWidth: -25, smileCorners: 60);
       expect(modified.isModified, true);
       expect(modified.isKeyActive('slimFace'), true);
       expect(modified.isKeyActive('jawWidth'), true);
+      expect(modified.isKeyActive('smileCorners'), true);
 
       final map = modified.toMap();
       expect(map['slimFace'], 0.4);
       expect(map['jawWidth'], -0.5);
+      expect(map['smileCorners'], 0.6);
+    });
+
+    test('json roundtrip with smileCorners', () {
+      const settings = ReshapeSettings(smile: 30, smileCorners: 75);
+      final json = settings.toJson();
+      final restored = ReshapeSettings.fromJson(json);
+      expect(restored.smile, 30);
+      expect(restored.smileCorners, 75);
     });
   });
 
@@ -98,6 +119,19 @@ void main() {
       expect(restored.name, natural.name);
       expect(restored.beauty.smooth, natural.beauty.smooth);
       expect(restored.filterId, natural.filterId);
+    });
+  });
+
+  group('FilterCatalog', () {
+    test('contains rich presets with categories', () {
+      expect(FilterCatalog.presets.length, greaterThanOrEqualTo(25));
+      final categories = FilterCatalog.presets.map((p) => p.category).toSet();
+      expect(categories.contains('Natural'), true);
+      expect(categories.contains('Korean'), true);
+      expect(categories.contains('Film'), true);
+      expect(categories.contains('Warm'), true);
+      expect(categories.contains('Cool'), true);
+      expect(categories.contains('B&W'), true);
     });
   });
 }

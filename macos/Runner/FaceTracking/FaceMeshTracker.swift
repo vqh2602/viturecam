@@ -51,14 +51,14 @@ public struct CanonicalROI {
 }
 
 // MARK: - One Euro Filter for 468 3D Landmarks (Casiez CHI 2012)
-// Tuned for real-time interactive beauty: minCutoff=3.5Hz delivers < 30ms settling time
-// with beta=50.0 providing instantaneous zero-lag response during motion while eliminating jitter.
+// Adaptive smoothing trades stationary jitter against motion lag; benchmark with capture timestamps.
 public final class OneEuroFilterBank468 {
     public var minCutoff: Float = 3.5
     public var beta: Float = 50.0
     public var dCutoff: Float = 1.0
 
     private var xPrev: [SIMD3<Float>] = []
+    private var rawPrev: [SIMD3<Float>] = []
     private var dxPrev: [SIMD3<Float>] = []
     private var lastTimestamp: TimeInterval?
 
@@ -69,6 +69,7 @@ public final class OneEuroFilterBank468 {
 
     public func reset() {
         xPrev.removeAll(keepingCapacity: true)
+        rawPrev.removeAll(keepingCapacity: true)
         dxPrev.removeAll(keepingCapacity: true)
         lastTimestamp = nil
     }
@@ -81,10 +82,18 @@ public final class OneEuroFilterBank468 {
     }
 
     public func filter(raw: [SIMD3<Float>], timestamp: TimeInterval) -> [SIMD3<Float>] {
-        guard raw.count == 468 else { return raw }
+        guard raw.count == 468, timestamp.isFinite,
+              raw.allSatisfy({ $0.x.isFinite && $0.y.isFinite && $0.z.isFinite }) else {
+            reset()
+            return []
+        }
+        if let previous = lastTimestamp, timestamp <= previous || timestamp - previous > 0.25 {
+            reset()
+        }
 
         guard let tPrev = lastTimestamp, xPrev.count == 468, dxPrev.count == 468 else {
             xPrev = raw
+            rawPrev = raw
             dxPrev = Array(repeating: SIMD3<Float>(0, 0, 0), count: 468)
             lastTimestamp = timestamp
             return raw
@@ -104,7 +113,8 @@ public final class OneEuroFilterBank468 {
             let prevDx = dxPrev[i]
 
             // Filtered derivative
-            let dx = (x - prev) / dt
+            let dx = (x - rawPrev[i]) / dt
+            rawPrev[i] = x
             let edx = alphaD * dx + oneMinusAlphaD * prevDx
             dxPrev[i] = edx
 
@@ -126,7 +136,6 @@ public final class OneEuroFilterBank468 {
 
 public final class FaceMeshTracker {
     private let trackingQueue = DispatchQueue(label: "com.beautycamera.facemeshtracking", qos: .userInteractive)
-    private var isProcessing: Bool = false
     private var model: MLModel?
     private var ciContext: CIContext?
     private var cropBuffer: CVPixelBuffer?
@@ -134,7 +143,8 @@ public final class FaceMeshTracker {
     private var previousLandmarks = FaceMeshLandmarks()
     private var smoothedROI: CanonicalROI?
     private let filterBank = OneEuroFilterBank468()
-    private var missedFrames: Int = 0
+    private var frameTimestamp: TimeInterval = 0
+    private var imageSize: CGSize = .zero
     private let lock = NSLock()
 
     public init() {
@@ -205,76 +215,82 @@ public final class FaceMeshTracker {
         return previousLandmarks
     }
 
-    public func processFrameAsync(pixelBuffer: CVPixelBuffer) {
-        guard model != nil else { return }
+    /// Called on the capture queue. Return landmarks for this exact buffer before rendering it.
+    /// AVCapture drops late frames instead of allowing a queue of obsolete frames to build up.
+    public func processFrame(pixelBuffer: CVPixelBuffer, timestamp: TimeInterval) -> FaceMeshLandmarks {
+        trackingQueue.sync {
+            frameTimestamp = timestamp.isFinite ? timestamp : ProcessInfo.processInfo.systemUptime
+            trackFrame(pixelBuffer: pixelBuffer)
+            return currentLandmarks
+        }
+    }
 
-        if isProcessing {
-            // Drop tracking frame to maintain 60 FPS video throughput
-            return
+    public func reset() {
+        trackingQueue.sync { updateNoFace() }
+    }
+
+    private func trackFrame(pixelBuffer: CVPixelBuffer) {
+        guard model != nil else { updateNoFace(); return }
+        let width = CGFloat(CVPixelBufferGetWidth(pixelBuffer))
+        let height = CGFloat(CVPixelBufferGetHeight(pixelBuffer))
+        guard width > 0 && height > 0 else { updateNoFace(); return }
+        let size = CGSize(width: width, height: height)
+        if imageSize != size { updateNoFace(); imageSize = size }
+
+        // FAST-PATH: If face is already reliably tracked, compute canonical ROI in true pixel space (Google MediaPipe standard)
+        let prevROI: CanonicalROI? = {
+            self.lock.lock()
+            defer { self.lock.unlock() }
+            if self.previousLandmarks.hasFace && self.previousLandmarks.confidence > 5.0 {
+                return self.computeCanonicalROIFromLandmarks(self.previousLandmarks.landmarks, imageWidth: width, imageHeight: height)
+            }
+            return nil
+        }()
+
+        if let rawROI = prevROI {
+            let smoothROI = self.smoothROI(rawROI)
+            if self.runFaceMeshInference(pixelBuffer: pixelBuffer, roi: smoothROI, imageWidth: width, imageHeight: height) {
+                return
+            }
         }
 
-        isProcessing = true
-        trackingQueue.async { [weak self] in
-            guard let self = self else { return }
-            defer { self.isProcessing = false }
-
-            let width = CGFloat(CVPixelBufferGetWidth(pixelBuffer))
-            let height = CGFloat(CVPixelBufferGetHeight(pixelBuffer))
-            guard width > 0 && height > 0 else { return }
-
-            // FAST-PATH: If face is already reliably tracked, compute canonical ROI in true pixel space (Google MediaPipe standard)
-            let prevROI: CanonicalROI? = {
-                self.lock.lock()
-                defer { self.lock.unlock() }
-                if self.previousLandmarks.hasFace && self.previousLandmarks.confidence > 5.0 {
-                    return self.computeCanonicalROIFromLandmarks(self.previousLandmarks.landmarks, imageWidth: width, imageHeight: height)
-                }
-                return nil
-            }()
-
-            if let rawROI = prevROI {
-                let smoothROI = self.smoothROI(rawROI)
-                if self.runFaceMeshInference(pixelBuffer: pixelBuffer, roi: smoothROI, imageWidth: width, imageHeight: height) {
-                    return
-                }
+        // SLOW-PATH / FALLBACK: Re-acquire face via Apple Vision face detection in pixel space with roll angle
+        let faceRequest = VNDetectFaceRectanglesRequest { [weak self] (req, err) in
+            guard let self = self, err == nil else {
+                self?.updateNoFace()
+                return
+            }
+            guard let results = req.results as? [VNFaceObservation], let face = results.first else {
+                self.updateNoFace()
+                return
             }
 
-            // SLOW-PATH / FALLBACK: Re-acquire face via Apple Vision face detection in pixel space with roll angle
-            let faceRequest = VNDetectFaceRectanglesRequest { [weak self] (req, err) in
-                guard let self = self, err == nil else {
-                    self?.updateNoFace()
-                    return
-                }
-                guard let results = req.results as? [VNFaceObservation], let face = results.first else {
-                    self.updateNoFace()
-                    return
-                }
+            let b = face.boundingBox // Vision bottom-left normalized coordinates
+            let roll = CGFloat(face.roll?.floatValue ?? 0.0) // True radians from Vision
 
-                let b = face.boundingBox // Vision bottom-left normalized coordinates
-                let roll = CGFloat(face.roll?.floatValue ?? 0.0) // True radians from Vision
+            let boxX = b.origin.x * width
+            let boxY = (1.0 - b.maxY) * height
+            let boxW = b.width * width
+            let boxH = b.height * height
 
-                let boxX = b.origin.x * width
-                let boxY = (1.0 - b.maxY) * height
-                let boxW = b.width * width
-                let boxH = b.height * height
+            let cx_px = boxX + boxW * 0.5
+            let cy_px = boxY + boxH * 0.5
+            let size_px = max(48.0, max(boxW, boxH) * 1.5)
 
-                let cx_px = boxX + boxW * 0.5
-                let cy_px = boxY + boxH * 0.5
-                let size_px = max(48.0, max(boxW, boxH) * 1.5)
+            let initialROI = CanonicalROI(
+                centerPx: CGPoint(x: cx_px, y: cy_px),
+                sizePx: size_px,
+                rollAngle: -roll
+            )
 
-                let initialROI = CanonicalROI(
-                    centerPx: CGPoint(x: cx_px, y: cy_px),
-                    sizePx: size_px,
-                    rollAngle: roll
-                )
-
-                _ = self.runFaceMeshInference(pixelBuffer: pixelBuffer, roi: initialROI, imageWidth: width, imageHeight: height)
-            }
-
-            faceRequest.preferBackgroundProcessing = false
-            let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .up, options: [:])
-            try? handler.perform([faceRequest])
+            self.smoothedROI = initialROI
+            _ = self.runFaceMeshInference(pixelBuffer: pixelBuffer, roi: initialROI, imageWidth: width, imageHeight: height)
         }
+
+        faceRequest.preferBackgroundProcessing = false
+        let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .up, options: [:])
+        do { try handler.perform([faceRequest]) }
+        catch { updateNoFace() }
     }
 
     private func computeCanonicalROIFromLandmarks(
@@ -346,12 +362,9 @@ public final class FaceMeshTracker {
     private func updateNoFace() {
         lock.lock()
         defer { lock.unlock() }
-        missedFrames += 1
-        if missedFrames > 8 {
-            previousLandmarks.hasFace = false
-            smoothedROI = nil
-            filterBank.reset()
-        }
+        previousLandmarks = FaceMeshLandmarks()
+        smoothedROI = nil
+        filterBank.reset()
     }
 
     @discardableResult
@@ -361,7 +374,10 @@ public final class FaceMeshTracker {
         imageWidth: CGFloat,
         imageHeight: CGFloat
     ) -> Bool {
-        guard let model = model, let cropBuffer = cropBuffer, let ciContext = ciContext else { return false }
+        guard let model = model, let cropBuffer = cropBuffer, let ciContext = ciContext else {
+            updateNoFace()
+            return false
+        }
 
         let W = imageWidth
         let H = imageHeight
@@ -390,11 +406,15 @@ public final class FaceMeshTracker {
             let input = try MLDictionaryFeatureProvider(dictionary: ["input_image": cropBuffer])
             let output = try model.prediction(from: input)
 
-            guard let multiArray = output.featureValue(for: "points_confidence")?.multiArrayValue else { return false }
+            guard let multiArray = output.featureValue(for: "points_confidence")?.multiArrayValue,
+                  multiArray.count == 1405, multiArray.dataType == .float32 else {
+                updateNoFace()
+                return false
+            }
             let ptr = multiArray.dataPointer.bindMemory(to: Float.self, capacity: multiArray.count)
 
             let confidence = ptr[1404]
-            if confidence < 5.0 {
+            if !confidence.isFinite || confidence < 5.0 {
                 updateNoFace()
                 return false
             }
@@ -422,6 +442,10 @@ public final class FaceMeshTracker {
                 rawPoints.append(SIMD3<Float>(imgX, imgY, imgZ))
             }
 
+            guard rawPoints.allSatisfy({ $0.x.isFinite && $0.y.isFinite && $0.z.isFinite }) else {
+                updateNoFace()
+                return false
+            }
             updateSmoothedLandmarks(rawPoints: rawPoints, confidence: confidence, roi: roi)
             return true
         } catch {
@@ -438,10 +462,7 @@ public final class FaceMeshTracker {
     ) {
         lock.lock()
         defer { lock.unlock() }
-        missedFrames = 0
-
-        let timestamp = ProcessInfo.processInfo.systemUptime
-        let smoothedPoints = filterBank.filter(raw: rawPoints, timestamp: timestamp)
+        let smoothedPoints = filterBank.filter(raw: rawPoints, timestamp: frameTimestamp)
 
         var res = FaceMeshLandmarks()
         res.hasFace = true

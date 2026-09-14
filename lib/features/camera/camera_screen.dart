@@ -87,7 +87,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            '${state.stats.fps.toStringAsFixed(0)} FPS • ${state.stats.renderTimeMs.toStringAsFixed(1)}ms',
+                            '${state.stats.fps.toStringAsFixed(0)} FPS • ${state.stats.processingTimeMs.toStringAsFixed(1)}ms',
                             style: const TextStyle(fontSize: 11, color: Colors.white70, fontWeight: FontWeight.w500),
                           ),
                         ],

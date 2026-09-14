@@ -4,11 +4,28 @@ import '../../widgets/beauty_slider.dart';
 import '../camera/camera_controller.dart';
 import 'filter_model.dart';
 
-class FilterPanel extends ConsumerWidget {
+class FilterPanel extends ConsumerStatefulWidget {
   const FilterPanel({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FilterPanel> createState() => _FilterPanelState();
+}
+
+class _FilterPanelState extends ConsumerState<FilterPanel> {
+  String _selectedCategory = 'All';
+
+  final List<Map<String, String>> _categories = const [
+    {'id': 'All', 'label': 'Tất cả'},
+    {'id': 'Natural', 'label': 'Tự nhiên'},
+    {'id': 'Korean', 'label': 'Hàn Quốc'},
+    {'id': 'Film', 'label': 'Film'},
+    {'id': 'Warm', 'label': 'Ấm áp'},
+    {'id': 'Cool', 'label': 'Lạnh'},
+    {'id': 'B&W', 'label': 'Đen trắng'},
+  ];
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(cameraControllerProvider);
     final controller = ref.read(cameraControllerProvider.notifier);
     final activeId = state.filterId;
@@ -19,25 +36,79 @@ class FilterPanel extends ConsumerWidget {
       orElse: () => FilterCatalog.presets.first,
     );
 
+    final displayPresets = _selectedCategory == 'All'
+        ? FilterCatalog.presets
+        : FilterCatalog.presets
+            .where((p) => p.category == _selectedCategory || p.id == 'original')
+            .toList();
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Row 1: Intensity Slider (or placeholder if original)
+        // Row 1: Category Chips + Active Intensity Slider
         SizedBox(
           height: 56,
-          child: activeId != 'original'
-              ? BeautySlider(
-                  label: '${activeItem.name} Intensity',
-                  value: intensity,
-                  defaultValue: 80,
-                  onChanged: (v) => controller.updateFilter(activeId, v),
-                )
-              : const Center(
-                  child: Text(
-                    'Original • Select a filter preset below',
-                    style: TextStyle(color: Colors.white38, fontSize: 12),
-                  ),
+          child: Row(
+            children: [
+              const SizedBox(width: 12),
+              // Category filter pills
+              SizedBox(
+                width: 290,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  itemCount: _categories.length,
+                  itemBuilder: (context, idx) {
+                    final cat = _categories[idx];
+                    final isSel = _selectedCategory == cat['id'];
+                    return GestureDetector(
+                      onTap: () => setState(() => _selectedCategory = cat['id']!),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        margin: const EdgeInsets.only(right: 6),
+                        decoration: BoxDecoration(
+                          color: isSel ? const Color(0xFFFF7597) : const Color(0xFF222227),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isSel ? Colors.transparent : Colors.white10,
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            cat['label']!,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: isSel ? FontWeight.w600 : FontWeight.w400,
+                              color: isSel ? Colors.white : Colors.white70,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
+              ),
+              const SizedBox(width: 6),
+              const VerticalDivider(width: 1, indent: 12, endIndent: 12, color: Colors.white10),
+              const SizedBox(width: 6),
+              // Slider or placeholder
+              Expanded(
+                child: activeId != 'original'
+                    ? BeautySlider(
+                        label: '${activeItem.name} Intensity',
+                        value: intensity,
+                        defaultValue: 80,
+                        onChanged: (v) => controller.updateFilter(activeId, v),
+                      )
+                    : const Center(
+                        child: Text(
+                          'Original • Select a filter preset below',
+                          style: TextStyle(color: Colors.white38, fontSize: 12),
+                        ),
+                      ),
+              ),
+            ],
+          ),
         ),
 
         const Divider(height: 1, color: Colors.white10),
@@ -48,9 +119,9 @@ class FilterPanel extends ConsumerWidget {
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            itemCount: FilterCatalog.presets.length,
+            itemCount: displayPresets.length,
             itemBuilder: (context, idx) {
-              final item = FilterCatalog.presets[idx];
+              final item = displayPresets[idx];
               final isSel = item.id == activeId;
 
               return GestureDetector(

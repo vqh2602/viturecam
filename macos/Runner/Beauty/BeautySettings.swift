@@ -3,6 +3,8 @@ import Foundation
 public struct BeautySettings {
     public var smooth: Double = 0.0          // 0.0 .. 1.0
     public var skinTexture: Double = 0.5     // 0.0 .. 1.0
+    public var skinTone: Double = 0.0        // 0.0 .. 1.0
+    public var skinToneType: String = "natural" // "natural", "porcelain", "rosy", "peach", "warm", "tan"
     public var skinBrightness: Double = 0.0  // 0.0 .. 1.0
     public var whitening: Double = 0.0       // 0.0 .. 1.0
     public var redness: Double = 0.0         // 0.0 .. 1.0
@@ -14,6 +16,8 @@ public struct BeautySettings {
         guard let dict = dict else { return }
         if let v = dict["smooth"] as? Double { smooth = v }
         if let v = dict["skinTexture"] as? Double { skinTexture = v }
+        if let v = dict["skinTone"] as? Double { skinTone = v }
+        if let v = dict["skinToneType"] as? String { skinToneType = v }
         if let v = dict["skinBrightness"] as? Double { skinBrightness = v }
         if let v = dict["whitening"] as? Double { whitening = v }
         if let v = dict["redness"] as? Double { redness = v }
@@ -51,6 +55,7 @@ public struct FaceSettings {
     public var mouthWidth: Double = 0.0      // -1.0 .. 1.0
     public var lipThickness: Double = 0.0    // -1.0 .. 1.0
     public var smile: Double = 0.0           // 0.0 .. 1.0
+    public var smileCorners: Double = 0.0    // 0.0 .. 1.0
     public var mouthPosition: Double = 0.0   // -1.0 .. 1.0
 
     public init(from dict: [String: Any]? = nil) {
@@ -82,6 +87,7 @@ public struct FaceSettings {
         if let v = dict["mouthWidth"] as? Double { mouthWidth = v }
         if let v = dict["lipThickness"] as? Double { lipThickness = v }
         if let v = dict["smile"] as? Double { smile = v }
+        if let v = dict["smileCorners"] as? Double { smileCorners = v }
         if let v = dict["mouthPosition"] as? Double { mouthPosition = v }
     }
 }

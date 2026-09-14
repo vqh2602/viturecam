@@ -72,7 +72,7 @@ vertex MaskVertexOutput faceSkinMaskVertex(
 
 fragment float4 faceSkinMaskFragment(MaskVertexOutput in [[stage_in]]) {
     float w = saturate(in.skinWeight);
-    return float4(w, w, w, w);
+    return float4(w, w, w, 1.0);
 }
 
 // MARK: - 2. 3D Face Reshaping Shaders
