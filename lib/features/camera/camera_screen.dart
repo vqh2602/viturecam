@@ -44,6 +44,15 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
           children: [
             // Top Bar
             _buildTopBar(context, state, controller),
+            if (state.virtualCamera.message.isNotEmpty)
+              Container(
+                width: double.infinity,
+                color: state.virtualCamera.state == 'error'
+                    ? const Color(0xFF4A2929) : const Color(0xFF25342C),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                child: Text(state.virtualCamera.message,
+                    style: const TextStyle(color: Colors.white, fontSize: 12)),
+              ),
 
             // Live Camera Viewport
             Expanded(
@@ -273,10 +282,11 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
               color: state.virtualCameraActive ? const Color(0xFF7FE68D) : Colors.white54,
             ),
             label: Text(
-              state.virtualCameraActive ? 'Virtual Cam: ON' : 'Virtual Cam',
+              state.virtualCameraActive ? 'Virtual Cam: ON'
+                  : state.virtualCamera.pending ? 'Virtual Cam: Setup…' : 'Virtual Cam',
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
             ),
-            onPressed: () => controller.toggleVirtualCamera(),
+            onPressed: state.virtualCamera.pending ? null : () => controller.toggleVirtualCamera(),
           ),
           const SizedBox(width: 8),
 

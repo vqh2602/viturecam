@@ -120,8 +120,10 @@ class MainFlutterWindow: NSWindow {
                 result(nil)
 
             case "startVirtualCamera":
-                let success = engine.virtualCam.start()
-                result(["success": success])
+                result(engine.virtualCam.start())
+
+            case "getVirtualCameraStatus":
+                result(engine.virtualCam.status)
 
             case "stopVirtualCamera":
                 engine.virtualCam.stop()

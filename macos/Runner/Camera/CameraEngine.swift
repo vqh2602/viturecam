@@ -38,7 +38,7 @@ public final class CameraEngine: NSObject, AVCaptureVideoDataOutputSampleBufferD
         )
 
         let defaultDevice = AVCaptureDevice.default(for: .video)
-        return discoverySession.devices.map { device in
+        return discoverySession.devices.filter { $0.uniqueID != VirtualCameraManager.deviceUID }.map { device in
             return [
                 "id": device.uniqueID,
                 "name": device.localizedName,

@@ -76,6 +76,7 @@ public final class BeautyEngine: NSObject, CameraEngineDelegate {
     }
 
     public func stopCamera(completion: (() -> Void)? = nil) {
+        virtualCam.stop()
         cameraEngine.stop { [weak self] in
             self?.flutterTexture.clear()
             self?.faceMeshTracker.reset()

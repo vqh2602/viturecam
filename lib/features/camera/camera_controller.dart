@@ -18,7 +18,8 @@ class CameraState {
   final int fps; // 30, 60
   final bool mirrorPreview;
   final bool mirrorOutput;
-  final bool virtualCameraActive;
+  final VirtualCameraStatus virtualCamera;
+  bool get virtualCameraActive => virtualCamera.active;
   final bool beautyEnabled;
   final String compareMode; // 'none', 'split', 'raw'
   final double splitRatio; // 0.0 .. 1.0
@@ -48,7 +49,7 @@ class CameraState {
     this.fps = 30,
     this.mirrorPreview = true,
     this.mirrorOutput = false,
-    this.virtualCameraActive = false,
+    this.virtualCamera = const VirtualCameraStatus(),
     this.beautyEnabled = true,
     this.compareMode = 'none',
     this.splitRatio = 0.5,
@@ -77,7 +78,7 @@ class CameraState {
     int? fps,
     bool? mirrorPreview,
     bool? mirrorOutput,
-    bool? virtualCameraActive,
+    VirtualCameraStatus? virtualCamera,
     bool? beautyEnabled,
     String? compareMode,
     double? splitRatio,
@@ -105,7 +106,7 @@ class CameraState {
       fps: fps ?? this.fps,
       mirrorPreview: mirrorPreview ?? this.mirrorPreview,
       mirrorOutput: mirrorOutput ?? this.mirrorOutput,
-      virtualCameraActive: virtualCameraActive ?? this.virtualCameraActive,
+      virtualCamera: virtualCamera ?? this.virtualCamera,
       beautyEnabled: beautyEnabled ?? this.beautyEnabled,
       compareMode: compareMode ?? this.compareMode,
       splitRatio: splitRatio ?? this.splitRatio,
@@ -181,7 +182,12 @@ class CameraController extends StateNotifier<CameraState> {
     _statsTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
       if (state.isStreaming) {
         final stats = await _api.getPerformanceStats();
+        if (!mounted) return;
         state = state.copyWith(stats: stats);
+      }
+      if (state.virtualCamera.active || state.virtualCamera.pending) {
+        final status = await _api.getVirtualCameraStatus();
+        if (mounted) state = state.copyWith(virtualCamera: status);
       }
     });
   }
@@ -259,12 +265,20 @@ class CameraController extends StateNotifier<CameraState> {
   }
 
   Future<void> toggleVirtualCamera() async {
+    if (state.virtualCamera.pending) return;
     if (state.virtualCameraActive) {
       await _api.stopVirtualCamera();
-      state = state.copyWith(virtualCameraActive: false);
+      if (mounted) state = state.copyWith(virtualCamera: const VirtualCameraStatus());
     } else {
-      final success = await _api.startVirtualCamera();
-      state = state.copyWith(virtualCameraActive: success);
+      if (!state.isStreaming) {
+        state = state.copyWith(virtualCamera: const VirtualCameraStatus(
+          state: 'error', message: 'Start your camera before enabling Virtual Cam.'));
+        return;
+      }
+      state = state.copyWith(virtualCamera: const VirtualCameraStatus(
+        state: 'installing', message: 'Setting up Virtual Camera…'));
+      final status = await _api.startVirtualCamera();
+      if (mounted) state = state.copyWith(virtualCamera: status);
     }
   }
 

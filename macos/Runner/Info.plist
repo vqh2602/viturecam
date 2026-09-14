@@ -22,13 +22,15 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Beauty Camera requires access to your webcam to capture live video for real-time beauty processing and preview.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>$(PRODUCT_COPYRIGHT)</string>
 	<key>NSMainNibFile</key>
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
-	<key>NSCameraUsageDescription</key>
-	<string>Beauty Camera requires access to your webcam to capture live video for real-time beauty processing and preview.</string>
+	<key>NSSystemExtensionUsageDescription</key>
+	<string>Make processed Beauty Camera video available in Google Meet and other video calling apps.</string>
 </dict>
 </plist>
