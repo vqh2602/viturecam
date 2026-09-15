@@ -146,29 +146,31 @@ jobs:
             echo "has_cert=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Install provisioning profile
+        run: |
+          PROFILE_SRC="macos/profiles/com.beautycamera.vqhapp.provisionprofile"
+          if [ -f "$PROFILE_SRC" ]; then
+            echo "📋 Installing provisioning profile..."
+            mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+            mkdir -p ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles
+            cp "$PROFILE_SRC" ~/Library/MobileDevice/Provisioning\ Profiles/9c1650bd-1cea-476e-b4c2-802fb5b0d3f1.provisionprofile
+            cp "$PROFILE_SRC" ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles/9c1650bd-1cea-476e-b4c2-802fb5b0d3f1.provisionprofile
+            echo "✅ Provisioning profile installed."
+          else
+            echo "⚠️ Provisioning profile not found at $PROFILE_SRC"
+          fi
+
       - name: Configure code signing
         run: |
-          # Chuyển CODE_SIGN_STYLE sang Manual để Xcode CI không đòi hỏi Provisioning Profiles
-          sed -i '' 's/CODE_SIGN_STYLE = Automatic/CODE_SIGN_STYLE = Manual/g' macos/Runner.xcodeproj/project.pbxproj
-
           HAS_CERT="${{ steps.cert.outputs.has_cert }}"
           IDENTITY="${{ steps.cert.outputs.identity }}"
 
           if [ "$HAS_CERT" = "true" ] && [ -n "$IDENTITY" ]; then
-            echo "✅ Configuring project to sign with: $IDENTITY"
-            cat >> macos/Flutter/Flutter-Release.xcconfig << XCCONFIG_EOF
-
-          // CI signing with imported certificate
-          CODE_SIGN_IDENTITY=$IDENTITY
-          CODE_SIGNING_REQUIRED=YES
-          CODE_SIGNING_ALLOWED=YES
-          PROVISIONING_PROFILE_SPECIFIER=
-          XCCONFIG_EOF
-
-            # Cập nhật identity mặc định trong project file cho mọi target
-            sed -i '' "s/CODE_SIGN_IDENTITY = \"Apple Development\"/CODE_SIGN_IDENTITY = \"$IDENTITY\"/g" macos/Runner.xcodeproj/project.pbxproj
+            echo "✅ Certificate detected: $IDENTITY"
+            echo "Using project automatic signing with installed provisioning profile."
           else
             echo "⚠️ Building unsigned application..."
+            sed -i '' 's/CODE_SIGN_STYLE = Automatic/CODE_SIGN_STYLE = Manual/g' macos/Runner.xcodeproj/project.pbxproj
             cat >> macos/Flutter/Flutter-Release.xcconfig << 'XCCONFIG_EOF'
 
           // CI unsigned override
