@@ -109,9 +109,9 @@ public final class FaceMeshRenderer {
             options: .storageModeShared
         )
 
-        // 2. Skin Weights (Cheeks, forehead, chin = 1.0; outer silhouette, eyes, lips, eyebrows, nostrils = 0.0)
+        // 2. Skin Weights (Full face coverage with soft boundary falloff)
         var weights = FaceMeshGeometry.skinWeights
-        for idx in FaceMeshGeometry.silhouetteIndices { weights[idx] = 0.0 }
+        for idx in FaceMeshGeometry.silhouetteIndices { weights[idx] = 0.85 }
         for idx in FaceMeshGeometry.eyeIndices { weights[idx] = 0.0 }
         for idx in FaceMeshGeometry.lipIndices { weights[idx] = 0.0 }
         for idx in FaceMeshGeometry.eyebrowIndices { weights[idx] = 0.0 }
@@ -216,7 +216,7 @@ public final class FaceMeshRenderer {
         let passDesc = MTLRenderPassDescriptor()
         passDesc.colorAttachments[0].texture = targetTexture
         passDesc.colorAttachments[0].loadAction = .clear
-        passDesc.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
+        passDesc.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
         passDesc.colorAttachments[0].storeAction = .store
 
         guard let encoder = cmdBuffer.makeRenderCommandEncoder(descriptor: passDesc) else { return nil }

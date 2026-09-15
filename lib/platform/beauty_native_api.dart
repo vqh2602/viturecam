@@ -22,9 +22,22 @@ class CameraDevice {
   }
 }
 
+class VirtualCameraStatus {
+  final String state;
+  final String message;
+  const VirtualCameraStatus({this.state = 'off', this.message = ''});
+  bool get active => state == 'active';
+  bool get pending => const ['installing', 'approval', 'connecting'].contains(state);
+  factory VirtualCameraStatus.fromMap(Map<dynamic, dynamic> map) =>
+      VirtualCameraStatus(state: map['state'] as String? ?? 'error',
+          message: map['message'] as String? ?? 'Virtual Camera is unavailable.');
+}
+
 class PerformanceStats {
   final double fps;
   final double renderTimeMs;
+  final double trackingTimeMs;
+  final double processingTimeMs;
   final int droppedFrames;
   final int width;
   final int height;
@@ -32,6 +45,8 @@ class PerformanceStats {
   const PerformanceStats({
     required this.fps,
     required this.renderTimeMs,
+    this.trackingTimeMs = 0,
+    this.processingTimeMs = 0,
     required this.droppedFrames,
     required this.width,
     required this.height,
@@ -41,6 +56,9 @@ class PerformanceStats {
     return PerformanceStats(
       fps: (map['fps'] as num?)?.toDouble() ?? 0.0,
       renderTimeMs: (map['renderTimeMs'] as num?)?.toDouble() ?? 0.0,
+      trackingTimeMs: (map['trackingTimeMs'] as num?)?.toDouble() ?? 0.0,
+      processingTimeMs: (map['processingTimeMs'] as num?)?.toDouble() ??
+          (map['renderTimeMs'] as num?)?.toDouble() ?? 0.0,
       droppedFrames: (map['droppedFrames'] as num?)?.toInt() ?? 0,
       width: (map['width'] as num?)?.toInt() ?? 1920,
       height: (map['height'] as num?)?.toInt() ?? 1080,
@@ -191,13 +209,18 @@ class BeautyNativeApi {
     }
   }
 
-  Future<bool> startVirtualCamera() async {
+  Future<VirtualCameraStatus> startVirtualCamera() => _virtualCameraCall('startVirtualCamera');
+
+  Future<VirtualCameraStatus> getVirtualCameraStatus() => _virtualCameraCall('getVirtualCameraStatus');
+
+  Future<VirtualCameraStatus> _virtualCameraCall(String method) async {
     try {
-      final res = await _channel.invokeMethod<Map<dynamic, dynamic>>('startVirtualCamera');
-      return res?['success'] as bool? ?? false;
+      final res = await _channel.invokeMethod<Map<dynamic, dynamic>>(method);
+      return VirtualCameraStatus.fromMap(res ?? const {});
     } on PlatformException catch (e) {
-      debugPrint('[BeautyNativeApi] startVirtualCamera error: $e');
-      return false;
+      return VirtualCameraStatus(state: 'error', message: e.message ?? 'Virtual Camera is unavailable.');
+    } on MissingPluginException {
+      return const VirtualCameraStatus(state: 'error', message: 'Virtual Camera requires the macOS app.');
     }
   }
 

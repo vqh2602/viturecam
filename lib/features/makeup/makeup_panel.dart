@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../l10n/app_localizations.dart';
 import '../../widgets/beauty_slider.dart';
 import '../camera/camera_controller.dart';
 import 'makeup_settings.dart';
@@ -7,19 +8,127 @@ import 'makeup_settings.dart';
 class MakeupPanel extends ConsumerWidget {
   const MakeupPanel({super.key});
 
+  static String getStyleName(AppLocalizations l10n, String id, String fallback) {
+    switch (id) {
+      case 'full':
+        return l10n.styleFull;
+      case 'gradient':
+        return l10n.styleGradient;
+      case 'liner':
+        return l10n.styleLiner;
+      case 'gloss':
+        return l10n.styleGloss;
+      case 'apple':
+        return l10n.styleApple;
+      case 'sunkissed':
+        return l10n.styleSunkissed;
+      case 'lifted':
+        return l10n.styleLifted;
+      case 'undereye':
+        return l10n.styleUndereye;
+      case 'contour':
+        return l10n.styleContour;
+      case 'natural':
+        return l10n.localeName.startsWith('vi') ? 'Tự nhiên' : 'Natural';
+      case 'korean':
+        return l10n.styleKorean;
+      case 'arched':
+        return l10n.styleArched;
+      case 'feathered':
+        return l10n.styleFeathered;
+      case 'willow':
+        return l10n.styleWillow;
+      case 'classic':
+        return l10n.styleClassic;
+      case 'cat':
+        return l10n.styleCat;
+      case 'puppy':
+        return l10n.stylePuppy;
+      case 'fox':
+        return l10n.styleFox;
+      case 'halo':
+        return l10n.styleHalo;
+      case 'cutCrease':
+        return l10n.styleCutCrease;
+      case 'outerV':
+        return l10n.styleOuterV;
+      case 'douyin':
+        return l10n.styleDouyin;
+      case 'male_natural':
+        return l10n.localeName.startsWith('vi') ? 'Tự nhiên' : 'Natural';
+      case 'male_sword':
+        return l10n.localeName.startsWith('vi') ? 'Dáng kiếm' : 'Sword';
+      case 'male_bold':
+        return l10n.localeName.startsWith('vi') ? 'Ngang rậm' : 'Bold';
+      case 'male_feathered':
+        return l10n.localeName.startsWith('vi') ? 'Phẩy sợi' : 'Feathered';
+      default:
+        return fallback;
+    }
+  }
+
+  static String getOptionName(AppLocalizations l10n, MakeupOption opt) {
+    if (opt.id == 'none') return l10n.none;
+    if (l10n.localeName.startsWith('en')) {
+      const enColorNames = {
+        'red': 'Pure Red',
+        'ruby': 'Ruby Red',
+        'chili': 'Brick Red',
+        'cherry': 'Cherry Red',
+        'wine': 'Wine',
+        'coral': 'Coral',
+        'orange': 'Warm Orange',
+        'peach': 'Peach Pink',
+        'rose': 'Dusty Rose',
+        'pink': 'Baby Pink',
+        'nude': 'Nude Orange',
+        'nudePink': 'Nude Pink',
+        'berry': 'Berry',
+        'plum': 'Plum',
+        'brown': 'Cinnamon',
+        'caramel': 'Caramel',
+        'rosy': 'Natural Rosy',
+        'apricot': 'Apricot',
+        'strawberry': 'Strawberry',
+        'mauve': 'Mauve',
+        'terracotta': 'Terracotta',
+        'black': 'Natural Black',
+        'darkBrown': 'Dark Brown',
+        'natural': 'Natural Brown',
+        'chestnut': 'Chestnut',
+        'ashBrown': 'Ash Brown',
+        'soft': 'Soft Gray',
+        'blonde': 'Light Blonde',
+        'redBrown': 'Red Brown',
+        'classic': 'Soft Black',
+        'deepBrown': 'Deep Brown',
+        'burgundy': 'Burgundy',
+        'navy': 'Navy Blue',
+        'white': 'White',
+        'earth': 'Earth Brown',
+        'sunset': 'Sunset',
+        'champagne': 'Champagne',
+        'smoky': 'Smoky',
+      };
+      return enColorNames[opt.id] ?? opt.name;
+    }
+    return opt.name;
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     final state = ref.watch(cameraControllerProvider);
     final controller = ref.read(cameraControllerProvider.notifier);
     final m = state.makeup;
     final subTool = state.activeSubTool;
 
     final categories = [
-      {'id': 'lip', 'label': 'Lipstick', 'icon': Icons.brush},
-      {'id': 'blush', 'label': 'Blush', 'icon': Icons.bubble_chart},
-      {'id': 'eyebrow', 'label': 'Eyebrow', 'icon': Icons.gesture},
-      {'id': 'eyeliner', 'label': 'Eyeliner', 'icon': Icons.edit},
-      {'id': 'eyeshadow', 'label': 'Eyeshadow', 'icon': Icons.palette},
+      {'id': 'lip', 'label': l10n.makeupLipstick, 'icon': Icons.brush},
+      {'id': 'blush', 'label': l10n.makeupBlush, 'icon': Icons.bubble_chart},
+      {'id': 'eyebrow', 'label': l10n.makeupEyebrow, 'icon': Icons.gesture},
+      {'id': 'eyeliner', 'label': l10n.makeupEyeliner, 'icon': Icons.edit},
+      {'id': 'eyeshadow', 'label': l10n.makeupEyeshadow, 'icon': Icons.palette},
     ];
 
     List<MakeupOption> activeOptions;
@@ -70,20 +179,20 @@ class MakeupPanel extends ConsumerWidget {
     String activeCategoryName;
     switch (subTool) {
       case 'blush':
-        activeCategoryName = 'Blush';
+        activeCategoryName = l10n.makeupBlush;
         break;
       case 'eyebrow':
-        activeCategoryName = 'Eyebrow';
+        activeCategoryName = l10n.makeupEyebrow;
         break;
       case 'eyeliner':
-        activeCategoryName = 'Eyeliner';
+        activeCategoryName = l10n.makeupEyeliner;
         break;
       case 'eyeshadow':
-        activeCategoryName = 'Eyeshadow';
+        activeCategoryName = l10n.makeupEyeshadow;
         break;
       case 'lip':
       default:
-        activeCategoryName = 'Lipstick';
+        activeCategoryName = l10n.makeupLipstick;
         break;
     }
 
@@ -140,14 +249,14 @@ class MakeupPanel extends ConsumerWidget {
               Expanded(
                 child: activePreset != 'none'
                     ? BeautySlider(
-                        label: '$activeCategoryName Intensity',
+                        label: l10n.makeupIntensity(activeCategoryName),
                         value: activeOpacity,
                         defaultValue: 60,
                         onChanged: onOpacityChanged,
                       )
                     : Center(
                         child: Text(
-                          'Select a $activeCategoryName style below',
+                          l10n.selectMakeupColorBelow(activeCategoryName),
                           style: const TextStyle(color: Colors.white38, fontSize: 12),
                         ),
                       ),
@@ -158,7 +267,7 @@ class MakeupPanel extends ConsumerWidget {
 
         const Divider(height: 1, color: Colors.white10),
 
-        // Row 2: Reset Button & Preset Swatches Bar
+        // Row 2: Reset Button + Style Chips (if Lip or Blush) + Swatches Bar
         SizedBox(
           height: 56,
           child: Row(
@@ -166,10 +275,55 @@ class MakeupPanel extends ConsumerWidget {
               const SizedBox(width: 12),
               IconButton(
                 icon: const Icon(Icons.refresh, size: 18, color: Colors.white54),
-                tooltip: 'Reset Makeup',
+                tooltip: l10n.resetMakeupTooltip,
                 onPressed: m.isModified ? () => controller.resetMakeup() : null,
               ),
+
+              // Style Chips for Lipstick, Blush, Eyebrow, Eyeliner, Eyeshadow
+              if (subTool == 'lip') ...[
+                const VerticalDivider(width: 12, indent: 12, endIndent: 12, color: Colors.white12),
+                _buildStyleSelector(
+                  l10n: l10n,
+                  options: MakeupPresets.lipStyles,
+                  selectedId: m.lipStyle,
+                  onSelect: (id) => controller.updateMakeup(m.copyWith(lipStyle: id)),
+                ),
+              ] else if (subTool == 'blush') ...[
+                const VerticalDivider(width: 12, indent: 12, endIndent: 12, color: Colors.white12),
+                _buildStyleSelector(
+                  l10n: l10n,
+                  options: MakeupPresets.blushStyles,
+                  selectedId: m.blushStyle,
+                  onSelect: (id) => controller.updateMakeup(m.copyWith(blushStyle: id)),
+                ),
+              ] else if (subTool == 'eyebrow') ...[
+                const VerticalDivider(width: 12, indent: 12, endIndent: 12, color: Colors.white12),
+                _buildEyebrowGenderAndStyleSelector(
+                  l10n: l10n,
+                  selectedId: m.eyebrowStyle,
+                  onSelect: (id) => controller.updateMakeup(m.copyWith(eyebrowStyle: id)),
+                ),
+              ] else if (subTool == 'eyeliner') ...[
+                const VerticalDivider(width: 12, indent: 12, endIndent: 12, color: Colors.white12),
+                _buildStyleSelector(
+                  l10n: l10n,
+                  options: MakeupPresets.eyelinerStyles,
+                  selectedId: m.eyelinerStyle,
+                  onSelect: (id) => controller.updateMakeup(m.copyWith(eyelinerStyle: id)),
+                ),
+              ] else if (subTool == 'eyeshadow') ...[
+                const VerticalDivider(width: 12, indent: 12, endIndent: 12, color: Colors.white12),
+                _buildStyleSelector(
+                  l10n: l10n,
+                  options: MakeupPresets.eyeshadowStyles,
+                  selectedId: m.eyeshadowStyle,
+                  onSelect: (id) => controller.updateMakeup(m.copyWith(eyeshadowStyle: id)),
+                ),
+              ],
+
               const VerticalDivider(width: 12, indent: 12, endIndent: 12, color: Colors.white12),
+
+              // Preset Color Swatches List
               Expanded(
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
@@ -178,6 +332,7 @@ class MakeupPanel extends ConsumerWidget {
                   itemBuilder: (context, idx) {
                     final opt = activeOptions[idx];
                     final isSel = opt.id == activePreset;
+                    final displayName = getOptionName(l10n, opt);
 
                     return GestureDetector(
                       onTap: () => onSelectPreset(opt.id),
@@ -211,7 +366,7 @@ class MakeupPanel extends ConsumerWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              opt.name,
+                              displayName,
                               style: TextStyle(
                                 fontSize: 10,
                                 color: isSel ? Colors.white : Colors.white60,
@@ -227,6 +382,147 @@ class MakeupPanel extends ConsumerWidget {
               ),
             ],
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStyleSelector({
+    required AppLocalizations l10n,
+    required List<MakeupStyleOption> options,
+    required String selectedId,
+    required ValueChanged<String> onSelect,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: const Color(0xFF222227),
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final opt in options)
+            GestureDetector(
+              onTap: () => onSelect(opt.id),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+                decoration: BoxDecoration(
+                  color: selectedId == opt.id ? const Color(0xFFFF7597) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      opt.icon,
+                      size: 13,
+                      color: selectedId == opt.id ? Colors.white : Colors.white70,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      getStyleName(l10n, opt.id, opt.name),
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: selectedId == opt.id ? FontWeight.w600 : FontWeight.w400,
+                        color: selectedId == opt.id ? Colors.white : Colors.white70,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEyebrowGenderAndStyleSelector({
+    required AppLocalizations l10n,
+    required String selectedId,
+    required ValueChanged<String> onSelect,
+  }) {
+    final isMale = MakeupPresets.isMaleEyebrow(selectedId);
+    final activeStyles = isMale ? MakeupPresets.maleEyebrowStyles : MakeupPresets.femaleEyebrowStyles;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Gender Switcher: [ ♀ Nữ | ♂ Nam ]
+        Container(
+          padding: const EdgeInsets.all(2),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E1E24),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.white12),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              GestureDetector(
+                onTap: () {
+                  if (isMale) onSelect('natural');
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: !isMale ? const Color(0xFFFF7597) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.female, size: 13, color: !isMale ? Colors.white : Colors.white60),
+                      const SizedBox(width: 2),
+                      Text(
+                        l10n.localeName.startsWith('vi') ? 'Nữ' : 'Women',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: !isMale ? FontWeight.w600 : FontWeight.w400,
+                          color: !isMale ? Colors.white : Colors.white60,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  if (!isMale) onSelect('male_natural');
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isMale ? const Color(0xFF4A90E2) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.male, size: 13, color: isMale ? Colors.white : Colors.white60),
+                      const SizedBox(width: 2),
+                      Text(
+                        l10n.localeName.startsWith('vi') ? 'Nam' : 'Men',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: isMale ? FontWeight.w600 : FontWeight.w400,
+                          color: isMale ? Colors.white : Colors.white60,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 6),
+        _buildStyleSelector(
+          l10n: l10n,
+          options: activeStyles,
+          selectedId: selectedId,
+          onSelect: onSelect,
         ),
       ],
     );

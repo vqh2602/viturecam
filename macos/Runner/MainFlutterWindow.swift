@@ -104,6 +104,12 @@ class MainFlutterWindow: NSWindow {
                 }
                 result(nil)
 
+            case "setTrackingEngine":
+                if let trackEngine = args["engine"] as? String {
+                    engine.trackingEngine = trackEngine
+                }
+                result(["success": true])
+
             case "setCompareMode":
                 if let mode = args["mode"] as? String {
                     engine.compareMode = mode
@@ -114,8 +120,10 @@ class MainFlutterWindow: NSWindow {
                 result(nil)
 
             case "startVirtualCamera":
-                let success = engine.virtualCam.start()
-                result(["success": success])
+                result(engine.virtualCam.start())
+
+            case "getVirtualCameraStatus":
+                result(engine.virtualCam.status)
 
             case "stopVirtualCamera":
                 engine.virtualCam.stop()

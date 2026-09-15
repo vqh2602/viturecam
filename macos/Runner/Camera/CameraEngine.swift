@@ -2,6 +2,7 @@ import AVFoundation
 import Foundation
 
 public protocol CameraEngineDelegate: AnyObject {
+    func cameraEngineDidDropFrame(_ engine: CameraEngine)
     func cameraEngine(_ engine: CameraEngine, didOutput sampleBuffer: CMSampleBuffer)
 }
 
@@ -37,7 +38,7 @@ public final class CameraEngine: NSObject, AVCaptureVideoDataOutputSampleBufferD
         )
 
         let defaultDevice = AVCaptureDevice.default(for: .video)
-        return discoverySession.devices.map { device in
+        return discoverySession.devices.filter { $0.uniqueID != VirtualCameraManager.deviceUID }.map { device in
             return [
                 "id": device.uniqueID,
                 "name": device.localizedName,
@@ -202,6 +203,6 @@ public final class CameraEngine: NSObject, AVCaptureVideoDataOutputSampleBufferD
     }
 
     public func captureOutput(_ output: AVCaptureOutput, didDrop sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        // Late frame discarded, normal under high system load
+        delegate?.cameraEngineDidDropFrame(self)
     }
 }

@@ -8,7 +8,7 @@
 PRODUCT_NAME = Beauty Camera
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.beautycamera.app
+PRODUCT_BUNDLE_IDENTIFIER = com.beautycamera.vqhapp
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2026 Beauty Camera. All rights reserved.

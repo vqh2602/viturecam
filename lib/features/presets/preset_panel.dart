@@ -1,27 +1,51 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../l10n/app_localizations.dart';
 import '../camera/camera_controller.dart';
+import 'preset_model.dart';
 
 class PresetPanel extends ConsumerWidget {
   const PresetPanel({super.key});
 
+  static String getPresetDisplayName(AppLocalizations l10n, PresetModel preset) {
+    if (!preset.isBuiltIn) return preset.name;
+    final isVi = l10n.localeName.startsWith('vi');
+    switch (preset.id) {
+      case 'natural':
+        return isVi ? 'Tự nhiên' : 'Natural';
+      case 'soft':
+        return isVi ? 'Nhẹ nhàng' : 'Soft';
+      case 'korean':
+        return isVi ? 'Hàn Quốc' : 'Korean';
+      case 'clean':
+        return isVi ? 'Thanh lịch' : 'Clean';
+      case 'glamour':
+        return isVi ? 'Quyến rũ' : 'Glamour';
+      case 'fresh':
+        return isVi ? 'Tươi tắn' : 'Fresh';
+      default:
+        return preset.name;
+    }
+  }
+
   void _showSavePresetDialog(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     final nameController = TextEditingController();
     showDialog(
       context: context,
       builder: (dialogCtx) => AlertDialog(
         backgroundColor: const Color(0xFF222226),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Save Custom Preset',
-          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+        title: Text(
+          l10n.saveCustomPreset,
+          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
         ),
         content: TextField(
           controller: nameController,
           autofocus: true,
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
-            hintText: 'Preset Name (e.g. My Glow)',
+            hintText: l10n.presetNameHint,
             hintStyle: const TextStyle(color: Colors.white38),
             filled: true,
             fillColor: const Color(0xFF2E2E34),
@@ -34,7 +58,7 @@ class PresetPanel extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+            child: Text(l10n.cancel, style: const TextStyle(color: Colors.white54)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -49,7 +73,7 @@ class PresetPanel extends ConsumerWidget {
                 Navigator.of(dialogCtx).pop();
               }
             },
-            child: const Text('Save'),
+            child: Text(l10n.save),
           ),
         ],
       ),
@@ -58,6 +82,7 @@ class PresetPanel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     final state = ref.watch(cameraControllerProvider);
     final controller = ref.read(cameraControllerProvider.notifier);
     final presets = state.presets;
@@ -77,7 +102,9 @@ class PresetPanel extends ConsumerWidget {
                 const Icon(Icons.auto_awesome, color: Color(0xFFFF7597), size: 16),
                 const SizedBox(width: 8),
                 Text(
-                  activePreset != null ? 'Active Preset: ${activePreset.name}' : 'Custom Settings Active',
+                  activePreset != null
+                      ? l10n.activePreset(getPresetDisplayName(l10n, activePreset))
+                      : l10n.customSettingsActive,
                   style: const TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w500,
@@ -97,7 +124,7 @@ class PresetPanel extends ConsumerWidget {
                     elevation: 0,
                   ),
                   icon: const Icon(Icons.bookmark_add_outlined, size: 14),
-                  label: const Text('Save Current', style: TextStyle(fontSize: 11.5)),
+                  label: Text(l10n.saveCurrent, style: const TextStyle(fontSize: 11.5)),
                   onPressed: () => _showSavePresetDialog(context, ref),
                 ),
               ],
@@ -117,6 +144,7 @@ class PresetPanel extends ConsumerWidget {
             itemBuilder: (context, idx) {
               final preset = presets[idx];
               final isSel = preset.id == activeId;
+              final displayName = getPresetDisplayName(l10n, preset);
 
               return GestureDetector(
                 onTap: () => controller.applyPreset(preset),
@@ -142,7 +170,7 @@ class PresetPanel extends ConsumerWidget {
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          preset.name,
+                          displayName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../l10n/app_localizations.dart';
 import '../../widgets/tool_button.dart';
 import '../background/background_panel.dart';
 import '../beauty/beauty_panel.dart';
@@ -20,20 +21,28 @@ class CameraScreen extends ConsumerStatefulWidget {
 
 class _CameraScreenState extends ConsumerState<CameraScreen> {
   bool _isHoldingRaw = false;
+  String _savedCompareModeBeforeHold = 'none';
 
   void _onBeforeAfterDown() {
+    if (_isHoldingRaw) return;
+    final currentMode = ref.read(cameraControllerProvider).compareMode;
+    if (currentMode != 'raw') {
+      _savedCompareModeBeforeHold = currentMode;
+    }
     setState(() => _isHoldingRaw = true);
     ref.read(cameraControllerProvider.notifier).setCompareMode('raw');
   }
 
   void _onBeforeAfterUp() {
+    if (!_isHoldingRaw) return;
     setState(() => _isHoldingRaw = false);
-    final prevMode = ref.read(cameraControllerProvider).compareMode == 'raw' ? 'none' : ref.read(cameraControllerProvider).compareMode;
-    ref.read(cameraControllerProvider.notifier).setCompareMode(prevMode);
+    final restoreMode = _savedCompareModeBeforeHold == 'raw' ? 'none' : _savedCompareModeBeforeHold;
+    ref.read(cameraControllerProvider.notifier).setCompareMode(restoreMode);
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final state = ref.watch(cameraControllerProvider);
     final controller = ref.read(cameraControllerProvider.notifier);
 
@@ -44,6 +53,15 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
           children: [
             // Top Bar
             _buildTopBar(context, state, controller),
+            if (state.virtualCamera.message.isNotEmpty)
+              Container(
+                width: double.infinity,
+                color: state.virtualCamera.state == 'error'
+                    ? const Color(0xFF4A2929) : const Color(0xFF25342C),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                child: Text(state.virtualCamera.message,
+                    style: const TextStyle(color: Colors.white, fontSize: 12)),
+              ),
 
             // Live Camera Viewport
             Expanded(
@@ -62,6 +80,42 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
                     left: 20,
                     child: _buildCompareFloatingControls(state, controller),
                   ),
+
+                  // Floating Original Camera Banner when holding original
+                  if (_isHoldingRaw)
+                    Positioned(
+                      top: 14,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.85),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: const Color(0xFFFF7597), width: 1.2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFFF7597).withValues(alpha: 0.35),
+                              blurRadius: 10,
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.remove_red_eye, color: Color(0xFFFF7597), size: 14),
+                            const SizedBox(width: 6),
+                            Text(
+                              l10n.camRawBanner,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
 
                   // Floating Performance Stats Badge
                   Positioned(
@@ -87,7 +141,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            '${state.stats.fps.toStringAsFixed(0)} FPS • ${state.stats.renderTimeMs.toStringAsFixed(1)}ms',
+                            '${state.stats.fps.toStringAsFixed(0)} FPS • ${state.stats.processingTimeMs.toStringAsFixed(1)}ms',
                             style: const TextStyle(fontSize: 11, color: Colors.white70, fontWeight: FontWeight.w500),
                           ),
                         ],
@@ -134,7 +188,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                 ),
                                 icon: const Icon(Icons.lock_open, size: 16),
-                                label: const Text('Grant Permission'),
+                                label: Text(l10n.grantPermission),
                                 onPressed: () => controller.retryPermissionAndStart(),
                               ),
                               const SizedBox(width: 10),
@@ -145,7 +199,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                 ),
                                 icon: const Icon(Icons.settings, size: 16),
-                                label: const Text('System Settings'),
+                                label: Text(l10n.systemSettings),
                                 onPressed: () => controller.openCameraSettings(),
                               ),
                             ],
@@ -166,6 +220,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   }
 
   Widget _buildTopBar(BuildContext context, CameraState state, CameraController controller) {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       height: 52,
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -178,9 +233,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
           // Logo & Title
           const Icon(Icons.auto_awesome, color: Color(0xFFFF7597), size: 20),
           const SizedBox(width: 8),
-          const Text(
-            'Beauty Camera',
-            style: TextStyle(
+          Text(
+            l10n.appTitle,
+            style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
               color: Colors.white,
@@ -237,7 +292,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
               size: 18,
               color: state.mirrorPreview ? const Color(0xFFFF8DA1) : Colors.white54,
             ),
-            tooltip: 'Mirror Preview',
+            tooltip: l10n.mirrorPreview,
             onPressed: () => controller.toggleMirrorPreview(),
           ),
 
@@ -248,7 +303,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
               size: 20,
               color: state.beautyEnabled ? const Color(0xFFFF7597) : Colors.white38,
             ),
-            tooltip: state.beautyEnabled ? 'Disable Beauty Effects' : 'Enable Beauty Effects',
+            tooltip: state.beautyEnabled ? l10n.disableBeauty : l10n.enableBeauty,
             onPressed: () => controller.toggleBeautyEnabled(),
           ),
           const SizedBox(width: 6),
@@ -273,17 +328,21 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
               color: state.virtualCameraActive ? const Color(0xFF7FE68D) : Colors.white54,
             ),
             label: Text(
-              state.virtualCameraActive ? 'Virtual Cam: ON' : 'Virtual Cam',
+              state.virtualCameraActive
+                  ? l10n.virtualCamOn
+                  : state.virtualCamera.pending
+                      ? l10n.virtualCamSetup
+                      : l10n.virtualCam,
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
             ),
-            onPressed: () => controller.toggleVirtualCamera(),
+            onPressed: state.virtualCamera.pending ? null : () => controller.toggleVirtualCamera(),
           ),
           const SizedBox(width: 8),
 
           // Settings Button
           IconButton(
             icon: const Icon(Icons.settings_outlined, size: 19, color: Colors.white70),
-            tooltip: 'Settings',
+            tooltip: l10n.settings,
             onPressed: () {
               showDialog(
                 context: context,
@@ -297,16 +356,17 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   }
 
   Widget _buildCameraPreview(CameraState state, CameraController controller) {
+    final l10n = AppLocalizations.of(context)!;
     if (state.textureId == null || !state.isStreaming) {
       return Container(
         color: Colors.black,
-        child: const Center(
+        child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.videocam_off_outlined, size: 48, color: Colors.white24),
-              SizedBox(height: 12),
-              Text('Camera Offline', style: TextStyle(color: Colors.white54, fontSize: 14)),
+              const Icon(Icons.videocam_off_outlined, size: 48, color: Colors.white24),
+              const SizedBox(height: 12),
+              Text(l10n.cameraOffline, style: const TextStyle(color: Colors.white54, fontSize: 14)),
             ],
           ),
         ),
@@ -372,6 +432,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   }
 
   Widget _buildCompareFloatingControls(CameraState state, CameraController controller) {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.65),
@@ -384,8 +445,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
         children: [
           // Hold to view original
           Listener(
+            behavior: HitTestBehavior.opaque,
             onPointerDown: (_) => _onBeforeAfterDown(),
             onPointerUp: (_) => _onBeforeAfterUp(),
+            onPointerCancel: (_) => _onBeforeAfterUp(),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
@@ -402,7 +465,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
                   ),
                   const SizedBox(width: 5),
                   Text(
-                    'Hold: Original',
+                    l10n.holdOriginal,
                     style: TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w600,
@@ -436,7 +499,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
                   ),
                   const SizedBox(width: 5),
                   Text(
-                    'Split',
+                    l10n.split,
                     style: TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w600,
@@ -453,16 +516,17 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   }
 
   Widget _buildBottomDock(BuildContext context, CameraState state, CameraController controller) {
+    final l10n = AppLocalizations.of(context)!;
     final activeCat = state.activeCategory;
 
     final categories = [
-      {'id': 'beauty', 'label': 'Beauty', 'icon': Icons.face_retouching_natural, 'isActive': state.beauty.isModified},
-      {'id': 'reshape', 'label': 'Reshape', 'icon': Icons.architecture, 'isActive': state.face.isModified},
-      {'id': 'makeup', 'label': 'Makeup', 'icon': Icons.brush, 'isActive': state.makeup.isModified},
-      {'id': 'filter', 'label': 'Filter', 'icon': Icons.filter, 'isActive': state.filterId != 'original'},
-      {'id': 'color', 'label': 'Color', 'icon': Icons.tune, 'isActive': state.color.isModified},
-      {'id': 'background', 'label': 'Background', 'icon': Icons.blur_on, 'isActive': state.background.isModified},
-      {'id': 'presets', 'label': 'Presets', 'icon': Icons.auto_awesome_motion, 'isActive': state.activePresetId != null},
+      {'id': 'beauty', 'label': l10n.categoryBeauty, 'icon': Icons.face_retouching_natural, 'isActive': state.beauty.isModified},
+      {'id': 'reshape', 'label': l10n.categoryReshape, 'icon': Icons.architecture, 'isActive': state.face.isModified},
+      {'id': 'makeup', 'label': l10n.categoryMakeup, 'icon': Icons.brush, 'isActive': state.makeup.isModified},
+      {'id': 'filter', 'label': l10n.categoryFilter, 'icon': Icons.filter, 'isActive': state.filterId != 'original'},
+      {'id': 'color', 'label': l10n.categoryColor, 'icon': Icons.tune, 'isActive': state.color.isModified},
+      {'id': 'background', 'label': l10n.categoryBackground, 'icon': Icons.blur_on, 'isActive': state.background.isModified},
+      {'id': 'presets', 'label': l10n.categoryPresets, 'icon': Icons.auto_awesome_motion, 'isActive': state.activePresetId != null},
     ];
 
     Widget activePanel;
@@ -536,7 +600,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                   ),
                   icon: const Icon(Icons.restart_alt, size: 16),
-                  label: const Text('Reset All', style: TextStyle(fontSize: 12)),
+                  label: Text(l10n.resetAll, style: const TextStyle(fontSize: 12)),
                   onPressed: () => controller.resetAll(),
                 ),
               ],

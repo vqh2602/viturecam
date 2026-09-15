@@ -6,6 +6,9 @@ import Foundation
 public final class BeautyEngine: NSObject, CameraEngineDelegate {
     public let cameraEngine = CameraEngine()
     public let faceMeshTracker = FaceMeshTracker()
+    public let faceTracker = FaceTracker()
+    public let skinSegmenter = SkinSegmenter() // Core 2: MediaPipe Selfie Multiclass Segmentation (Class 3: Face-Skin)
+    public var trackingEngine: String = "facemesh" // "facemesh" (MediaPipe CoreML Core 1) or "vision" (Apple Native Vision)
     public let beautyRenderer = BeautyRenderer()
     public let bufferPool = PixelBufferPool()
     public let flutterTexture = BeautyFlutterTexture()
@@ -29,6 +32,8 @@ public final class BeautyEngine: NSObject, CameraEngineDelegate {
     private var frameCount: Int = 0
     private var lastFpsUpdateTime: TimeInterval = CACurrentMediaTime()
     private(set) var currentFps: Double = 0.0
+    private(set) var lastTrackingTimeMs: Double = 0.0
+    private(set) var lastProcessingTimeMs: Double = 0.0
     private(set) var lastRenderTimeMs: Double = 0.0
     private(set) var droppedFrames: Int = 0
 
@@ -57,6 +62,9 @@ public final class BeautyEngine: NSObject, CameraEngineDelegate {
 
     public func startCamera(deviceId: String?, width: Int = 1920, height: Int = 1080, fps: Int = 30, completion: @escaping (Bool, String?, Int64) -> Void) {
         let registeredId = ensureTextureRegistered()
+        faceMeshTracker.reset()
+        faceTracker.reset()
+        skinSegmenter.reset()
         cameraEngine.start(deviceId: deviceId, targetWidth: width, targetHeight: height, fps: fps) { [weak self] success, error in
             guard let self = self else { return }
             if success {
@@ -68,8 +76,12 @@ public final class BeautyEngine: NSObject, CameraEngineDelegate {
     }
 
     public func stopCamera(completion: (() -> Void)? = nil) {
+        virtualCam.stop()
         cameraEngine.stop { [weak self] in
             self?.flutterTexture.clear()
+            self?.faceMeshTracker.reset()
+            self?.faceTracker.reset()
+            self?.skinSegmenter.reset()
             completion?()
         }
     }
@@ -78,10 +90,16 @@ public final class BeautyEngine: NSObject, CameraEngineDelegate {
         return [
             "fps": currentFps,
             "renderTimeMs": lastRenderTimeMs,
+            "trackingTimeMs": lastTrackingTimeMs,
+            "processingTimeMs": lastProcessingTimeMs,
             "droppedFrames": droppedFrames,
             "width": cameraEngine.currentWidth,
             "height": cameraEngine.currentHeight
         ]
+    }
+
+    public func cameraEngineDidDropFrame(_ engine: CameraEngine) {
+        droppedFrames += 1
     }
 
     // MARK: - CameraEngineDelegate
@@ -97,14 +115,42 @@ public final class BeautyEngine: NSObject, CameraEngineDelegate {
         // Ensure buffer pool matches current frame dimensions
         bufferPool.prepare(width: width, height: height)
 
-        let targetPixelBuffer = bufferPool.getPixelBuffer() ?? sourcePixelBuffer
+        guard let targetPixelBuffer = bufferPool.getPixelBuffer() else {
+            droppedFrames += 1
+            return
+        }
 
-        // Asynchronously track 468 3D face mesh landmarks (runs on background queue via CoreML on ANE)
-        faceMeshTracker.processFrameAsync(pixelBuffer: sourcePixelBuffer)
+        let processingStart = CACurrentMediaTime()
+        let timestamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer).seconds
+        let validTimestamp = timestamp.isFinite ? timestamp : processingStart
+
+        // Core 1: MediaPipe Face Landmarker / Apple Vision Tracker
+        // -> eyes / nose / lips / jaw / chin
+        // -> used for 3D Reshape, Makeup, Teeth, Eye Bag
+        let landmarks: FaceMeshLandmarks
+        if trackingEngine == "facemesh" {
+            landmarks = faceMeshTracker.processFrame(pixelBuffer: sourcePixelBuffer, timestamp: validTimestamp)
+        } else {
+            landmarks = faceTracker.processFrame(pixelBuffer: sourcePixelBuffer, timestamp: validTimestamp)
+        }
+        lastTrackingTimeMs = (CACurrentMediaTime() - processingStart) * 1000
+
+        // Core 2: Face / Skin Segmentation (MediaPipe Selfie Multiclass Class 3: Face-Skin)
+        // -> extracts genuine face skin mask, cleanly excluding headphones (AirPods Max), hair, clothes, and background
+        // -> used for skin smoothing, pore texture, whitening, and skin tone
+        let skinMask: CIImage?
+        let hasSkinBeauty = beautySettings.smooth > 0.01 || beautySettings.skinTone > 0.01 ||
+                            beautySettings.skinToneType != "natural" || beautySettings.whitening > 0.01 ||
+                            beautySettings.skinBrightness > 0.01 || beautySettings.redness > 0.01
+        if beautyEnabled && hasSkinBeauty {
+            skinMask = skinSegmenter.processFrame(pixelBuffer: sourcePixelBuffer, targetWidth: CGFloat(width), targetHeight: CGFloat(height))
+        } else {
+            skinMask = nil
+        }
 
         let startTime = CACurrentMediaTime()
 
-        // Real-time GPU Beauty, 3D Reshape & Color rendering
+        // Real-time GPU Beauty Engine combining Core 1 + Core 2
         beautyRenderer.processFrame(
             sourceBuffer: sourcePixelBuffer,
             targetBuffer: targetPixelBuffer,
@@ -117,11 +163,13 @@ public final class BeautyEngine: NSObject, CameraEngineDelegate {
             filter: filterSettings,
             color: colorSettings,
             background: backgroundSettings,
-            landmarks: faceMeshTracker.currentLandmarks
+            landmarks: landmarks,
+            skinMask: skinMask
         )
 
         let elapsedMs = (CACurrentMediaTime() - startTime) * 1000.0
         self.lastRenderTimeMs = elapsedMs
+        self.lastProcessingTimeMs = (CACurrentMediaTime() - processingStart) * 1000
 
         // Push to zero-copy Flutter Texture
         flutterTexture.updatePixelBuffer(targetPixelBuffer)

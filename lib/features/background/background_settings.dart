@@ -1,5 +1,5 @@
 class BackgroundSettings {
-  final String mode; // 'none', 'portrait_blur', 'strong_blur', 'virtual_studio'
+  final String mode; // 'none', 'portrait_blur', 'strong_blur', 'virtual_studio', 'zoom_blur', 'swirly_bokeh', 'dreamy_blur', 'motion_blur'
   final double blurIntensity; // 0..100
 
   const BackgroundSettings({

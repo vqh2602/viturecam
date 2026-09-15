@@ -35,6 +35,15 @@ public struct FaceMeshLandmarks {
     public var leftCheekApple: CGPoint = .zero
     public var rightCheekApple: CGPoint = .zero
 
+    // Contours for full-face skin mask & feature protection
+    public var faceContour: [CGPoint] = []
+    public var outerLipContour: [CGPoint] = []
+    public var innerLipContour: [CGPoint] = []
+    public var leftEyeContour: [CGPoint] = []
+    public var rightEyeContour: [CGPoint] = []
+    public var leftEyebrowContour: [CGPoint] = []
+    public var rightEyebrowContour: [CGPoint] = []
+
     public init() {}
 }
 
@@ -51,14 +60,14 @@ public struct CanonicalROI {
 }
 
 // MARK: - One Euro Filter for 468 3D Landmarks (Casiez CHI 2012)
-// Tuned for real-time interactive beauty: minCutoff=3.5Hz delivers < 30ms settling time
-// with beta=50.0 providing instantaneous zero-lag response during motion while eliminating jitter.
+// Adaptive smoothing trades stationary jitter against motion lag; benchmark with capture timestamps.
 public final class OneEuroFilterBank468 {
     public var minCutoff: Float = 3.5
     public var beta: Float = 50.0
     public var dCutoff: Float = 1.0
 
     private var xPrev: [SIMD3<Float>] = []
+    private var rawPrev: [SIMD3<Float>] = []
     private var dxPrev: [SIMD3<Float>] = []
     private var lastTimestamp: TimeInterval?
 
@@ -69,6 +78,7 @@ public final class OneEuroFilterBank468 {
 
     public func reset() {
         xPrev.removeAll(keepingCapacity: true)
+        rawPrev.removeAll(keepingCapacity: true)
         dxPrev.removeAll(keepingCapacity: true)
         lastTimestamp = nil
     }
@@ -81,10 +91,18 @@ public final class OneEuroFilterBank468 {
     }
 
     public func filter(raw: [SIMD3<Float>], timestamp: TimeInterval) -> [SIMD3<Float>] {
-        guard raw.count == 468 else { return raw }
+        guard raw.count == 468, timestamp.isFinite,
+              raw.allSatisfy({ $0.x.isFinite && $0.y.isFinite && $0.z.isFinite }) else {
+            reset()
+            return []
+        }
+        if let previous = lastTimestamp, timestamp <= previous || timestamp - previous > 0.25 {
+            reset()
+        }
 
         guard let tPrev = lastTimestamp, xPrev.count == 468, dxPrev.count == 468 else {
             xPrev = raw
+            rawPrev = raw
             dxPrev = Array(repeating: SIMD3<Float>(0, 0, 0), count: 468)
             lastTimestamp = timestamp
             return raw
@@ -104,7 +122,8 @@ public final class OneEuroFilterBank468 {
             let prevDx = dxPrev[i]
 
             // Filtered derivative
-            let dx = (x - prev) / dt
+            let dx = (x - rawPrev[i]) / dt
+            rawPrev[i] = x
             let edx = alphaD * dx + oneMinusAlphaD * prevDx
             dxPrev[i] = edx
 
@@ -126,7 +145,6 @@ public final class OneEuroFilterBank468 {
 
 public final class FaceMeshTracker {
     private let trackingQueue = DispatchQueue(label: "com.beautycamera.facemeshtracking", qos: .userInteractive)
-    private var isProcessing: Bool = false
     private var model: MLModel?
     private var ciContext: CIContext?
     private var cropBuffer: CVPixelBuffer?
@@ -134,7 +152,8 @@ public final class FaceMeshTracker {
     private var previousLandmarks = FaceMeshLandmarks()
     private var smoothedROI: CanonicalROI?
     private let filterBank = OneEuroFilterBank468()
-    private var missedFrames: Int = 0
+    private var frameTimestamp: TimeInterval = 0
+    private var imageSize: CGSize = .zero
     private let lock = NSLock()
 
     public init() {
@@ -205,76 +224,82 @@ public final class FaceMeshTracker {
         return previousLandmarks
     }
 
-    public func processFrameAsync(pixelBuffer: CVPixelBuffer) {
-        guard model != nil else { return }
+    /// Called on the capture queue. Return landmarks for this exact buffer before rendering it.
+    /// AVCapture drops late frames instead of allowing a queue of obsolete frames to build up.
+    public func processFrame(pixelBuffer: CVPixelBuffer, timestamp: TimeInterval) -> FaceMeshLandmarks {
+        trackingQueue.sync {
+            frameTimestamp = timestamp.isFinite ? timestamp : ProcessInfo.processInfo.systemUptime
+            trackFrame(pixelBuffer: pixelBuffer)
+            return currentLandmarks
+        }
+    }
 
-        if isProcessing {
-            // Drop tracking frame to maintain 60 FPS video throughput
-            return
+    public func reset() {
+        trackingQueue.sync { updateNoFace() }
+    }
+
+    private func trackFrame(pixelBuffer: CVPixelBuffer) {
+        guard model != nil else { updateNoFace(); return }
+        let width = CGFloat(CVPixelBufferGetWidth(pixelBuffer))
+        let height = CGFloat(CVPixelBufferGetHeight(pixelBuffer))
+        guard width > 0 && height > 0 else { updateNoFace(); return }
+        let size = CGSize(width: width, height: height)
+        if imageSize != size { updateNoFace(); imageSize = size }
+
+        // FAST-PATH: If face is already reliably tracked, compute canonical ROI in true pixel space (Google MediaPipe standard)
+        let prevROI: CanonicalROI? = {
+            self.lock.lock()
+            defer { self.lock.unlock() }
+            if self.previousLandmarks.hasFace && self.previousLandmarks.confidence > 5.0 {
+                return self.computeCanonicalROIFromLandmarks(self.previousLandmarks.landmarks, imageWidth: width, imageHeight: height)
+            }
+            return nil
+        }()
+
+        if let rawROI = prevROI {
+            let smoothROI = self.smoothROI(rawROI)
+            if self.runFaceMeshInference(pixelBuffer: pixelBuffer, roi: smoothROI, imageWidth: width, imageHeight: height) {
+                return
+            }
         }
 
-        isProcessing = true
-        trackingQueue.async { [weak self] in
-            guard let self = self else { return }
-            defer { self.isProcessing = false }
-
-            let width = CGFloat(CVPixelBufferGetWidth(pixelBuffer))
-            let height = CGFloat(CVPixelBufferGetHeight(pixelBuffer))
-            guard width > 0 && height > 0 else { return }
-
-            // FAST-PATH: If face is already reliably tracked, compute canonical ROI in true pixel space (Google MediaPipe standard)
-            let prevROI: CanonicalROI? = {
-                self.lock.lock()
-                defer { self.lock.unlock() }
-                if self.previousLandmarks.hasFace && self.previousLandmarks.confidence > 5.0 {
-                    return self.computeCanonicalROIFromLandmarks(self.previousLandmarks.landmarks, imageWidth: width, imageHeight: height)
-                }
-                return nil
-            }()
-
-            if let rawROI = prevROI {
-                let smoothROI = self.smoothROI(rawROI)
-                if self.runFaceMeshInference(pixelBuffer: pixelBuffer, roi: smoothROI, imageWidth: width, imageHeight: height) {
-                    return
-                }
+        // SLOW-PATH / FALLBACK: Re-acquire face via Apple Vision face detection in pixel space with roll angle
+        let faceRequest = VNDetectFaceRectanglesRequest { [weak self] (req, err) in
+            guard let self = self, err == nil else {
+                self?.updateNoFace()
+                return
+            }
+            guard let results = req.results as? [VNFaceObservation], let face = results.first else {
+                self.updateNoFace()
+                return
             }
 
-            // SLOW-PATH / FALLBACK: Re-acquire face via Apple Vision face detection in pixel space with roll angle
-            let faceRequest = VNDetectFaceRectanglesRequest { [weak self] (req, err) in
-                guard let self = self, err == nil else {
-                    self?.updateNoFace()
-                    return
-                }
-                guard let results = req.results as? [VNFaceObservation], let face = results.first else {
-                    self.updateNoFace()
-                    return
-                }
+            let b = face.boundingBox // Vision bottom-left normalized coordinates
+            let roll = CGFloat(face.roll?.floatValue ?? 0.0) // True radians from Vision
 
-                let b = face.boundingBox // Vision bottom-left normalized coordinates
-                let roll = CGFloat(face.roll?.floatValue ?? 0.0) // True radians from Vision
+            let boxX = b.origin.x * width
+            let boxY = (1.0 - b.maxY) * height
+            let boxW = b.width * width
+            let boxH = b.height * height
 
-                let boxX = b.origin.x * width
-                let boxY = (1.0 - b.maxY) * height
-                let boxW = b.width * width
-                let boxH = b.height * height
+            let cx_px = boxX + boxW * 0.5
+            let cy_px = boxY + boxH * 0.5
+            let size_px = max(48.0, max(boxW, boxH) * 1.75)
 
-                let cx_px = boxX + boxW * 0.5
-                let cy_px = boxY + boxH * 0.5
-                let size_px = max(48.0, max(boxW, boxH) * 1.5)
+            let initialROI = CanonicalROI(
+                centerPx: CGPoint(x: cx_px, y: cy_px),
+                sizePx: size_px,
+                rollAngle: -roll
+            )
 
-                let initialROI = CanonicalROI(
-                    centerPx: CGPoint(x: cx_px, y: cy_px),
-                    sizePx: size_px,
-                    rollAngle: roll
-                )
-
-                _ = self.runFaceMeshInference(pixelBuffer: pixelBuffer, roi: initialROI, imageWidth: width, imageHeight: height)
-            }
-
-            faceRequest.preferBackgroundProcessing = false
-            let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .up, options: [:])
-            try? handler.perform([faceRequest])
+            self.smoothedROI = initialROI
+            _ = self.runFaceMeshInference(pixelBuffer: pixelBuffer, roi: initialROI, imageWidth: width, imageHeight: height)
         }
+
+        faceRequest.preferBackgroundProcessing = false
+        let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .up, options: [:])
+        do { try handler.perform([faceRequest]) }
+        catch { updateNoFace() }
     }
 
     private func computeCanonicalROIFromLandmarks(
@@ -307,7 +332,8 @@ public final class FaceMeshTracker {
         let cx_px = minX_px + boxW * 0.5
         let cy_px = minY_px + boxH * 0.5
 
-        // 1.5x expansion around full face (Google MediaPipe RectTransformation standard)
+        // The mesh already includes the full face; use a tighter crop than the Vision seed.
+        // Excess padding feeds scale error back into the next frame and makes the ROI grow.
         let size_px = max(48.0, max(boxW, boxH) * 1.5)
 
         // True physical roll angle between outer eye corners in pixel space (zero aspect-ratio distortion!)
@@ -346,12 +372,9 @@ public final class FaceMeshTracker {
     private func updateNoFace() {
         lock.lock()
         defer { lock.unlock() }
-        missedFrames += 1
-        if missedFrames > 8 {
-            previousLandmarks.hasFace = false
-            smoothedROI = nil
-            filterBank.reset()
-        }
+        previousLandmarks = FaceMeshLandmarks()
+        smoothedROI = nil
+        filterBank.reset()
     }
 
     @discardableResult
@@ -361,7 +384,10 @@ public final class FaceMeshTracker {
         imageWidth: CGFloat,
         imageHeight: CGFloat
     ) -> Bool {
-        guard let model = model, let cropBuffer = cropBuffer, let ciContext = ciContext else { return false }
+        guard let model = model, let cropBuffer = cropBuffer, let ciContext = ciContext else {
+            updateNoFace()
+            return false
+        }
 
         let W = imageWidth
         let H = imageHeight
@@ -390,11 +416,15 @@ public final class FaceMeshTracker {
             let input = try MLDictionaryFeatureProvider(dictionary: ["input_image": cropBuffer])
             let output = try model.prediction(from: input)
 
-            guard let multiArray = output.featureValue(for: "points_confidence")?.multiArrayValue else { return false }
+            guard let multiArray = output.featureValue(for: "points_confidence")?.multiArrayValue,
+                  multiArray.count == 1405, multiArray.dataType == .float32 else {
+                updateNoFace()
+                return false
+            }
             let ptr = multiArray.dataPointer.bindMemory(to: Float.self, capacity: multiArray.count)
 
             let confidence = ptr[1404]
-            if confidence < 5.0 {
+            if !confidence.isFinite || confidence < 5.0 {
                 updateNoFace()
                 return false
             }
@@ -422,7 +452,11 @@ public final class FaceMeshTracker {
                 rawPoints.append(SIMD3<Float>(imgX, imgY, imgZ))
             }
 
-            updateSmoothedLandmarks(rawPoints: rawPoints, confidence: confidence, roi: roi)
+            guard rawPoints.allSatisfy({ $0.x.isFinite && $0.y.isFinite && $0.z.isFinite }) else {
+                updateNoFace()
+                return false
+            }
+            updateSmoothedLandmarks(rawPoints: rawPoints, confidence: confidence, pixelBuffer: pixelBuffer)
             return true
         } catch {
             NSLog("[FaceMeshTracker] Prediction error: %@", error.localizedDescription)
@@ -434,14 +468,14 @@ public final class FaceMeshTracker {
     private func updateSmoothedLandmarks(
         rawPoints: [SIMD3<Float>],
         confidence: Float,
-        roi: CanonicalROI
+        pixelBuffer: CVPixelBuffer
     ) {
         lock.lock()
         defer { lock.unlock() }
-        missedFrames = 0
-
-        let timestamp = ProcessInfo.processInfo.systemUptime
-        let smoothedPoints = filterBank.filter(raw: rawPoints, timestamp: timestamp)
+        // Refine against this frame AFTER temporal filtering so a freshly closed
+        // mouth is not pulled apart again by the previous frame's lip positions.
+        let smoothedPoints = LipContourRefiner.refine(
+            filterBank.filter(raw: rawPoints, timestamp: frameTimestamp), in: pixelBuffer)
 
         var res = FaceMeshLandmarks()
         res.hasFace = true
@@ -503,12 +537,69 @@ public final class FaceMeshTracker {
         res.leftMouthCorner = pt(FaceMeshGeometry.leftMouthCornerIndex)
         res.rightMouthCorner = pt(FaceMeshGeometry.rightMouthCornerIndex)
         res.foreheadCenter = pt(FaceMeshGeometry.foreheadCenterIndex)
-        res.leftTemple = pt(127)
-        res.rightTemple = pt(356)
+        // Anatomical Temporal Fossa Anchors (hõm thái dương):
+        // Midpoint of upper temporal crest (71/301) and lateral orbital rim (156/383)
+        let p71 = pt(71), p156 = pt(156)
+        res.leftTemple = CGPoint(x: (p71.x + p156.x) * 0.5, y: (p71.y + p156.y) * 0.5)
+        let p301 = pt(301), p383 = pt(383)
+        res.rightTemple = CGPoint(x: (p301.x + p383.x) * 0.5, y: (p301.y + p383.y) * 0.5)
         res.leftEyeOuter = pt(33)
         res.rightEyeOuter = pt(263)
         res.leftCheekApple = pt(280)
         res.rightCheekApple = pt(50)
+
+        // Contours for full-face mask, feature protection & makeup
+        res.faceContour = FaceMeshGeometry.silhouetteIndices.map { pt($0) }
+        res.outerLipContour = FaceMeshGeometry.outerLipContour.map { pt($0) }
+        res.innerLipContour = FaceMeshGeometry.innerLipContour.map { pt($0) }
+        res.rightEyeContour = FaceMeshGeometry.rightEyeLoop.map { pt($0) }
+        res.leftEyeContour = FaceMeshGeometry.leftEyeLoop.map { pt($0) }
+
+        var rightBrow = FaceMeshGeometry.rightEyebrowIndices.map { pt($0) }
+        var leftBrow = FaceMeshGeometry.leftEyebrowIndices.map { pt($0) }
+
+        // Comprehensive Anatomical Eyebrow Refinement:
+        // MediaPipe raw 3D mesh landmarks [70, 63, 105, 66, 107, 55, 65, 52, 53, 46] and [300, 293, 334, 296, 336, 285, 295, 282, 283, 276]
+        // track the supraorbital bone ridge, which sits higher on the forehead than natural human eyebrow hairs.
+        // We drop the full eyebrow contour down to naturally match real human eyebrow hair follicles.
+        let browScale = max(0.1, hypot(res.leftEyeCenter.x - res.rightEyeCenter.x, res.leftEyeCenter.y - res.rightEyeCenter.y))
+        let drops: [CGFloat] = [
+            0.075, // 0: tail top (70/300)
+            0.080, // 1: arch outer (63/293)
+            0.085, // 2: arch peak (105/334)
+            0.080, // 3: body bridge (66/296)
+            0.075, // 4: head top (107/336)
+            0.065, // 5: head bot (55/285)
+            0.075, // 6: body bot (65/295)
+            0.080, // 7: arch bot (52/282)
+            0.075, // 8: arch outer bot (53/283)
+            0.070  // 9: tail bot (46/276)
+        ]
+
+        for i in 0..<min(rightBrow.count, drops.count) {
+            rightBrow[i].y += browScale * drops[i]
+        }
+        for i in 0..<min(leftBrow.count, drops.count) {
+            leftBrow[i].y += browScale * drops[i]
+        }
+
+        res.rightEyebrowContour = rightBrow
+        res.leftEyebrowContour = leftBrow
+
+        // Synchronize refined eyebrow points back into res.landmarks
+        // so that 3D Face Reshape (eyebrow height, arch, tilt) and mesh renderers operate on true eyebrow hairs!
+        for (i, idx) in FaceMeshGeometry.rightEyebrowIndices.enumerated() {
+            if idx < res.landmarks.count && i < rightBrow.count {
+                res.landmarks[idx].x = Float(rightBrow[i].x)
+                res.landmarks[idx].y = Float(rightBrow[i].y)
+            }
+        }
+        for (i, idx) in FaceMeshGeometry.leftEyebrowIndices.enumerated() {
+            if idx < res.landmarks.count && i < leftBrow.count {
+                res.landmarks[idx].x = Float(leftBrow[i].x)
+                res.landmarks[idx].y = Float(leftBrow[i].y)
+            }
+        }
 
         previousLandmarks = res
     }

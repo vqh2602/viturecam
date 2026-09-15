@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../l10n/app_localizations.dart';
 import '../../widgets/beauty_slider.dart';
 import '../../widgets/tool_button.dart';
 import '../camera/camera_controller.dart';
@@ -9,28 +10,29 @@ class ColorPanel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     final state = ref.watch(cameraControllerProvider);
     final controller = ref.read(cameraControllerProvider.notifier);
     final c = state.color;
     final subTool = state.activeSubTool;
 
     final tools = [
-      {'id': 'exposure', 'label': 'Exposure', 'icon': Icons.exposure},
-      {'id': 'brightness', 'label': 'Brightness', 'icon': Icons.brightness_medium},
-      {'id': 'contrast', 'label': 'Contrast', 'icon': Icons.contrast},
-      {'id': 'highlights', 'label': 'Highlights', 'icon': Icons.wb_sunny},
-      {'id': 'shadows', 'label': 'Shadows', 'icon': Icons.nightlight_round},
-      {'id': 'saturation', 'label': 'Saturation', 'icon': Icons.color_lens},
-      {'id': 'temperature', 'label': 'Temperature', 'icon': Icons.thermostat},
-      {'id': 'tint', 'label': 'Tint', 'icon': Icons.invert_colors},
-      {'id': 'sharpness', 'label': 'Sharpness', 'icon': Icons.details},
+      {'id': 'exposure', 'label': l10n.colorExposure, 'icon': Icons.exposure},
+      {'id': 'brightness', 'label': l10n.colorBrightness, 'icon': Icons.brightness_medium},
+      {'id': 'contrast', 'label': l10n.colorContrast, 'icon': Icons.contrast},
+      {'id': 'highlights', 'label': l10n.colorHighlights, 'icon': Icons.wb_sunny},
+      {'id': 'shadows', 'label': l10n.colorShadows, 'icon': Icons.nightlight_round},
+      {'id': 'saturation', 'label': l10n.colorSaturation, 'icon': Icons.color_lens},
+      {'id': 'temperature', 'label': l10n.colorTemperature, 'icon': Icons.thermostat},
+      {'id': 'tint', 'label': l10n.colorTint, 'icon': Icons.invert_colors},
+      {'id': 'sharpness', 'label': l10n.colorSharpness, 'icon': Icons.details},
     ];
 
     Widget buildCurrentSlider() {
       switch (subTool) {
         case 'exposure':
           return BeautySlider(
-            label: 'Exposure',
+            label: l10n.colorExposure,
             value: c.exposure,
             min: -100,
             max: 100,
@@ -39,7 +41,7 @@ class ColorPanel extends ConsumerWidget {
           );
         case 'brightness':
           return BeautySlider(
-            label: 'Brightness',
+            label: l10n.colorBrightness,
             value: c.brightness,
             min: -100,
             max: 100,
@@ -48,7 +50,7 @@ class ColorPanel extends ConsumerWidget {
           );
         case 'contrast':
           return BeautySlider(
-            label: 'Contrast',
+            label: l10n.colorContrast,
             value: c.contrast,
             min: -100,
             max: 100,
@@ -57,7 +59,7 @@ class ColorPanel extends ConsumerWidget {
           );
         case 'highlights':
           return BeautySlider(
-            label: 'Highlights',
+            label: l10n.colorHighlights,
             value: c.highlights,
             min: -100,
             max: 100,
@@ -66,7 +68,7 @@ class ColorPanel extends ConsumerWidget {
           );
         case 'shadows':
           return BeautySlider(
-            label: 'Shadows',
+            label: l10n.colorShadows,
             value: c.shadows,
             min: -100,
             max: 100,
@@ -75,7 +77,7 @@ class ColorPanel extends ConsumerWidget {
           );
         case 'saturation':
           return BeautySlider(
-            label: 'Saturation',
+            label: l10n.colorSaturation,
             value: c.saturation,
             min: -100,
             max: 100,
@@ -84,7 +86,7 @@ class ColorPanel extends ConsumerWidget {
           );
         case 'temperature':
           return BeautySlider(
-            label: 'Color Temperature',
+            label: l10n.sliderColorTemperature,
             value: c.temperature,
             min: -100,
             max: 100,
@@ -93,7 +95,7 @@ class ColorPanel extends ConsumerWidget {
           );
         case 'tint':
           return BeautySlider(
-            label: 'Color Tint',
+            label: l10n.sliderColorTint,
             value: c.tint,
             min: -100,
             max: 100,
@@ -102,7 +104,7 @@ class ColorPanel extends ConsumerWidget {
           );
         case 'sharpness':
           return BeautySlider(
-            label: 'Detail Sharpness',
+            label: l10n.sliderDetailSharpness,
             value: c.sharpness,
             min: 0,
             max: 100,
@@ -111,7 +113,7 @@ class ColorPanel extends ConsumerWidget {
           );
         default:
           return BeautySlider(
-            label: 'Exposure',
+            label: l10n.colorExposure,
             value: c.exposure,
             min: -100,
             max: 100,
@@ -137,7 +139,7 @@ class ColorPanel extends ConsumerWidget {
             children: [
               IconButton(
                 icon: const Icon(Icons.refresh, size: 18, color: Colors.white54),
-                tooltip: 'Reset Color',
+                tooltip: l10n.resetColorTooltip,
                 onPressed: c.isModified ? () => controller.resetColor() : null,
               ),
               const SizedBox(width: 4),
