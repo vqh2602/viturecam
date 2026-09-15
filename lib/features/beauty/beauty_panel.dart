@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../l10n/app_localizations.dart';
 import '../../widgets/beauty_slider.dart';
 import '../../widgets/tool_button.dart';
 import '../camera/camera_controller.dart';
@@ -9,53 +10,54 @@ class BeautyPanel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     final state = ref.watch(cameraControllerProvider);
     final controller = ref.read(cameraControllerProvider.notifier);
     final b = state.beauty;
     final subTool = state.activeSubTool;
 
     final tools = [
-      {'id': 'smooth', 'label': 'Smooth', 'icon': Icons.blur_on},
-      {'id': 'skinTexture', 'label': 'Texture', 'icon': Icons.grain},
-      {'id': 'skinTone', 'label': 'Skin Tone', 'icon': Icons.palette_outlined},
-      {'id': 'skinBrightness', 'label': 'Brighten', 'icon': Icons.brightness_6},
-      {'id': 'whitening', 'label': 'Whitening', 'icon': Icons.wb_sunny_outlined},
-      {'id': 'teethWhitening', 'label': 'Trắng răng', 'icon': Icons.auto_awesome},
-      {'id': 'redness', 'label': 'Redness', 'icon': Icons.spa_outlined},
-      {'id': 'darkCircle', 'label': 'Dark Circle', 'icon': Icons.remove_red_eye_outlined},
-      {'id': 'eyeBag', 'label': 'Eye Bag', 'icon': Icons.visibility_outlined},
+      {'id': 'smooth', 'label': l10n.beautySmooth, 'icon': Icons.blur_on},
+      {'id': 'skinTexture', 'label': l10n.beautyTexture, 'icon': Icons.grain},
+      {'id': 'skinTone', 'label': l10n.beautySkinTone, 'icon': Icons.palette_outlined},
+      {'id': 'skinBrightness', 'label': l10n.beautyBrighten, 'icon': Icons.brightness_6},
+      {'id': 'whitening', 'label': l10n.beautyWhitening, 'icon': Icons.wb_sunny_outlined},
+      {'id': 'teethWhitening', 'label': l10n.beautyTeethWhitening, 'icon': Icons.auto_awesome},
+      {'id': 'redness', 'label': l10n.beautyRedness, 'icon': Icons.spa_outlined},
+      {'id': 'darkCircle', 'label': l10n.beautyDarkCircle, 'icon': Icons.remove_red_eye_outlined},
+      {'id': 'eyeBag', 'label': l10n.beautyEyeBag, 'icon': Icons.visibility_outlined},
     ];
 
     Widget buildCurrentSlider() {
       switch (subTool) {
         case 'smooth':
           return BeautySlider(
-            label: 'Skin Smoothing',
+            label: l10n.sliderSkinSmoothing,
             value: b.smooth,
             defaultValue: 0,
             onChanged: (v) => controller.updateBeauty(b.copyWith(smooth: v)),
           );
         case 'skinTexture':
           return BeautySlider(
-            label: 'Texture Preservation',
+            label: l10n.sliderTexturePreservation,
             value: b.skinTexture,
             defaultValue: 50,
             onChanged: (v) => controller.updateBeauty(b.copyWith(skinTexture: v)),
           );
         case 'skinTone':
           final toneTypes = [
-            {'id': 'natural', 'label': 'Tự nhiên', 'color': const Color(0xFFF7D5C8)},
-            {'id': 'porcelain', 'label': 'Trắng sứ', 'color': const Color(0xFFFFF0EA)},
-            {'id': 'snow', 'label': 'Tuyết lạnh', 'color': const Color(0xFFF5F5FF)},
-            {'id': 'rosy', 'label': 'Trắng hồng', 'color': const Color(0xFFFFE0E5)},
-            {'id': 'cherry', 'label': 'Anh đào', 'color': const Color(0xFFFFDDE6)},
-            {'id': 'peach', 'label': 'Hồng đào', 'color': const Color(0xFFFFD1BA)},
-            {'id': 'coral', 'label': 'San hô', 'color': const Color(0xFFFFCBA4)},
-            {'id': 'warm', 'label': 'Nắng ấm', 'color': const Color(0xFFFFD4A0)},
-            {'id': 'honey', 'label': 'Mật ong', 'color': const Color(0xFFECC08C)},
-            {'id': 'wheat', 'label': 'Lúa mì', 'color': const Color(0xFFDEB887)},
-            {'id': 'olive', 'label': 'Ô-liu', 'color': const Color(0xFFD0C09E)},
-            {'id': 'tan', 'label': 'Bánh mật', 'color': const Color(0xFFCF9C7A)},
+            {'id': 'natural', 'label': l10n.toneNatural, 'color': const Color(0xFFF7D5C8)},
+            {'id': 'porcelain', 'label': l10n.tonePorcelain, 'color': const Color(0xFFFFF0EA)},
+            {'id': 'snow', 'label': l10n.toneSnow, 'color': const Color(0xFFF5F5FF)},
+            {'id': 'rosy', 'label': l10n.toneRosy, 'color': const Color(0xFFFFE0E5)},
+            {'id': 'cherry', 'label': l10n.toneCherry, 'color': const Color(0xFFFFDDE6)},
+            {'id': 'peach', 'label': l10n.tonePeach, 'color': const Color(0xFFFFD1BA)},
+            {'id': 'coral', 'label': l10n.toneCoral, 'color': const Color(0xFFFFCBA4)},
+            {'id': 'warm', 'label': l10n.toneWarm, 'color': const Color(0xFFFFD4A0)},
+            {'id': 'honey', 'label': l10n.toneHoney, 'color': const Color(0xFFECC08C)},
+            {'id': 'wheat', 'label': l10n.toneWheat, 'color': const Color(0xFFDEB887)},
+            {'id': 'olive', 'label': l10n.toneOlive, 'color': const Color(0xFFD0C09E)},
+            {'id': 'tan', 'label': l10n.toneTan, 'color': const Color(0xFFCF9C7A)},
           ];
           return Row(
             children: [
@@ -123,7 +125,7 @@ class BeautyPanel extends ConsumerWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: BeautySlider(
-                  label: 'Skin Tone Intensity',
+                  label: l10n.sliderSkinToneIntensity,
                   value: b.skinTone,
                   defaultValue: 0,
                   onChanged: (v) => controller.updateBeauty(b.copyWith(skinTone: v)),
@@ -133,49 +135,49 @@ class BeautyPanel extends ConsumerWidget {
           );
         case 'skinBrightness':
           return BeautySlider(
-            label: 'Skin Brightness',
+            label: l10n.sliderSkinBrightness,
             value: b.skinBrightness,
             defaultValue: 0,
             onChanged: (v) => controller.updateBeauty(b.copyWith(skinBrightness: v)),
           );
         case 'whitening':
           return BeautySlider(
-            label: 'Skin Whitening',
+            label: l10n.sliderSkinWhitening,
             value: b.whitening,
             defaultValue: 0,
             onChanged: (v) => controller.updateBeauty(b.copyWith(whitening: v)),
           );
         case 'redness':
           return BeautySlider(
-            label: 'Redness Reduction',
+            label: l10n.sliderRednessReduction,
             value: b.redness,
             defaultValue: 0,
             onChanged: (v) => controller.updateBeauty(b.copyWith(redness: v)),
           );
         case 'darkCircle':
           return BeautySlider(
-            label: 'Dark Circle Reduction',
+            label: l10n.sliderDarkCircleReduction,
             value: b.darkCircle,
             defaultValue: 0,
             onChanged: (v) => controller.updateBeauty(b.copyWith(darkCircle: v)),
           );
         case 'eyeBag':
           return BeautySlider(
-            label: 'Eye Bag Reduction',
+            label: l10n.sliderEyeBagReduction,
             value: b.eyeBag,
             defaultValue: 0,
             onChanged: (v) => controller.updateBeauty(b.copyWith(eyeBag: v)),
           );
         case 'teethWhitening':
           return BeautySlider(
-            label: 'Teeth Whitening',
+            label: l10n.sliderTeethWhitening,
             value: b.teethWhitening,
             defaultValue: 0,
             onChanged: (v) => controller.updateBeauty(b.copyWith(teethWhitening: v)),
           );
         default:
           return BeautySlider(
-            label: 'Skin Smoothing',
+            label: l10n.sliderSkinSmoothing,
             value: b.smooth,
             defaultValue: 0,
             onChanged: (v) => controller.updateBeauty(b.copyWith(smooth: v)),
@@ -200,7 +202,7 @@ class BeautyPanel extends ConsumerWidget {
               // Reset category
               IconButton(
                 icon: const Icon(Icons.refresh, size: 18, color: Colors.white54),
-                tooltip: 'Reset Beauty',
+                tooltip: l10n.resetBeautyTooltip,
                 onPressed: b.isModified ? () => controller.resetBeauty() : null,
               ),
               const SizedBox(width: 4),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../l10n/app_localizations.dart';
 import '../../widgets/beauty_slider.dart';
 import '../../widgets/tool_button.dart';
 import '../camera/camera_controller.dart';
@@ -9,6 +10,7 @@ class ReshapePanel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     final state = ref.watch(cameraControllerProvider);
     final controller = ref.read(cameraControllerProvider.notifier);
     final f = state.face;
@@ -16,53 +18,64 @@ class ReshapePanel extends ConsumerWidget {
     final subTool = state.activeSubTool;
 
     final faceTools = [
-      {'id': 'slimFace', 'label': 'Slim Face', 'icon': Icons.face_retouching_natural},
-      {'id': 'smallFace', 'label': 'Small Face', 'icon': Icons.compress},
-      {'id': 'vFace', 'label': 'V Face', 'icon': Icons.arrow_downward},
-      {'id': 'jawWidth', 'label': 'Jaw', 'icon': Icons.swap_horiz},
-      {'id': 'cheekWidth', 'label': 'Cheek', 'icon': Icons.aspect_ratio},
-      {'id': 'chinLength', 'label': 'Chin Len', 'icon': Icons.height},
-      {'id': 'chinWidth', 'label': 'Chin Wid', 'icon': Icons.straighten},
-      {'id': 'forehead', 'label': 'Forehead', 'icon': Icons.expand_less},
-      {'id': 'templeWidth', 'label': 'Temple', 'icon': Icons.width_wide},
+      {'id': 'slimFace', 'label': l10n.reshapeSlimFace, 'icon': Icons.face_retouching_natural},
+      {'id': 'smallFace', 'label': l10n.reshapeSmallFace, 'icon': Icons.compress},
+      {'id': 'vFace', 'label': l10n.reshapeVFace, 'icon': Icons.arrow_downward},
+      {'id': 'jawWidth', 'label': l10n.reshapeJaw, 'icon': Icons.swap_horiz},
+      {'id': 'cheekWidth', 'label': l10n.reshapeCheek, 'icon': Icons.aspect_ratio},
+      {'id': 'chinLength', 'label': l10n.reshapeChinLen, 'icon': Icons.height},
+      {'id': 'chinWidth', 'label': l10n.reshapeChinWid, 'icon': Icons.straighten},
+      {'id': 'forehead', 'label': l10n.reshapeForehead, 'icon': Icons.expand_less},
+      {'id': 'hairline', 'label': l10n.reshapeHairline, 'icon': Icons.vertical_align_top},
+      {'id': 'templeWidth', 'label': l10n.reshapeTemple, 'icon': Icons.width_wide},
     ];
 
     final noseTools = [
-      {'id': 'noseWidth', 'label': 'Nose Wid', 'icon': Icons.tune},
-      {'id': 'noseBridge', 'label': 'Nose Bridge', 'icon': Icons.linear_scale},
-      {'id': 'noseTip', 'label': 'Nose Tip', 'icon': Icons.adjust},
-      {'id': 'noseLength', 'label': 'Nose Len', 'icon': Icons.height},
-      {'id': 'nostrilWidth', 'label': 'Nostril', 'icon': Icons.filter_tilt_shift},
+      {'id': 'noseWidth', 'label': l10n.reshapeNoseWid, 'icon': Icons.tune},
+      {'id': 'noseBridge', 'label': l10n.reshapeNoseBridge, 'icon': Icons.linear_scale},
+      {'id': 'noseTip', 'label': l10n.reshapeNoseTip, 'icon': Icons.adjust},
+      {'id': 'noseLength', 'label': l10n.reshapeNoseLen, 'icon': Icons.height},
+      {'id': 'nostrilWidth', 'label': l10n.reshapeNostril, 'icon': Icons.filter_tilt_shift},
     ];
 
     final eyeTools = [
-      {'id': 'eyeSize', 'label': 'Eye Size', 'icon': Icons.remove_red_eye},
-      {'id': 'eyeDistance', 'label': 'Eye Dist', 'icon': Icons.space_bar},
-      {'id': 'eyeHeight', 'label': 'Eye Height', 'icon': Icons.height},
-      {'id': 'eyeAngle', 'label': 'Eye Angle', 'icon': Icons.rotate_right},
-      {'id': 'eyeBrightness', 'label': 'Eye Glow', 'icon': Icons.flare},
+      {'id': 'eyeSize', 'label': l10n.reshapeEyeSize, 'icon': Icons.remove_red_eye},
+      {'id': 'eyeDistance', 'label': l10n.reshapeEyeDist, 'icon': Icons.space_bar},
+      {'id': 'eyeHeight', 'label': l10n.reshapeEyeHeight, 'icon': Icons.height},
+      {'id': 'eyeAngle', 'label': l10n.reshapeEyeAngle, 'icon': Icons.rotate_right},
+      {'id': 'eyeBrightness', 'label': l10n.reshapeEyeBrighten, 'icon': Icons.brightness_medium},
+      {'id': 'eyeSparkle', 'label': l10n.reshapeEyeSparkle, 'icon': Icons.auto_awesome},
+    ];
+
+    final eyebrowTools = [
+      {'id': 'eyebrowHeight', 'label': l10n.reshapeEyebrowHeight, 'icon': Icons.swap_vert},
+      {'id': 'eyebrowArch', 'label': l10n.reshapeEyebrowArch, 'icon': Icons.trending_up},
+      {'id': 'eyebrowTilt', 'label': l10n.reshapeEyebrowTilt, 'icon': Icons.rotate_right},
     ];
 
     final mouthTools = [
-      {'id': 'smile', 'label': 'Smile', 'icon': Icons.sentiment_satisfied_alt},
-      {'id': 'smileCorners', 'label': 'Khóe cười', 'icon': Icons.mood},
-      {'id': 'mShapeLips', 'label': 'Môi chữ M', 'icon': Icons.favorite_border},
-      {'id': 'teethWhitening', 'label': 'Trắng răng', 'icon': Icons.auto_awesome},
-      {'id': 'mouthWidth', 'label': 'Mouth Wid', 'icon': Icons.panorama_horizontal},
-      {'id': 'mouthSize', 'label': 'Mouth Size', 'icon': Icons.photo_size_select_small},
-      {'id': 'lipThickness', 'label': 'Lip Thick', 'icon': Icons.line_weight},
-      {'id': 'mouthPosition', 'label': 'Position', 'icon': Icons.unfold_more},
+      {'id': 'smile', 'label': l10n.reshapeSmile, 'icon': Icons.sentiment_satisfied_alt},
+      {'id': 'smileCorners', 'label': l10n.reshapeSmileCorners, 'icon': Icons.mood},
+      {'id': 'mShapeLips', 'label': l10n.reshapeMShapeLips, 'icon': Icons.favorite_border},
+      {'id': 'teethWhitening', 'label': l10n.beautyTeethWhitening, 'icon': Icons.auto_awesome},
+      {'id': 'mouthWidth', 'label': l10n.reshapeMouthWid, 'icon': Icons.panorama_horizontal},
+      {'id': 'mouthSize', 'label': l10n.reshapeMouthSize, 'icon': Icons.photo_size_select_small},
+      {'id': 'lipThickness', 'label': l10n.reshapeLipThick, 'icon': Icons.line_weight},
+      {'id': 'mouthPosition', 'label': l10n.reshapeMouthPos, 'icon': Icons.unfold_more},
     ];
 
     final groups = [
-      {'id': 'face', 'label': 'Mặt'},
-      {'id': 'nose', 'label': 'Mũi'},
-      {'id': 'eyes', 'label': 'Mắt'},
-      {'id': 'mouth', 'label': 'Miệng'},
+      {'id': 'face', 'label': l10n.groupFace},
+      {'id': 'eyebrow', 'label': l10n.groupEyebrow},
+      {'id': 'eyes', 'label': l10n.groupEyes},
+      {'id': 'nose', 'label': l10n.groupNose},
+      {'id': 'mouth', 'label': l10n.groupMouth},
     ];
 
     String currentGroup = 'face';
-    if (noseTools.any((t) => t['id'] == subTool)) {
+    if (eyebrowTools.any((t) => t['id'] == subTool)) {
+      currentGroup = 'eyebrow';
+    } else if (noseTools.any((t) => t['id'] == subTool)) {
       currentGroup = 'nose';
     } else if (eyeTools.any((t) => t['id'] == subTool)) {
       currentGroup = 'eyes';
@@ -72,6 +85,9 @@ class ReshapePanel extends ConsumerWidget {
 
     void onSelectGroup(String groupId) {
       switch (groupId) {
+        case 'eyebrow':
+          controller.selectSubTool('eyebrowHeight');
+          break;
         case 'nose':
           controller.selectSubTool('noseWidth');
           break;
@@ -90,20 +106,25 @@ class ReshapePanel extends ConsumerWidget {
 
     bool isGroupModified(String groupId) {
       switch (groupId) {
+        case 'eyebrow':
+          return f.eyebrowHeight != 0 || f.eyebrowArch != 0 || f.eyebrowTilt != 0;
         case 'nose':
           return f.noseWidth != 0 || f.noseBridge != 0 || f.noseTip != 0 || f.noseLength != 0 || f.nostrilWidth != 0;
         case 'eyes':
-          return f.eyeSize != 0 || f.eyeDistance != 0 || f.eyeHeight != 0 || f.eyeAngle != 0 || f.eyeBrightness != 0;
+          return f.eyeSize != 0 || f.eyeDistance != 0 || f.eyeHeight != 0 || f.eyeAngle != 0 || f.eyeBrightness != 0 || f.eyeSparkle != 0 || f.eyeSparkleStyle != 'starlight';
         case 'mouth':
           return f.smile != 0 || f.smileCorners != 0 || f.mShapeLips != 0 || f.mouthWidth != 0 || f.mouthSize != 0 || f.lipThickness != 0 || f.mouthPosition != 0 || b.teethWhitening > 0;
         case 'face':
         default:
-          return f.slimFace != 0 || f.smallFace != 0 || f.vFace != 0 || f.jawWidth != 0 || f.cheekWidth != 0 || f.chinLength != 0 || f.chinWidth != 0 || f.forehead != 0 || f.templeWidth != 0;
+          return f.slimFace != 0 || f.smallFace != 0 || f.vFace != 0 || f.jawWidth != 0 || f.cheekWidth != 0 || f.chinLength != 0 || f.chinWidth != 0 || f.forehead != 0 || f.hairline != 0 || f.templeWidth != 0;
       }
     }
 
     List<Map<String, dynamic>> currentTools;
     switch (currentGroup) {
+      case 'eyebrow':
+        currentTools = eyebrowTools;
+        break;
       case 'nose':
         currentTools = noseTools;
         break;
@@ -124,28 +145,28 @@ class ReshapePanel extends ConsumerWidget {
         // Face
         case 'slimFace':
           return BeautySlider(
-            label: 'Slim Face',
+            label: l10n.reshapeSlimFace,
             value: f.slimFace,
             defaultValue: 0,
             onChanged: (v) => controller.updateFace(f.copyWith(slimFace: v)),
           );
         case 'smallFace':
           return BeautySlider(
-            label: 'Small Face',
+            label: l10n.reshapeSmallFace,
             value: f.smallFace,
             defaultValue: 0,
             onChanged: (v) => controller.updateFace(f.copyWith(smallFace: v)),
           );
         case 'vFace':
           return BeautySlider(
-            label: 'V-Line Face',
+            label: l10n.sliderVLineFace,
             value: f.vFace,
             defaultValue: 0,
             onChanged: (v) => controller.updateFace(f.copyWith(vFace: v)),
           );
         case 'jawWidth':
           return BeautySlider(
-            label: 'Jaw Width',
+            label: l10n.sliderJawWidth,
             value: f.jawWidth,
             min: -50,
             max: 50,
@@ -154,7 +175,7 @@ class ReshapePanel extends ConsumerWidget {
           );
         case 'cheekWidth':
           return BeautySlider(
-            label: 'Cheek Width',
+            label: l10n.sliderCheekbones,
             value: f.cheekWidth,
             min: -50,
             max: 50,
@@ -163,7 +184,7 @@ class ReshapePanel extends ConsumerWidget {
           );
         case 'chinLength':
           return BeautySlider(
-            label: 'Chin Length',
+            label: l10n.sliderChinLength,
             value: f.chinLength,
             min: -50,
             max: 50,
@@ -172,7 +193,7 @@ class ReshapePanel extends ConsumerWidget {
           );
         case 'chinWidth':
           return BeautySlider(
-            label: 'Chin Width',
+            label: l10n.sliderChinWidth,
             value: f.chinWidth,
             min: -50,
             max: 50,
@@ -181,16 +202,25 @@ class ReshapePanel extends ConsumerWidget {
           );
         case 'forehead':
           return BeautySlider(
-            label: 'Forehead Height',
+            label: l10n.sliderForeheadHeight,
             value: f.forehead,
             min: -50,
             max: 50,
             defaultValue: 0,
             onChanged: (v) => controller.updateFace(f.copyWith(forehead: v)),
           );
+        case 'hairline':
+          return BeautySlider(
+            label: l10n.sliderHairline,
+            value: f.hairline,
+            min: -50,
+            max: 50,
+            defaultValue: 0,
+            onChanged: (v) => controller.updateFace(f.copyWith(hairline: v)),
+          );
         case 'templeWidth':
           return BeautySlider(
-            label: 'Temple Width',
+            label: l10n.sliderTemple,
             value: f.templeWidth,
             min: -50,
             max: 50,
@@ -201,7 +231,7 @@ class ReshapePanel extends ConsumerWidget {
         // Nose
         case 'noseWidth':
           return BeautySlider(
-            label: 'Nose Width',
+            label: l10n.sliderNoseWidth,
             value: f.noseWidth,
             min: -50,
             max: 50,
@@ -210,7 +240,7 @@ class ReshapePanel extends ConsumerWidget {
           );
         case 'noseBridge':
           return BeautySlider(
-            label: 'Nose Bridge',
+            label: l10n.sliderNoseBridge,
             value: f.noseBridge,
             min: -50,
             max: 50,
@@ -219,7 +249,7 @@ class ReshapePanel extends ConsumerWidget {
           );
         case 'noseTip':
           return BeautySlider(
-            label: 'Nose Tip',
+            label: l10n.sliderNoseTip,
             value: f.noseTip,
             min: -50,
             max: 50,
@@ -228,7 +258,7 @@ class ReshapePanel extends ConsumerWidget {
           );
         case 'noseLength':
           return BeautySlider(
-            label: 'Nose Length',
+            label: l10n.sliderNoseLength,
             value: f.noseLength,
             min: -50,
             max: 50,
@@ -237,7 +267,7 @@ class ReshapePanel extends ConsumerWidget {
           );
         case 'nostrilWidth':
           return BeautySlider(
-            label: 'Nostril Width',
+            label: l10n.sliderNostrilWidth,
             value: f.nostrilWidth,
             min: -50,
             max: 50,
@@ -248,14 +278,14 @@ class ReshapePanel extends ConsumerWidget {
         // Eyes
         case 'eyeSize':
           return BeautySlider(
-            label: 'Big Eyes',
+            label: l10n.sliderBigEyes,
             value: f.eyeSize,
             defaultValue: 0,
             onChanged: (v) => controller.updateFace(f.copyWith(eyeSize: v)),
           );
         case 'eyeDistance':
           return BeautySlider(
-            label: 'Eye Distance',
+            label: l10n.sliderEyeDistance,
             value: f.eyeDistance,
             min: -50,
             max: 50,
@@ -264,7 +294,7 @@ class ReshapePanel extends ConsumerWidget {
           );
         case 'eyeHeight':
           return BeautySlider(
-            label: 'Eye Height',
+            label: l10n.sliderEyeHeight,
             value: f.eyeHeight,
             min: -50,
             max: 50,
@@ -273,7 +303,7 @@ class ReshapePanel extends ConsumerWidget {
           );
         case 'eyeAngle':
           return BeautySlider(
-            label: 'Eye Angle',
+            label: l10n.sliderEyeAngle,
             value: f.eyeAngle,
             min: -50,
             max: 50,
@@ -282,44 +312,139 @@ class ReshapePanel extends ConsumerWidget {
           );
         case 'eyeBrightness':
           return BeautySlider(
-            label: 'Eye Brightness',
+            label: l10n.sliderEyeBrightness,
             value: f.eyeBrightness,
             defaultValue: 0,
             onChanged: (v) => controller.updateFace(f.copyWith(eyeBrightness: v)),
+          );
+        case 'eyeSparkle':
+          final sparkleStyles = [
+            {'id': 'natural', 'label': l10n.sparkleNatural, 'icon': Icons.wb_sunny_outlined},
+            {'id': 'starlight', 'label': l10n.sparkleStarlight, 'icon': Icons.star_border},
+            {'id': 'ring', 'label': l10n.sparkleRing, 'icon': Icons.panorama_fish_eye},
+            {'id': 'crystal', 'label': l10n.sparkleCrystal, 'icon': Icons.diamond_outlined},
+          ];
+          return Row(
+            children: [
+              Expanded(
+                child: BeautySlider(
+                  label: l10n.sliderSparklingEyes,
+                  value: f.eyeSparkle,
+                  defaultValue: 0,
+                  onChanged: (v) => controller.updateFace(f.copyWith(eyeSparkle: v)),
+                ),
+              ),
+              Container(
+                margin: const EdgeInsets.only(right: 12),
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF222227),
+                  borderRadius: BorderRadius.circular(9),
+                  border: Border.all(color: Colors.white10),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final style in sparkleStyles)
+                      GestureDetector(
+                        onTap: () => controller.updateFace(f.copyWith(
+                          eyeSparkleStyle: style['id'] as String,
+                          eyeSparkle: f.eyeSparkle == 0 ? 50 : f.eyeSparkle,
+                        )),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: f.eyeSparkleStyle == style['id'] ? const Color(0xFF6C5CE7) : Colors.transparent,
+                            borderRadius: BorderRadius.circular(7),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                style['icon'] as IconData,
+                                size: 13,
+                                color: f.eyeSparkleStyle == style['id'] ? Colors.white : Colors.white70,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                style['label'] as String,
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: f.eyeSparkleStyle == style['id'] ? FontWeight.w600 : FontWeight.w400,
+                                  color: f.eyeSparkleStyle == style['id'] ? Colors.white : Colors.white70,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          );
+
+        // Eyebrows
+        case 'eyebrowHeight':
+          return BeautySlider(
+            label: l10n.sliderEyebrowHeight,
+            value: f.eyebrowHeight,
+            min: -50,
+            max: 50,
+            defaultValue: 0,
+            onChanged: (v) => controller.updateFace(f.copyWith(eyebrowHeight: v)),
+          );
+        case 'eyebrowArch':
+          return BeautySlider(
+            label: l10n.sliderEyebrowArch,
+            value: f.eyebrowArch,
+            min: -50,
+            max: 50,
+            defaultValue: 0,
+            onChanged: (v) => controller.updateFace(f.copyWith(eyebrowArch: v)),
+          );
+        case 'eyebrowTilt':
+          return BeautySlider(
+            label: l10n.sliderEyebrowTilt,
+            value: f.eyebrowTilt,
+            min: -50,
+            max: 50,
+            defaultValue: 0,
+            onChanged: (v) => controller.updateFace(f.copyWith(eyebrowTilt: v)),
           );
 
         // Mouth
         case 'smile':
           return BeautySlider(
-            label: 'Smile Lift',
+            label: l10n.sliderSmileLift,
             value: f.smile,
             defaultValue: 0,
             onChanged: (v) => controller.updateFace(f.copyWith(smile: v)),
           );
         case 'smileCorners':
           return BeautySlider(
-            label: 'Khóe cười (Smile Corners)',
+            label: l10n.sliderSmileCorners,
             value: f.smileCorners,
             defaultValue: 0,
             onChanged: (v) => controller.updateFace(f.copyWith(smileCorners: v)),
           );
         case 'mShapeLips':
           return BeautySlider(
-            label: 'Môi chữ M / Trái tim (Heart Lips)',
+            label: l10n.sliderHeartLips,
             value: f.mShapeLips,
             defaultValue: 0,
             onChanged: (v) => controller.updateFace(f.copyWith(mShapeLips: v)),
           );
         case 'teethWhitening':
           return BeautySlider(
-            label: 'Trắng răng (Teeth Whitening)',
+            label: l10n.sliderTeethWhitening,
             value: b.teethWhitening,
             defaultValue: 0,
             onChanged: (v) => controller.updateBeauty(b.copyWith(teethWhitening: v)),
           );
         case 'mouthWidth':
           return BeautySlider(
-            label: 'Mouth Width',
+            label: l10n.sliderMouthWidth,
             value: f.mouthWidth,
             min: -50,
             max: 50,
@@ -328,7 +453,7 @@ class ReshapePanel extends ConsumerWidget {
           );
         case 'mouthSize':
           return BeautySlider(
-            label: 'Mouth Size',
+            label: l10n.sliderMouthSize,
             value: f.mouthSize,
             min: -50,
             max: 50,
@@ -337,7 +462,7 @@ class ReshapePanel extends ConsumerWidget {
           );
         case 'lipThickness':
           return BeautySlider(
-            label: 'Lip Thickness',
+            label: l10n.sliderLipThickness,
             value: f.lipThickness,
             min: -50,
             max: 50,
@@ -346,7 +471,7 @@ class ReshapePanel extends ConsumerWidget {
           );
         case 'mouthPosition':
           return BeautySlider(
-            label: 'Mouth Position',
+            label: l10n.sliderMouthPosition,
             value: f.mouthPosition,
             min: -50,
             max: 50,
@@ -356,7 +481,7 @@ class ReshapePanel extends ConsumerWidget {
 
         default:
           return BeautySlider(
-            label: 'Slim Face',
+            label: l10n.reshapeSlimFace,
             value: f.slimFace,
             defaultValue: 0,
             onChanged: (v) => controller.updateFace(f.copyWith(slimFace: v)),
@@ -367,7 +492,7 @@ class ReshapePanel extends ConsumerWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Row 1: Group Selector (Mặt / Mũi / Mắt / Miệng) + Active Tool Slider
+        // Row 1: Group Selector (Face / Eyebrow / Eyes / Nose / Mouth) + Active Tool Slider
         SizedBox(
           height: 56,
           child: Row(
@@ -446,7 +571,7 @@ class ReshapePanel extends ConsumerWidget {
             children: [
               IconButton(
                 icon: const Icon(Icons.refresh, size: 18, color: Colors.white54),
-                tooltip: 'Reset Face',
+                tooltip: l10n.resetFaceTooltip,
                 onPressed: f.isModified ? () => controller.resetFace() : null,
               ),
               const SizedBox(width: 4),

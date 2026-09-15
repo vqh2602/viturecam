@@ -73,13 +73,27 @@ class MakeupPresets {
     MakeupStyleOption(id: 'contour', name: 'Tạo khối', icon: Icons.filter_hdr),
   ];
 
-  static const List<MakeupStyleOption> eyebrowStyles = [
+  static const List<MakeupStyleOption> femaleEyebrowStyles = [
     MakeupStyleOption(id: 'natural', name: 'Tự nhiên', icon: Icons.auto_awesome),
     MakeupStyleOption(id: 'korean', name: 'Ngang Hàn', icon: Icons.horizontal_rule),
     MakeupStyleOption(id: 'arched', name: 'Cánh cung', icon: Icons.show_chart),
     MakeupStyleOption(id: 'feathered', name: 'Phẩy sợi', icon: Icons.grain),
     MakeupStyleOption(id: 'willow', name: 'Lá liễu', icon: Icons.spa_outlined),
   ];
+
+  static const List<MakeupStyleOption> maleEyebrowStyles = [
+    MakeupStyleOption(id: 'male_natural', name: 'Nam tự nhiên', icon: Icons.face),
+    MakeupStyleOption(id: 'male_sword', name: 'Dáng kiếm', icon: Icons.trending_up),
+    MakeupStyleOption(id: 'male_bold', name: 'Ngang rậm', icon: Icons.line_weight),
+    MakeupStyleOption(id: 'male_feathered', name: 'Phẩy sợi nam', icon: Icons.grain),
+  ];
+
+  static const List<MakeupStyleOption> eyebrowStyles = [
+    ...femaleEyebrowStyles,
+    ...maleEyebrowStyles,
+  ];
+
+  static bool isMaleEyebrow(String style) => style.startsWith('male_');
 
   static const List<MakeupOption> eyebrowOptions = [
     MakeupOption(id: 'none', name: 'None', color: Colors.transparent),

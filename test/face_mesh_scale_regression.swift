@@ -1,5 +1,6 @@
 // Run from the project root:
 // swiftc macos/Runner/FaceTracking/FaceMesh{Tracker,Geometry}.swift \
+//   macos/Runner/FaceTracking/LipContourRefiner.swift \
 //   test/face_mesh_scale_regression.swift -o /tmp/face-mesh-scale-test
 // /tmp/face-mesh-scale-test /path/to/face-image-or-gif
 import CoreImage

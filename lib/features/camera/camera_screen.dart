@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../l10n/app_localizations.dart';
 import '../../widgets/tool_button.dart';
 import '../background/background_panel.dart';
 import '../beauty/beauty_panel.dart';
@@ -41,6 +42,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final state = ref.watch(cameraControllerProvider);
     final controller = ref.read(cameraControllerProvider.notifier);
 
@@ -96,14 +98,14 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
                             ),
                           ],
                         ),
-                        child: const Row(
+                        child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.remove_red_eye, color: Color(0xFFFF7597), size: 14),
-                            SizedBox(width: 6),
+                            const Icon(Icons.remove_red_eye, color: Color(0xFFFF7597), size: 14),
+                            const SizedBox(width: 6),
                             Text(
-                              'CAM GỐC (CHƯA CHỈNH SỬA)',
-                              style: TextStyle(
+                              l10n.camRawBanner,
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 11.5,
                                 fontWeight: FontWeight.bold,
@@ -186,7 +188,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                 ),
                                 icon: const Icon(Icons.lock_open, size: 16),
-                                label: const Text('Grant Permission'),
+                                label: Text(l10n.grantPermission),
                                 onPressed: () => controller.retryPermissionAndStart(),
                               ),
                               const SizedBox(width: 10),
@@ -197,7 +199,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                 ),
                                 icon: const Icon(Icons.settings, size: 16),
-                                label: const Text('System Settings'),
+                                label: Text(l10n.systemSettings),
                                 onPressed: () => controller.openCameraSettings(),
                               ),
                             ],
@@ -218,6 +220,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   }
 
   Widget _buildTopBar(BuildContext context, CameraState state, CameraController controller) {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       height: 52,
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -230,9 +233,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
           // Logo & Title
           const Icon(Icons.auto_awesome, color: Color(0xFFFF7597), size: 20),
           const SizedBox(width: 8),
-          const Text(
-            'Beauty Camera',
-            style: TextStyle(
+          Text(
+            l10n.appTitle,
+            style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
               color: Colors.white,
@@ -289,7 +292,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
               size: 18,
               color: state.mirrorPreview ? const Color(0xFFFF8DA1) : Colors.white54,
             ),
-            tooltip: 'Mirror Preview',
+            tooltip: l10n.mirrorPreview,
             onPressed: () => controller.toggleMirrorPreview(),
           ),
 
@@ -300,7 +303,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
               size: 20,
               color: state.beautyEnabled ? const Color(0xFFFF7597) : Colors.white38,
             ),
-            tooltip: state.beautyEnabled ? 'Disable Beauty Effects' : 'Enable Beauty Effects',
+            tooltip: state.beautyEnabled ? l10n.disableBeauty : l10n.enableBeauty,
             onPressed: () => controller.toggleBeautyEnabled(),
           ),
           const SizedBox(width: 6),
@@ -325,8 +328,11 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
               color: state.virtualCameraActive ? const Color(0xFF7FE68D) : Colors.white54,
             ),
             label: Text(
-              state.virtualCameraActive ? 'Virtual Cam: ON'
-                  : state.virtualCamera.pending ? 'Virtual Cam: Setup…' : 'Virtual Cam',
+              state.virtualCameraActive
+                  ? l10n.virtualCamOn
+                  : state.virtualCamera.pending
+                      ? l10n.virtualCamSetup
+                      : l10n.virtualCam,
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
             ),
             onPressed: state.virtualCamera.pending ? null : () => controller.toggleVirtualCamera(),
@@ -336,7 +342,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
           // Settings Button
           IconButton(
             icon: const Icon(Icons.settings_outlined, size: 19, color: Colors.white70),
-            tooltip: 'Settings',
+            tooltip: l10n.settings,
             onPressed: () {
               showDialog(
                 context: context,
@@ -350,16 +356,17 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   }
 
   Widget _buildCameraPreview(CameraState state, CameraController controller) {
+    final l10n = AppLocalizations.of(context)!;
     if (state.textureId == null || !state.isStreaming) {
       return Container(
         color: Colors.black,
-        child: const Center(
+        child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.videocam_off_outlined, size: 48, color: Colors.white24),
-              SizedBox(height: 12),
-              Text('Camera Offline', style: TextStyle(color: Colors.white54, fontSize: 14)),
+              const Icon(Icons.videocam_off_outlined, size: 48, color: Colors.white24),
+              const SizedBox(height: 12),
+              Text(l10n.cameraOffline, style: const TextStyle(color: Colors.white54, fontSize: 14)),
             ],
           ),
         ),
@@ -425,6 +432,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   }
 
   Widget _buildCompareFloatingControls(CameraState state, CameraController controller) {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.65),
@@ -457,7 +465,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
                   ),
                   const SizedBox(width: 5),
                   Text(
-                    'Hold: Original',
+                    l10n.holdOriginal,
                     style: TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w600,
@@ -491,7 +499,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
                   ),
                   const SizedBox(width: 5),
                   Text(
-                    'Split',
+                    l10n.split,
                     style: TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w600,
@@ -508,16 +516,17 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   }
 
   Widget _buildBottomDock(BuildContext context, CameraState state, CameraController controller) {
+    final l10n = AppLocalizations.of(context)!;
     final activeCat = state.activeCategory;
 
     final categories = [
-      {'id': 'beauty', 'label': 'Beauty', 'icon': Icons.face_retouching_natural, 'isActive': state.beauty.isModified},
-      {'id': 'reshape', 'label': 'Reshape', 'icon': Icons.architecture, 'isActive': state.face.isModified},
-      {'id': 'makeup', 'label': 'Makeup', 'icon': Icons.brush, 'isActive': state.makeup.isModified},
-      {'id': 'filter', 'label': 'Filter', 'icon': Icons.filter, 'isActive': state.filterId != 'original'},
-      {'id': 'color', 'label': 'Color', 'icon': Icons.tune, 'isActive': state.color.isModified},
-      {'id': 'background', 'label': 'Background', 'icon': Icons.blur_on, 'isActive': state.background.isModified},
-      {'id': 'presets', 'label': 'Presets', 'icon': Icons.auto_awesome_motion, 'isActive': state.activePresetId != null},
+      {'id': 'beauty', 'label': l10n.categoryBeauty, 'icon': Icons.face_retouching_natural, 'isActive': state.beauty.isModified},
+      {'id': 'reshape', 'label': l10n.categoryReshape, 'icon': Icons.architecture, 'isActive': state.face.isModified},
+      {'id': 'makeup', 'label': l10n.categoryMakeup, 'icon': Icons.brush, 'isActive': state.makeup.isModified},
+      {'id': 'filter', 'label': l10n.categoryFilter, 'icon': Icons.filter, 'isActive': state.filterId != 'original'},
+      {'id': 'color', 'label': l10n.categoryColor, 'icon': Icons.tune, 'isActive': state.color.isModified},
+      {'id': 'background', 'label': l10n.categoryBackground, 'icon': Icons.blur_on, 'isActive': state.background.isModified},
+      {'id': 'presets', 'label': l10n.categoryPresets, 'icon': Icons.auto_awesome_motion, 'isActive': state.activePresetId != null},
     ];
 
     Widget activePanel;
@@ -591,7 +600,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                   ),
                   icon: const Icon(Icons.restart_alt, size: 16),
-                  label: const Text('Reset All', style: TextStyle(fontSize: 12)),
+                  label: Text(l10n.resetAll, style: const TextStyle(fontSize: 12)),
                   onPressed: () => controller.resetAll(),
                 ),
               ],

@@ -456,7 +456,7 @@ public final class FaceMeshTracker {
                 updateNoFace()
                 return false
             }
-            updateSmoothedLandmarks(rawPoints: rawPoints, confidence: confidence, roi: roi)
+            updateSmoothedLandmarks(rawPoints: rawPoints, confidence: confidence, pixelBuffer: pixelBuffer)
             return true
         } catch {
             NSLog("[FaceMeshTracker] Prediction error: %@", error.localizedDescription)
@@ -468,11 +468,14 @@ public final class FaceMeshTracker {
     private func updateSmoothedLandmarks(
         rawPoints: [SIMD3<Float>],
         confidence: Float,
-        roi: CanonicalROI
+        pixelBuffer: CVPixelBuffer
     ) {
         lock.lock()
         defer { lock.unlock() }
-        let smoothedPoints = filterBank.filter(raw: rawPoints, timestamp: frameTimestamp)
+        // Refine against this frame AFTER temporal filtering so a freshly closed
+        // mouth is not pulled apart again by the previous frame's lip positions.
+        let smoothedPoints = LipContourRefiner.refine(
+            filterBank.filter(raw: rawPoints, timestamp: frameTimestamp), in: pixelBuffer)
 
         var res = FaceMeshLandmarks()
         res.hasFace = true
@@ -534,8 +537,12 @@ public final class FaceMeshTracker {
         res.leftMouthCorner = pt(FaceMeshGeometry.leftMouthCornerIndex)
         res.rightMouthCorner = pt(FaceMeshGeometry.rightMouthCornerIndex)
         res.foreheadCenter = pt(FaceMeshGeometry.foreheadCenterIndex)
-        res.leftTemple = pt(127)
-        res.rightTemple = pt(356)
+        // Anatomical Temporal Fossa Anchors (hõm thái dương):
+        // Midpoint of upper temporal crest (71/301) and lateral orbital rim (156/383)
+        let p71 = pt(71), p156 = pt(156)
+        res.leftTemple = CGPoint(x: (p71.x + p156.x) * 0.5, y: (p71.y + p156.y) * 0.5)
+        let p301 = pt(301), p383 = pt(383)
+        res.rightTemple = CGPoint(x: (p301.x + p383.x) * 0.5, y: (p301.y + p383.y) * 0.5)
         res.leftEyeOuter = pt(33)
         res.rightEyeOuter = pt(263)
         res.leftCheekApple = pt(280)
@@ -547,8 +554,52 @@ public final class FaceMeshTracker {
         res.innerLipContour = FaceMeshGeometry.innerLipContour.map { pt($0) }
         res.rightEyeContour = FaceMeshGeometry.rightEyeLoop.map { pt($0) }
         res.leftEyeContour = FaceMeshGeometry.leftEyeLoop.map { pt($0) }
-        res.rightEyebrowContour = FaceMeshGeometry.rightEyebrowIndices.map { pt($0) }
-        res.leftEyebrowContour = FaceMeshGeometry.leftEyebrowIndices.map { pt($0) }
+
+        var rightBrow = FaceMeshGeometry.rightEyebrowIndices.map { pt($0) }
+        var leftBrow = FaceMeshGeometry.leftEyebrowIndices.map { pt($0) }
+
+        // Comprehensive Anatomical Eyebrow Refinement:
+        // MediaPipe raw 3D mesh landmarks [70, 63, 105, 66, 107, 55, 65, 52, 53, 46] and [300, 293, 334, 296, 336, 285, 295, 282, 283, 276]
+        // track the supraorbital bone ridge, which sits higher on the forehead than natural human eyebrow hairs.
+        // We drop the full eyebrow contour down to naturally match real human eyebrow hair follicles.
+        let browScale = max(0.1, hypot(res.leftEyeCenter.x - res.rightEyeCenter.x, res.leftEyeCenter.y - res.rightEyeCenter.y))
+        let drops: [CGFloat] = [
+            0.075, // 0: tail top (70/300)
+            0.080, // 1: arch outer (63/293)
+            0.085, // 2: arch peak (105/334)
+            0.080, // 3: body bridge (66/296)
+            0.075, // 4: head top (107/336)
+            0.065, // 5: head bot (55/285)
+            0.075, // 6: body bot (65/295)
+            0.080, // 7: arch bot (52/282)
+            0.075, // 8: arch outer bot (53/283)
+            0.070  // 9: tail bot (46/276)
+        ]
+
+        for i in 0..<min(rightBrow.count, drops.count) {
+            rightBrow[i].y += browScale * drops[i]
+        }
+        for i in 0..<min(leftBrow.count, drops.count) {
+            leftBrow[i].y += browScale * drops[i]
+        }
+
+        res.rightEyebrowContour = rightBrow
+        res.leftEyebrowContour = leftBrow
+
+        // Synchronize refined eyebrow points back into res.landmarks
+        // so that 3D Face Reshape (eyebrow height, arch, tilt) and mesh renderers operate on true eyebrow hairs!
+        for (i, idx) in FaceMeshGeometry.rightEyebrowIndices.enumerated() {
+            if idx < res.landmarks.count && i < rightBrow.count {
+                res.landmarks[idx].x = Float(rightBrow[i].x)
+                res.landmarks[idx].y = Float(rightBrow[i].y)
+            }
+        }
+        for (i, idx) in FaceMeshGeometry.leftEyebrowIndices.enumerated() {
+            if idx < res.landmarks.count && i < leftBrow.count {
+                res.landmarks[idx].x = Float(leftBrow[i].x)
+                res.landmarks[idx].y = Float(leftBrow[i].y)
+            }
+        }
 
         previousLandmarks = res
     }

@@ -42,6 +42,7 @@
 		BC0000012C00000000000008 /* VirtualCameraManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000008 /* VirtualCameraManager.swift */; };
 		BC0000012C00000000000009 /* FaceMeshTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000009 /* FaceMeshTracker.swift */; };
 		BC0000012C00000000000010 /* FaceMeshGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000010 /* FaceMeshGeometry.swift */; };
+		BC0000012C00000000000031 /* LipContourRefiner.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000031 /* LipContourRefiner.swift */; };
 		BC0000012C00000000000011 /* FaceMeshRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000011 /* FaceMeshRenderer.swift */; };
 		BC0000012C00000000000012 /* FaceMeshShaders.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000012 /* FaceMeshShaders.swift */; };
 		BC0000012C00000000000013 /* FaceMesh.mlmodelc in Resources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000013 /* FaceMesh.mlmodelc */; };
@@ -136,6 +137,7 @@
 		BC0000022C00000000000008 /* VirtualCameraManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualCamera/VirtualCameraManager.swift; sourceTree = "<group>"; };
 		BC0000022C00000000000009 /* FaceMeshTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceTracking/FaceMeshTracker.swift; sourceTree = "<group>"; };
 		BC0000022C00000000000010 /* FaceMeshGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceTracking/FaceMeshGeometry.swift; sourceTree = "<group>"; };
+		BC0000022C00000000000031 /* LipContourRefiner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceTracking/LipContourRefiner.swift; sourceTree = "<group>"; };
 		BC0000022C00000000000011 /* FaceMeshRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Rendering/FaceMeshRenderer.swift; sourceTree = "<group>"; };
 		BC0000022C00000000000012 /* FaceMeshShaders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Rendering/FaceMeshShaders.swift; sourceTree = "<group>"; };
 		BC0000022C00000000000013 /* FaceMesh.mlmodelc */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = FaceTracking/FaceMesh.mlmodelc; sourceTree = "<group>"; };
@@ -255,6 +257,7 @@
 				BC0000022C00000000000008 /* VirtualCameraManager.swift */,
 				BC0000022C00000000000009 /* FaceMeshTracker.swift */,
 				BC0000022C00000000000010 /* FaceMeshGeometry.swift */,
+				BC0000022C00000000000031 /* LipContourRefiner.swift */,
 				BC0000022C00000000000011 /* FaceMeshRenderer.swift */,
 				BC0000022C00000000000012 /* FaceMeshShaders.swift */,
 				BC0000022C00000000000013 /* FaceMesh.mlmodelc */,
@@ -584,6 +587,7 @@
 				BC0000012C00000000000008 /* VirtualCameraManager.swift in Sources */,
 				BC0000012C00000000000009 /* FaceMeshTracker.swift in Sources */,
 				BC0000012C00000000000010 /* FaceMeshGeometry.swift in Sources */,
+				BC0000012C00000000000031 /* LipContourRefiner.swift in Sources */,
 				BC0000012C00000000000011 /* FaceMeshRenderer.swift in Sources */,
 				BC0000012C00000000000012 /* FaceMeshShaders.swift in Sources */,
 				BC0000012C00000000000020 /* SkinSegmenter.swift in Sources */,

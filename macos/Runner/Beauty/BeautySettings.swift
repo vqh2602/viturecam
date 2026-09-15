@@ -37,6 +37,7 @@ public struct FaceSettings {
     public var chinWidth: Double = 0.0       // -1.0 .. 1.0
     public var forehead: Double = 0.0        // -1.0 .. 1.0
     public var templeWidth: Double = 0.0     // -1.0 .. 1.0
+    public var hairline: Double = 0.0        // -1.0 .. 1.0
 
     public var eyeSize: Double = 0.0         // 0.0 .. 1.0
     public var eyeWidth: Double = 0.0        // -1.0 .. 1.0
@@ -44,6 +45,12 @@ public struct FaceSettings {
     public var eyeDistance: Double = 0.0     // -1.0 .. 1.0
     public var eyeAngle: Double = 0.0        // -1.0 .. 1.0
     public var eyeBrightness: Double = 0.0   // 0.0 .. 1.0
+    public var eyeSparkle: Double = 0.0      // 0.0 .. 1.0
+    public var eyeSparkleStyle: String = "starlight" // "natural", "starlight", "ring", "crystal"
+
+    public var eyebrowHeight: Double = 0.0   // -1.0 .. 1.0 (0 = default)
+    public var eyebrowArch: Double = 0.0     // -1.0 .. 1.0 (0 = default)
+    public var eyebrowTilt: Double = 0.0     // -1.0 .. 1.0 (0 = default)
 
     public var noseWidth: Double = 0.0       // -1.0 .. 1.0
     public var noseLength: Double = 0.0      // -1.0 .. 1.0
@@ -70,6 +77,7 @@ public struct FaceSettings {
         if let v = dict["chinWidth"] as? Double { chinWidth = v }
         if let v = dict["forehead"] as? Double { forehead = v }
         if let v = dict["templeWidth"] as? Double { templeWidth = v }
+        if let v = dict["hairline"] as? Double { hairline = v }
 
         if let v = dict["eyeSize"] as? Double { eyeSize = v }
         if let v = dict["eyeWidth"] as? Double { eyeWidth = v }
@@ -77,6 +85,12 @@ public struct FaceSettings {
         if let v = dict["eyeDistance"] as? Double { eyeDistance = v }
         if let v = dict["eyeAngle"] as? Double { eyeAngle = v }
         if let v = dict["eyeBrightness"] as? Double { eyeBrightness = v }
+        if let v = dict["eyeSparkle"] as? Double { eyeSparkle = v }
+        if let v = dict["eyeSparkleStyle"] as? String { eyeSparkleStyle = v }
+
+        if let v = dict["eyebrowHeight"] as? Double { eyebrowHeight = v }
+        if let v = dict["eyebrowArch"] as? Double { eyebrowArch = v }
+        if let v = dict["eyebrowTilt"] as? Double { eyebrowTilt = v }
 
         if let v = dict["noseWidth"] as? Double { noseWidth = v }
         if let v = dict["noseLength"] as? Double { noseLength = v }
@@ -103,7 +117,7 @@ public struct MakeupSettings {
     public var blushStyle: String = "apple"    // "apple", "sunkissed", "lifted", "undereye", "contour"
     public var eyebrowPreset: String = "none"
     public var eyebrowOpacity: Double = 0.0
-    public var eyebrowStyle: String = "natural" // "natural", "korean", "arched", "feathered", "willow"
+    public var eyebrowStyle: String = "natural" // "natural", "korean", "arched", "feathered", "willow", "male_natural", "male_sword", "male_bold", "male_feathered"
     public var eyelinerPreset: String = "none"
     public var eyelinerOpacity: Double = 0.0
     public var eyelinerStyle: String = "classic" // "natural", "classic", "cat", "puppy", "fox"

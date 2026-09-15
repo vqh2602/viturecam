@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../app/locale_provider.dart';
+import '../../l10n/app_localizations.dart';
 import '../camera/camera_controller.dart';
 
 class SettingsDialog extends ConsumerWidget {
@@ -7,6 +9,8 @@ class SettingsDialog extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final currentLocale = ref.watch(appLocaleProvider);
     final state = ref.watch(cameraControllerProvider);
     final controller = ref.read(cameraControllerProvider.notifier);
 
@@ -24,9 +28,9 @@ class SettingsDialog extends ConsumerWidget {
               children: [
                 const Icon(Icons.settings_outlined, color: Color(0xFFFF7597), size: 22),
                 const SizedBox(width: 8),
-                const Text(
-                  'Beauty Camera Settings',
-                  style: TextStyle(
+                Text(
+                  l10n.settingsTitle,
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
@@ -43,10 +47,45 @@ class SettingsDialog extends ConsumerWidget {
             const Divider(color: Colors.white10),
             const SizedBox(height: 12),
 
+            // Language Selector
+            Text(
+              l10n.language,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white70),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ChoiceChip(
+                  label: Text(l10n.languageSystem),
+                  selected: currentLocale == null,
+                  onSelected: (sel) {
+                    if (sel) ref.read(appLocaleProvider.notifier).state = null;
+                  },
+                ),
+                ChoiceChip(
+                  label: Text(l10n.languageVi),
+                  selected: currentLocale?.languageCode == 'vi',
+                  onSelected: (sel) {
+                    if (sel) ref.read(appLocaleProvider.notifier).state = const Locale('vi');
+                  },
+                ),
+                ChoiceChip(
+                  label: Text(l10n.languageEn),
+                  selected: currentLocale?.languageCode == 'en',
+                  onSelected: (sel) {
+                    if (sel) ref.read(appLocaleProvider.notifier).state = const Locale('en');
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
             // Video Format & FPS
-            const Text(
-              'Capture Format & Framerate',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white70),
+            Text(
+              l10n.captureFormatFramerate,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white70),
             ),
             const SizedBox(height: 8),
             Row(
@@ -71,9 +110,9 @@ class SettingsDialog extends ConsumerWidget {
             const SizedBox(height: 20),
 
             // Virtual Camera Info
-            const Text(
-              'Virtual Camera (CoreMediaIO)',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white70),
+            Text(
+              l10n.virtualCameraHeader,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white70),
             ),
             const SizedBox(height: 8),
             Container(
@@ -88,9 +127,9 @@ class SettingsDialog extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      const Text(
-                        'Virtual Device Name: ',
-                        style: TextStyle(fontSize: 12, color: Colors.white70),
+                      Text(
+                        l10n.virtualDeviceName,
+                        style: const TextStyle(fontSize: 12, color: Colors.white70),
                       ),
                       const Text(
                         'Beauty Camera',
@@ -98,7 +137,7 @@ class SettingsDialog extends ConsumerWidget {
                       ),
                       const Spacer(),
                       Text(
-                        state.virtualCameraActive ? 'ACTIVE' : 'STANDBY',
+                        state.virtualCameraActive ? l10n.virtualCamActive : l10n.virtualCamStandby,
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -108,9 +147,9 @@ class SettingsDialog extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: 6),
-                  const Text(
-                    'When enabled, select "Beauty Camera" in Zoom, Google Meet, OBS, Discord, Telegram, or Microsoft Teams to use your beautified video stream directly.',
-                    style: TextStyle(fontSize: 11, color: Colors.white54, height: 1.4),
+                  Text(
+                    l10n.virtualCamDescription,
+                    style: const TextStyle(fontSize: 11, color: Colors.white54, height: 1.4),
                   ),
                 ],
               ),
@@ -118,22 +157,22 @@ class SettingsDialog extends ConsumerWidget {
             const SizedBox(height: 20),
 
             // Performance Stats
-            const Text(
-              'Hardware & Pipeline Stats',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white70),
+            Text(
+              l10n.hardwarePipelineStats,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white70),
             ),
             const SizedBox(height: 8),
             Row(
               children: [
-                _StatCard(title: 'FPS', value: state.stats.fps.toStringAsFixed(1)),
+                _StatCard(title: l10n.statFps, value: state.stats.fps.toStringAsFixed(1)),
                 const SizedBox(width: 8),
-                _StatCard(title: 'Processing', value: '${state.stats.processingTimeMs.toStringAsFixed(1)} ms'),
+                _StatCard(title: l10n.statProcessing, value: '${state.stats.processingTimeMs.toStringAsFixed(1)} ms'),
                 const SizedBox(width: 8),
-                _StatCard(title: 'Tracking', value: '${state.stats.trackingTimeMs.toStringAsFixed(1)} ms'),
+                _StatCard(title: l10n.statTracking, value: '${state.stats.trackingTimeMs.toStringAsFixed(1)} ms'),
                 const SizedBox(width: 8),
-                _StatCard(title: 'Dropped', value: '${state.stats.droppedFrames}'),
+                _StatCard(title: l10n.statDropped, value: '${state.stats.droppedFrames}'),
                 const SizedBox(width: 8),
-                _StatCard(title: 'Resolution', value: '${state.stats.width}x${state.stats.height}'),
+                _StatCard(title: l10n.statResolution, value: '${state.stats.width}x${state.stats.height}'),
               ],
             ),
           ],

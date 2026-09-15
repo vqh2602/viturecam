@@ -51,26 +51,86 @@ void main() {
     test('defaults and normalization', () {
       const settings = ReshapeSettings();
       expect(settings.smileCorners, 0);
+      expect(settings.eyebrowHeight, 0);
+      expect(settings.eyebrowArch, 0);
+      expect(settings.eyebrowTilt, 0);
+      expect(settings.hairline, 0);
+      expect(settings.templeWidth, 0);
+      expect(settings.cheekWidth, 0);
+      expect(settings.eyeBrightness, 0);
+      expect(settings.eyeSparkle, 0);
+      expect(settings.eyeSparkleStyle, 'starlight');
       expect(settings.isModified, false);
 
-      final modified = settings.copyWith(slimFace: 40, jawWidth: -25, smileCorners: 60);
+      final modified = settings.copyWith(
+        slimFace: 40,
+        jawWidth: -25,
+        cheekWidth: -30,
+        templeWidth: 20,
+        hairline: -40,
+        eyeBrightness: 60,
+        eyeSparkle: 75,
+        eyeSparkleStyle: 'crystal',
+        smileCorners: 60,
+        eyebrowHeight: 25,
+        eyebrowArch: 30,
+        eyebrowTilt: -35,
+      );
       expect(modified.isModified, true);
       expect(modified.isKeyActive('slimFace'), true);
       expect(modified.isKeyActive('jawWidth'), true);
+      expect(modified.isKeyActive('cheekWidth'), true);
+      expect(modified.isKeyActive('templeWidth'), true);
+      expect(modified.isKeyActive('hairline'), true);
+      expect(modified.isKeyActive('eyeBrightness'), true);
+      expect(modified.isKeyActive('eyeSparkle'), true);
       expect(modified.isKeyActive('smileCorners'), true);
+      expect(modified.isKeyActive('eyebrowHeight'), true);
+      expect(modified.isKeyActive('eyebrowArch'), true);
+      expect(modified.isKeyActive('eyebrowTilt'), true);
 
       final map = modified.toMap();
       expect(map['slimFace'], 0.4);
       expect(map['jawWidth'], -0.5);
+      expect(map['cheekWidth'], -0.6);
+      expect(map['templeWidth'], 0.4);
+      expect(map['hairline'], -0.8);
+      expect(map['eyeBrightness'], 0.6);
+      expect(map['eyeSparkle'], 0.75);
+      expect(map['eyeSparkleStyle'], 'crystal');
       expect(map['smileCorners'], 0.6);
+      expect(map['eyebrowHeight'], 0.5);
+      expect(map['eyebrowArch'], 0.6);
+      expect(map['eyebrowTilt'], -0.7);
     });
 
-    test('json roundtrip with smileCorners', () {
-      const settings = ReshapeSettings(smile: 30, smileCorners: 75);
+    test('json roundtrip with smileCorners, eyebrows, hairline, and eye sparkle', () {
+      const settings = ReshapeSettings(
+        smile: 30,
+        smileCorners: 75,
+        eyebrowHeight: 35,
+        eyebrowArch: 15,
+        eyebrowTilt: -20,
+        templeWidth: 25,
+        cheekWidth: -15,
+        hairline: 45,
+        eyeBrightness: 50,
+        eyeSparkle: 80,
+        eyeSparkleStyle: 'ring',
+      );
       final json = settings.toJson();
       final restored = ReshapeSettings.fromJson(json);
       expect(restored.smile, 30);
       expect(restored.smileCorners, 75);
+      expect(restored.eyebrowHeight, 35);
+      expect(restored.eyebrowArch, 15);
+      expect(restored.eyebrowTilt, -20);
+      expect(restored.templeWidth, 25);
+      expect(restored.cheekWidth, -15);
+      expect(restored.hairline, 45);
+      expect(restored.eyeBrightness, 50);
+      expect(restored.eyeSparkle, 80);
+      expect(restored.eyeSparkleStyle, 'ring');
     });
   });
 
@@ -111,6 +171,37 @@ void main() {
       expect(restored.eyelinerStyle, 'fox');
       expect(restored.eyeshadowStyle, 'douyin');
     });
+
+    test('eyebrow styles support both female and male classifications', () {
+      final femaleStyles = MakeupPresets.femaleEyebrowStyles.map((e) => e.id).toList();
+      expect(femaleStyles, contains('natural'));
+      expect(femaleStyles, contains('korean'));
+      expect(femaleStyles, contains('arched'));
+      expect(femaleStyles, contains('willow'));
+      expect(femaleStyles, contains('feathered'));
+
+      final maleStyles = MakeupPresets.maleEyebrowStyles.map((e) => e.id).toList();
+      expect(maleStyles, contains('male_natural'));
+      expect(maleStyles, contains('male_sword'));
+      expect(maleStyles, contains('male_bold'));
+      expect(maleStyles, contains('male_feathered'));
+
+      expect(MakeupPresets.isMaleEyebrow('male_natural'), true);
+      expect(MakeupPresets.isMaleEyebrow('male_sword'), true);
+      expect(MakeupPresets.isMaleEyebrow('male_bold'), true);
+      expect(MakeupPresets.isMaleEyebrow('male_feathered'), true);
+      expect(MakeupPresets.isMaleEyebrow('natural'), false);
+      expect(MakeupPresets.isMaleEyebrow('korean'), false);
+
+      const maleSettings = MakeupSettings(
+        eyebrowPreset: 'charcoal',
+        eyebrowOpacity: 85,
+        eyebrowStyle: 'male_sword',
+      );
+      expect(maleSettings.toMap()['eyebrowStyle'], 'male_sword');
+      final restoredMale = MakeupSettings.fromJson(maleSettings.toJson());
+      expect(restoredMale.eyebrowStyle, 'male_sword');
+    });
   });
 
   group('ColorSettings', () {
@@ -131,6 +222,13 @@ void main() {
       expect(settings.isKeyActive('portrait_blur'), true);
       expect(settings.isKeyActive('none'), false);
       expect(settings.toMap()['blurIntensity'], 0.75);
+
+      for (final mode in ['strong_blur', 'virtual_studio', 'zoom_blur', 'swirly_bokeh', 'dreamy_blur', 'motion_blur']) {
+        final s = settings.copyWith(mode: mode);
+        expect(s.mode, mode);
+        expect(s.isKeyActive(mode), true);
+        expect(s.toMap()['mode'], mode);
+      }
     });
   });
 

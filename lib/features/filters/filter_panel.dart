@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../l10n/app_localizations.dart';
 import '../../widgets/beauty_slider.dart';
 import '../camera/camera_controller.dart';
 import 'filter_model.dart';
@@ -14,23 +15,24 @@ class FilterPanel extends ConsumerStatefulWidget {
 class _FilterPanelState extends ConsumerState<FilterPanel> {
   String _selectedCategory = 'All';
 
-  final List<Map<String, String>> _categories = const [
-    {'id': 'All', 'label': 'Tất cả'},
-    {'id': 'Douyin', 'label': 'Douyin ✨'},
-    {'id': 'Natural', 'label': 'Tự nhiên'},
-    {'id': 'Korean', 'label': 'Hàn Quốc'},
-    {'id': 'Film', 'label': 'Film'},
-    {'id': 'Warm', 'label': 'Ấm áp'},
-    {'id': 'Cool', 'label': 'Lạnh'},
-    {'id': 'B&W', 'label': 'Đen trắng'},
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final state = ref.watch(cameraControllerProvider);
     final controller = ref.read(cameraControllerProvider.notifier);
     final activeId = state.filterId;
     final intensity = state.filterIntensity;
+
+    final categories = [
+      {'id': 'All', 'label': l10n.filterCatAll},
+      {'id': 'Douyin', 'label': l10n.filterCatDouyin},
+      {'id': 'Natural', 'label': l10n.filterCatNatural},
+      {'id': 'Korean', 'label': l10n.filterCatKorean},
+      {'id': 'Film', 'label': l10n.filterCatFilm},
+      {'id': 'Warm', 'label': l10n.filterCatWarm},
+      {'id': 'Cool', 'label': l10n.filterCatCool},
+      {'id': 'B&W', 'label': l10n.filterCatBW},
+    ];
 
     final activeItem = FilterCatalog.presets.firstWhere(
       (p) => p.id == activeId,
@@ -42,6 +44,13 @@ class _FilterPanelState extends ConsumerState<FilterPanel> {
         : FilterCatalog.presets
             .where((p) => p.category == _selectedCategory || p.id == 'original')
             .toList();
+
+    String getFilterDisplayName(FilterPreset item) {
+      if (item.id == 'original') {
+        return l10n.localeName.startsWith('vi') ? 'Gốc' : 'Original';
+      }
+      return item.name;
+    }
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -60,7 +69,7 @@ class _FilterPanelState extends ConsumerState<FilterPanel> {
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Row(
                     children: [
-                      for (final cat in _categories)
+                      for (final cat in categories)
                         GestureDetector(
                           onTap: () => setState(() => _selectedCategory = cat['id']!),
                           child: Container(
@@ -96,15 +105,15 @@ class _FilterPanelState extends ConsumerState<FilterPanel> {
               Expanded(
                 child: activeId != 'original'
                     ? BeautySlider(
-                        label: '${activeItem.name} Intensity',
+                        label: l10n.filterIntensity(getFilterDisplayName(activeItem)),
                         value: intensity,
                         defaultValue: 80,
                         onChanged: (v) => controller.updateFilter(activeId, v),
                       )
-                    : const Center(
+                    : Center(
                         child: Text(
-                          'Original • Select a filter preset below',
-                          style: TextStyle(color: Colors.white38, fontSize: 12),
+                          l10n.filterOriginalPlaceholder,
+                          style: const TextStyle(color: Colors.white38, fontSize: 12),
                         ),
                       ),
               ),
@@ -124,6 +133,7 @@ class _FilterPanelState extends ConsumerState<FilterPanel> {
             itemBuilder: (context, idx) {
               final item = displayPresets[idx];
               final isSel = item.id == activeId;
+              final displayName = getFilterDisplayName(item);
 
               return GestureDetector(
                 onTap: () {
@@ -170,7 +180,7 @@ class _FilterPanelState extends ConsumerState<FilterPanel> {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        item.name,
+                        displayName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
