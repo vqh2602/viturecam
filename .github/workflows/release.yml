@@ -1,0 +1,216 @@
+name: Release — Auto Version, Tag & macOS Build
+
+on:
+  push:
+    branches:
+      - main
+
+  # Cho phép chạy thủ công từ Actions tab
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write  # cần để push commit + tag
+
+jobs:
+  release:
+    name: Bump Version → Tag → Build macOS
+    runs-on: macos-latest
+
+    steps:
+      # ── 1. Checkout đầy đủ lịch sử để git tag hoạt động ──────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── 2. Cài Flutter ────────────────────────────────────────────────────
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'stable'
+          channel: 'stable'
+          cache: true
+
+      # ── 3. Cài dependencies ───────────────────────────────────────────────
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      # ── 4. Đọc version hiện tại từ pubspec.yaml ───────────────────────────
+      - name: Read current version
+        id: current
+        run: |
+          # Đọc dòng version: X.Y.Z+N
+          RAW=$(grep '^version:' pubspec.yaml | sed 's/version: //')
+          SEMVER=$(echo "$RAW" | cut -d'+' -f1)
+          BUILD=$(echo "$RAW" | cut -d'+' -f2)
+          echo "raw=$RAW"       >> $GITHUB_OUTPUT
+          echo "semver=$SEMVER" >> $GITHUB_OUTPUT
+          echo "build=$BUILD"   >> $GITHUB_OUTPUT
+          echo "Current version: $SEMVER (build $BUILD)"
+
+      # ── 5. Tính version mới ───────────────────────────────────────────────
+      - name: Compute next version
+        id: next
+        run: |
+          SEMVER="${{ steps.current.outputs.semver }}"
+          BUILD="${{ steps.current.outputs.build }}"
+
+          MAJOR=$(echo "$SEMVER" | cut -d. -f1)
+          MINOR=$(echo "$SEMVER" | cut -d. -f2)
+          PATCH=$(echo "$SEMVER" | cut -d. -f3)
+
+          # Khi kích hoạt thủ công dùng input; khi push tự động dùng 'patch'
+          BUMP="${{ github.event.inputs.bump }}"
+          if [ -z "$BUMP" ]; then BUMP="patch"; fi
+
+          case "$BUMP" in
+            major)
+              MAJOR=$((MAJOR+1)); MINOR=0; PATCH=0 ;;
+            minor)
+              MINOR=$((MINOR+1)); PATCH=0 ;;
+            patch|*)
+              PATCH=$((PATCH+1)) ;;
+          esac
+
+          NEW_BUILD=$((BUILD+1))
+          NEW_SEMVER="${MAJOR}.${MINOR}.${PATCH}"
+          NEW_FULL="${NEW_SEMVER}+${NEW_BUILD}"
+
+          echo "semver=$NEW_SEMVER"  >> $GITHUB_OUTPUT
+          echo "build=$NEW_BUILD"    >> $GITHUB_OUTPUT
+          echo "full=$NEW_FULL"      >> $GITHUB_OUTPUT
+          echo "tag=v${NEW_SEMVER}"  >> $GITHUB_OUTPUT
+          echo "Next version: $NEW_FULL  →  tag: v$NEW_SEMVER"
+
+      # ── 6. Ghi version mới vào pubspec.yaml ──────────────────────────────
+      - name: Bump version in pubspec.yaml
+        run: |
+          NEW="${{ steps.next.outputs.full }}"
+          # Thay thế dòng version: ...
+          sed -i '' "s/^version: .*/version: $NEW/" pubspec.yaml
+          echo "pubspec.yaml updated to version: $NEW"
+
+      # ── 7. Commit & push version bump ────────────────────────────────────
+      - name: Commit version bump
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add pubspec.yaml
+          git commit -m "chore: bump version to ${{ steps.next.outputs.full }} [skip ci]"
+          git push origin main
+
+      # ── 8. Tạo Git tag ────────────────────────────────────────────────────
+      - name: Create and push tag
+        run: |
+          TAG="${{ steps.next.outputs.tag }}"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+          echo "Created tag: $TAG"
+
+      # ── 9. Import Apple Distribution Certificate ──────────────────────────
+      # Lưu trong GitHub Secrets:
+      #   MACOS_CERTIFICATE        — base64 của file .p12
+      #   MACOS_CERTIFICATE_PWD    — mật khẩu của .p12
+      #   KEYCHAIN_PASSWORD        — mật khẩu tạo keychain tạm thời
+      - name: Import code signing certificate
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          # Giải mã certificate
+          echo "$MACOS_CERTIFICATE" | base64 --decode > /tmp/cert.p12
+
+          # Tạo keychain tạm
+          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security set-keychain-settings -lut 21600 build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+
+          # Import cert vào keychain
+          security import /tmp/cert.p12 \
+            -k build.keychain \
+            -P "$MACOS_CERTIFICATE_PWD" \
+            -T /usr/bin/codesign \
+            -T /usr/bin/productbuild \
+            2>/dev/null || true
+
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" build.keychain
+
+          security list-keychains -d user -s build.keychain login.keychain
+          echo "Certificate imported."
+
+      # ── 10. Build macOS release ───────────────────────────────────────────
+      - name: Build macOS app
+        run: |
+          flutter build macos --release \
+            --build-name="${{ steps.next.outputs.semver }}" \
+            --build-number="${{ steps.next.outputs.build }}"
+
+      # ── 11. Tạo DMG (tuỳ chọn — cần create-dmg) ──────────────────────────
+      - name: Package into DMG
+        run: |
+          APP_PATH="build/macos/Build/Products/Release/Beauty Camera.app"
+          DMG_NAME="BeautyCamera-${{ steps.next.outputs.semver }}.dmg"
+
+          # Cài create-dmg nếu chưa có
+          if ! command -v create-dmg &> /dev/null; then
+            brew install create-dmg
+          fi
+
+          create-dmg \
+            --volname "Beauty Camera ${{ steps.next.outputs.semver }}" \
+            --volicon "$APP_PATH/Contents/Resources/AppIcon.icns" \
+            --window-pos 200 120 \
+            --window-size 800 450 \
+            --icon-size 100 \
+            --icon "Beauty Camera.app" 200 190 \
+            --hide-extension "Beauty Camera.app" \
+            --app-drop-link 600 185 \
+            "$DMG_NAME" \
+            "$APP_PATH" || true
+
+          echo "DMG_NAME=$DMG_NAME" >> $GITHUB_ENV
+
+      # ── 12. Tạo GitHub Release với artifact ──────────────────────────────
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.next.outputs.tag }}
+          name: "Beauty Camera ${{ steps.next.outputs.semver }}"
+          body: |
+            ## 🚀 Beauty Camera ${{ steps.next.outputs.semver }}
+
+            **Build:** `${{ steps.next.outputs.full }}`
+            **Commit:** ${{ github.sha }}
+            **Branch:** `${{ github.ref_name }}`
+
+            ### Cài đặt
+            1. Tải file `.dmg` bên dưới
+            2. Kéo app vào thư mục Applications
+            3. Mở app và cấp quyền Camera nếu được hỏi
+          files: |
+            ${{ env.DMG_NAME }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── 13. Dọn dẹp keychain tạm ─────────────────────────────────────────
+      - name: Clean up keychain
+        if: always()
+        run: |
+          security delete-keychain build.keychain 2>/dev/null || true
+          rm -f /tmp/cert.p12
