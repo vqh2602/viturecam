@@ -91,13 +91,14 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git add pubspec.yaml
           git commit -m "chore: bump version to ${{ steps.next.outputs.full }} [skip ci]"
+          git pull --rebase origin main || true
           git push origin main
 
       - name: Create and push tag
         run: |
           TAG="${{ steps.next.outputs.tag }}"
-          git tag -a "$TAG" -m "Release $TAG"
-          git push origin "$TAG"
+          git tag -f -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG" --force
           echo "Created tag: $TAG"
 
       # ── Code Signing ───────────────────────────────────────────────────────
@@ -105,10 +106,8 @@ jobs:
       #   MACOS_CERTIFICATE     — base64 của file .p12 (export từ Keychain Access)
       #   MACOS_CERTIFICATE_PWD — mật khẩu .p12
       #   KEYCHAIN_PASSWORD     — mật khẩu tự đặt cho keychain tạm
-      #
-      # Khi secrets chưa cấu hình: inject override vào xcconfig để
-      # tắt code signing → build vẫn thành công (ad-hoc, không submit App Store)
       - name: Import code signing certificate
+        id: cert
         env:
           MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
           MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
@@ -116,6 +115,7 @@ jobs:
         run: |
           if [ -z "$MACOS_CERTIFICATE" ]; then
             echo "⚠️  MACOS_CERTIFICATE not set — skipping certificate import."
+            echo "has_cert=false" >> $GITHUB_OUTPUT
             exit 0
           fi
 
@@ -136,34 +136,52 @@ jobs:
               -s -k "$KEYCHAIN_PASSWORD" build.keychain
             security list-keychains -d user -s build.keychain login.keychain
             echo "✅ Certificate imported successfully."
+
+            IDENTITY=$(security find-identity -v -p codesigning build.keychain 2>/dev/null | grep -o '".*"' | head -1 | tr -d '"' || true)
+            echo "identity=$IDENTITY" >> $GITHUB_OUTPUT
+            echo "has_cert=true" >> $GITHUB_OUTPUT
+            echo "Found identity: $IDENTITY"
           else
             echo "⚠️  Certificate import failed — proceeding without signing."
+            echo "has_cert=false" >> $GITHUB_OUTPUT
           fi
 
-      # Khi không có cert: inject CODE_SIGNING_ALLOWED=NO vào Flutter-Release.xcconfig
-      # Xcconfig này được include bởi Release.xcconfig → áp dụng cho toàn bộ targets
-      - name: Disable code signing (when no certificate)
-        env:
-          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+      - name: Configure code signing
         run: |
-          if [ -n "$MACOS_CERTIFICATE" ]; then
-            echo "✅ Certificate configured — keeping project signing settings."
-            exit 0
-          fi
+          # Chuyển CODE_SIGN_STYLE sang Manual để Xcode CI không đòi hỏi Provisioning Profiles
+          sed -i '' 's/CODE_SIGN_STYLE = Automatic/CODE_SIGN_STYLE = Manual/g' macos/Runner.xcodeproj/project.pbxproj
 
-          echo "🔧 Injecting signing overrides into Flutter-Release.xcconfig..."
-          cat >> macos/Flutter/Flutter-Release.xcconfig << 'XCCONFIG_EOF'
+          HAS_CERT="${{ steps.cert.outputs.has_cert }}"
+          IDENTITY="${{ steps.cert.outputs.identity }}"
 
-          // CI override — disable code signing when no certificate is provided
+          if [ "$HAS_CERT" = "true" ] && [ -n "$IDENTITY" ]; then
+            echo "✅ Configuring project to sign with: $IDENTITY"
+            cat >> macos/Flutter/Flutter-Release.xcconfig << XCCONFIG_EOF
+
+          // CI signing with imported certificate
+          CODE_SIGN_IDENTITY=$IDENTITY
+          CODE_SIGNING_REQUIRED=YES
+          CODE_SIGNING_ALLOWED=YES
+          PROVISIONING_PROFILE_SPECIFIER=
+          XCCONFIG_EOF
+
+            # Cập nhật identity mặc định trong project file cho mọi target
+            sed -i '' "s/CODE_SIGN_IDENTITY = \"Apple Development\"/CODE_SIGN_IDENTITY = \"$IDENTITY\"/g" macos/Runner.xcodeproj/project.pbxproj
+          else
+            echo "⚠️ Building unsigned application..."
+            cat >> macos/Flutter/Flutter-Release.xcconfig << 'XCCONFIG_EOF'
+
+          // CI unsigned override
           CODE_SIGN_IDENTITY=
           CODE_SIGNING_REQUIRED=NO
           CODE_SIGNING_ALLOWED=NO
           DEVELOPMENT_TEAM=
           PROVISIONING_PROFILE_SPECIFIER=
-          CODE_SIGN_STYLE=Manual
           XCCONFIG_EOF
 
-          echo "✅ Signing disabled via xcconfig override."
+            # Tắt signing trên cả targets không include Flutter-Release.xcconfig
+            sed -i '' 's/CODE_SIGN_IDENTITY = "Apple Development"/CODE_SIGN_IDENTITY = ""/g' macos/Runner.xcodeproj/project.pbxproj
+          fi
           echo "--- Flutter-Release.xcconfig ---"
           cat macos/Flutter/Flutter-Release.xcconfig
 
