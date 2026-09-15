@@ -101,11 +101,13 @@ jobs:
           echo "Created tag: $TAG"
 
       # ── Code Signing ───────────────────────────────────────────────────────
-      # Cấu hình 3 secrets trong repo Settings → Secrets and variables → Actions:
+      # Cấu hình 3 secrets trong: repo Settings → Secrets and variables → Actions
       #   MACOS_CERTIFICATE     — base64 của file .p12 (export từ Keychain Access)
       #   MACOS_CERTIFICATE_PWD — mật khẩu .p12
       #   KEYCHAIN_PASSWORD     — mật khẩu tự đặt cho keychain tạm
-      # Nếu chưa cấu hình → bỏ qua, build với ad-hoc signing
+      #
+      # Khi secrets chưa cấu hình: inject override vào xcconfig để
+      # tắt code signing → build vẫn thành công (ad-hoc, không submit App Store)
       - name: Import code signing certificate
         env:
           MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
@@ -113,11 +115,11 @@ jobs:
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
           if [ -z "$MACOS_CERTIFICATE" ]; then
-            echo "⚠️  MACOS_CERTIFICATE not set — skipping signing setup."
+            echo "⚠️  MACOS_CERTIFICATE not set — skipping certificate import."
             exit 0
           fi
 
-          echo "🔐 Importing certificate..."
+          echo "🔐 Importing Apple certificate..."
           echo "$MACOS_CERTIFICATE" | base64 --decode > /tmp/cert.p12
 
           security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
@@ -133,27 +135,43 @@ jobs:
               -S apple-tool:,apple:,codesign: \
               -s -k "$KEYCHAIN_PASSWORD" build.keychain
             security list-keychains -d user -s build.keychain login.keychain
-            echo "✅ Certificate imported."
+            echo "✅ Certificate imported successfully."
           else
-            echo "⚠️  Certificate import failed — build proceeds without signing."
+            echo "⚠️  Certificate import failed — proceeding without signing."
           fi
 
-      - name: Build macOS app
+      # Khi không có cert: inject CODE_SIGNING_ALLOWED=NO vào Flutter-Release.xcconfig
+      # Xcconfig này được include bởi Release.xcconfig → áp dụng cho toàn bộ targets
+      - name: Disable code signing (when no certificate)
         env:
           MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
         run: |
-          if [ -z "$MACOS_CERTIFICATE" ]; then
-            echo "🔨 Building without code signing..."
-            flutter build macos --release \
-              --build-name="${{ steps.next.outputs.semver }}" \
-              --build-number="${{ steps.next.outputs.build }}" \
-              --dart-define=CI=true
-          else
-            echo "🔨 Building with Apple certificate..."
-            flutter build macos --release \
-              --build-name="${{ steps.next.outputs.semver }}" \
-              --build-number="${{ steps.next.outputs.build }}"
+          if [ -n "$MACOS_CERTIFICATE" ]; then
+            echo "✅ Certificate configured — keeping project signing settings."
+            exit 0
           fi
+
+          echo "🔧 Injecting signing overrides into Flutter-Release.xcconfig..."
+          cat >> macos/Flutter/Flutter-Release.xcconfig << 'XCCONFIG_EOF'
+
+          // CI override — disable code signing when no certificate is provided
+          CODE_SIGN_IDENTITY=
+          CODE_SIGNING_REQUIRED=NO
+          CODE_SIGNING_ALLOWED=NO
+          DEVELOPMENT_TEAM=
+          PROVISIONING_PROFILE_SPECIFIER=
+          CODE_SIGN_STYLE=Manual
+          XCCONFIG_EOF
+
+          echo "✅ Signing disabled via xcconfig override."
+          echo "--- Flutter-Release.xcconfig ---"
+          cat macos/Flutter/Flutter-Release.xcconfig
+
+      - name: Build macOS app
+        run: |
+          flutter build macos --release \
+            --build-name="${{ steps.next.outputs.semver }}" \
+            --build-number="${{ steps.next.outputs.build }}"
 
       - name: Package into DMG
         id: dmg
@@ -162,27 +180,35 @@ jobs:
           DMG_NAME="BeautyCamera-${{ steps.next.outputs.semver }}.dmg"
 
           if [ ! -d "$APP_PATH" ]; then
-            echo "⚠️  App bundle not found, searching..."
+            echo "⚠️  App not found at expected path, searching..."
             find build/macos -name "*.app" -maxdepth 6 2>/dev/null || true
             exit 1
           fi
+
+          echo "📦 Creating DMG: $DMG_NAME"
 
           if ! command -v create-dmg &>/dev/null; then
             brew install create-dmg --quiet
           fi
 
-          if create-dmg \
-              --volname "Beauty Camera ${{ steps.next.outputs.semver }}" \
-              --window-pos 200 120 \
-              --window-size 800 450 \
-              --icon-size 100 \
-              --icon "Beauty Camera.app" 200 190 \
-              --hide-extension "Beauty Camera.app" \
-              --app-drop-link 600 185 \
-              "$DMG_NAME" "$APP_PATH"; then
-            echo "✅ DMG created with create-dmg."
+          # create-dmg exit code 2 = success but codesign warning — treat as OK
+          set +e
+          create-dmg \
+            --volname "Beauty Camera ${{ steps.next.outputs.semver }}" \
+            --window-pos 200 120 \
+            --window-size 800 450 \
+            --icon-size 100 \
+            --icon "Beauty Camera.app" 200 190 \
+            --hide-extension "Beauty Camera.app" \
+            --app-drop-link 600 185 \
+            "$DMG_NAME" "$APP_PATH"
+          CDG_EXIT=$?
+          set -e
+
+          if [ "$CDG_EXIT" -eq 0 ] || [ "$CDG_EXIT" -eq 2 ]; then
+            echo "✅ DMG created with create-dmg (exit $CDG_EXIT)."
           else
-            echo "⚠️  Falling back to hdiutil..."
+            echo "⚠️  create-dmg failed (exit $CDG_EXIT), falling back to hdiutil..."
             hdiutil create -volname "Beauty Camera" \
               -srcfolder "$APP_PATH" -ov -format UDZO "$DMG_NAME"
             echo "✅ DMG created with hdiutil."
