@@ -27,11 +27,13 @@ class MakeupStyleOption {
 class MakeupPresets {
   static const List<MakeupOption> lipOptions = [
     MakeupOption(id: 'none', name: 'None', color: Colors.transparent),
+    // ── Đỏ ──────────────────────────────────────────────────────────────────
     MakeupOption(id: 'red', name: 'Đỏ thuần', color: Color(0xFFBF2638)),
     MakeupOption(id: 'ruby', name: 'Đỏ ruby', color: Color(0xFF9E1B32)),
     MakeupOption(id: 'chili', name: 'Đỏ đất', color: Color(0xFFA83E2C)),
     MakeupOption(id: 'cherry', name: 'Đỏ cherry', color: Color(0xFF8F1D35)),
     MakeupOption(id: 'wine', name: 'Rượu vang', color: Color(0xFF6A1B29)),
+    // ── Cam / Hồng ──────────────────────────────────────────────────────────
     MakeupOption(id: 'coral', name: 'San hô', color: Color(0xFFE06D53)),
     MakeupOption(id: 'orange', name: 'Cam cháy', color: Color(0xFFC85A32)),
     MakeupOption(id: 'peach', name: 'Hồng đào', color: Color(0xFFEB8676)),
@@ -39,11 +41,24 @@ class MakeupPresets {
     MakeupOption(id: 'pink', name: 'Hồng phấn', color: Color(0xFFE87E98)),
     MakeupOption(id: 'nude', name: 'Cam nude', color: Color(0xFFC48B71)),
     MakeupOption(id: 'nudePink', name: 'Hồng nude', color: Color(0xFFD49B9B)),
+    // ── Mận / Nâu ───────────────────────────────────────────────────────────
     MakeupOption(id: 'berry', name: 'Berry', color: Color(0xFF8C2D40)),
     MakeupOption(id: 'plum', name: 'Mận chín', color: Color(0xFF682845)),
     MakeupOption(id: 'brown', name: 'Nâu quế', color: Color(0xFF824739)),
     MakeupOption(id: 'caramel', name: 'Caramel', color: Color(0xFFA55A38)),
+    // ── Tối / Dark ──────────────────────────────────────────────────────────
+    MakeupOption(id: 'vampireRed', name: 'Đỏ ma cà rồng', color: Color(0xFF6B0014)),
+    MakeupOption(id: 'merlot', name: 'Merlot', color: Color(0xFF5C0F20)),
+    MakeupOption(id: 'darkPlum', name: 'Mận tím đậm', color: Color(0xFF4A1040)),
+    MakeupOption(id: 'midnight', name: 'Đỏ tím đêm', color: Color(0xFF3D0B35)),
+    MakeupOption(id: 'mulberry', name: 'Dâu đậm', color: Color(0xFF5E1747)),
+    MakeupOption(id: 'deepBerry', name: 'Berry đậm', color: Color(0xFF4D0A28)),
+    MakeupOption(id: 'darkMauve', name: 'Hoa cà tối', color: Color(0xFF4A2040)),
+    MakeupOption(id: 'espresso', name: 'Nâu espresso', color: Color(0xFF3D1A0E)),
+    MakeupOption(id: 'sable', name: 'Xám tro', color: Color(0xFF2E2030)),
+    MakeupOption(id: 'obsidian', name: 'Đen huyền', color: Color(0xFF1A0A14)),
   ];
+
 
   static const List<MakeupStyleOption> lipStyles = [
     MakeupStyleOption(id: 'full', name: 'Full môi', icon: Icons.brush),

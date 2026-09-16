@@ -1723,7 +1723,252 @@ public final class BeautyRenderer {
         return toned
     }
 
+
+    // MARK: - Submental Depth & Jawline Contouring
+    // Giảm nọng cằm & làm sắc nét đường viền hàm bằng hiệu ứng đổ bóng chiều sâu 3D.
+    // 4 lớp: A) submental tight shadow, B) wide fade, C) jawbone highlight, D) rim shadow, E) chin accent
+    private func applySubmentalJawlineDepth(
+        image: CIImage,
+        doubleChin: Double,
+        jawline: Double,
+        landmarks: FaceMeshLandmarks,
+        extent: CGRect,
+        skinMask: CIImage?
+    ) -> CIImage {
+        guard landmarks.hasFace, doubleChin > 0.001 || jawline > 0.001 else { return image }
+
+        let width = extent.width
+        let height = extent.height
+        let box = landmarks.boundingBox
+        let faceW = max(60.0, box.width * width)
+
+        func ciPt(_ p: CGPoint) -> CGPoint {
+            CGPoint(x: p.x * width, y: (1.0 - p.y) * height)
+        }
+
+        let chinTip       = ciPt(landmarks.chinTip)
+        let leftLowerJaw  = ciPt(landmarks.leftLowerJaw)
+        let rightLowerJaw = ciPt(landmarks.rightLowerJaw)
+        let leftMidJaw    = ciPt(landmarks.leftMidJaw)
+        let rightMidJaw   = ciPt(landmarks.rightMidJaw)
+        let noseBridge    = ciPt(landmarks.noseBridge)
+
+        let axisVec  = CGPoint(x: chinTip.x - noseBridge.x, y: chinTip.y - noseBridge.y)
+        let axisLen  = max(1.0, hypot(axisVec.x, axisVec.y))
+        let axisDown = CGPoint(x: axisVec.x / axisLen, y: axisVec.y / axisLen)
+
+        var result = image
+
+        // Build a Catmull-Rom open spline path through given points
+        func jawArcPath(_ pts: [CGPoint]) -> CGMutablePath {
+            let path = CGMutablePath()
+            guard pts.count >= 2 else { return path }
+            path.move(to: pts[0])
+            let n = pts.count
+            for i in 0..<(n - 1) {
+                let p0 = pts[max(0, i - 1)]
+                let p1 = pts[i]
+                let p2 = pts[i + 1]
+                let p3 = pts[min(n - 1, i + 2)]
+                let cp1 = CGPoint(x: p1.x + (p2.x - p0.x) / 6.0,
+                                  y: p1.y + (p2.y - p0.y) / 6.0)
+                let cp2 = CGPoint(x: p2.x - (p3.x - p1.x) / 6.0,
+                                  y: p2.y - (p3.y - p1.y) / 6.0)
+                path.addCurve(to: p2, control1: cp1, control2: cp2)
+            }
+            return path
+        }
+
+        // Apply a dark layer via CIMultiplyBlendMode masked by maskImg
+        func applyDarkLayer(base: CIImage, maskImg: CIImage, strength: CGFloat) -> CIImage {
+            let dark = CIImage(color: CIColor(red: 0.04, green: 0.02, blue: 0.01, alpha: 1.0)).cropped(to: extent)
+            guard let mul = CIFilter(name: "CIMultiplyBlendMode") else { return base }
+            mul.setValue(dark, forKey: kCIInputImageKey)
+            mul.setValue(base, forKey: kCIInputBackgroundImageKey)
+            guard let darkened = mul.outputImage?.cropped(to: extent) else { return base }
+            var sMask = maskImg
+            if let mx = CIFilter(name: "CIColorMatrix") {
+                mx.setValue(maskImg, forKey: kCIInputImageKey)
+                mx.setValue(CIVector(x: strength, y: 0, z: 0, w: 0), forKey: "inputRVector")
+                mx.setValue(CIVector(x: 0, y: strength, z: 0, w: 0), forKey: "inputGVector")
+                mx.setValue(CIVector(x: 0, y: 0, z: strength, w: 0), forKey: "inputBVector")
+                if let m = mx.outputImage { sMask = m }
+            }
+            guard let bl = CIFilter(name: "CIBlendWithMask") else { return base }
+            bl.setValue(darkened, forKey: kCIInputImageKey)
+            bl.setValue(base, forKey: kCIInputBackgroundImageKey)
+            bl.setValue(sMask, forKey: kCIInputMaskImageKey)
+            return bl.outputImage?.cropped(to: extent) ?? base
+        }
+
+        // Apply a bright layer via CIScreenBlendMode masked by maskImg
+        func applyLightLayer(base: CIImage, maskImg: CIImage, strength: CGFloat) -> CIImage {
+            let light = CIImage(color: CIColor(red: 1.0, green: 0.97, blue: 0.92, alpha: 1.0)).cropped(to: extent)
+            guard let sc = CIFilter(name: "CIScreenBlendMode") else { return base }
+            sc.setValue(light, forKey: kCIInputImageKey)
+            sc.setValue(base, forKey: kCIInputBackgroundImageKey)
+            guard let bright = sc.outputImage?.cropped(to: extent) else { return base }
+            var sMask = maskImg
+            if let mx = CIFilter(name: "CIColorMatrix") {
+                mx.setValue(maskImg, forKey: kCIInputImageKey)
+                mx.setValue(CIVector(x: strength, y: 0, z: 0, w: 0), forKey: "inputRVector")
+                mx.setValue(CIVector(x: 0, y: strength, z: 0, w: 0), forKey: "inputGVector")
+                mx.setValue(CIVector(x: 0, y: 0, z: strength, w: 0), forKey: "inputBVector")
+                if let m = mx.outputImage { sMask = m }
+            }
+            guard let bl = CIFilter(name: "CIBlendWithMask") else { return base }
+            bl.setValue(bright, forKey: kCIInputImageKey)
+            bl.setValue(base, forKey: kCIInputBackgroundImageKey)
+            bl.setValue(sMask, forKey: kCIInputMaskImageKey)
+            return bl.outputImage?.cropped(to: extent) ?? base
+        }
+
+        // ─── LAYER A+B: Submental Shadow (Nọng cằm) ───────────────────────────
+        if doubleChin > 0.001 {
+            let dc = CGFloat(doubleChin)
+            // Arc sits below jawbone — offset each point down along the face axis
+            let drop = faceW * 0.06
+            let arcPts: [CGPoint] = [
+                leftMidJaw,
+                CGPoint(x: leftLowerJaw.x  + axisDown.x * drop,         y: leftLowerJaw.y  + axisDown.y * drop),
+                CGPoint(x: chinTip.x        + axisDown.x * drop * 1.8,   y: chinTip.y       + axisDown.y * drop * 1.8),
+                CGPoint(x: rightLowerJaw.x + axisDown.x * drop,          y: rightLowerJaw.y + axisDown.y * drop),
+                rightMidJaw
+            ]
+            let bW = max(1, Int(faceW * 2.8))
+            let bH = max(1, Int(faceW * 1.5))
+            let ox = arcPts.map(\.x).min()! - faceW * 0.8
+            let oy = arcPts.map(\.y).min()! - faceW * 0.5
+            let org = CGPoint(x: ox, y: oy)
+
+            if let ctx = CGContext(data: nil, width: bW, height: bH,
+                                   bitsPerComponent: 8, bytesPerRow: bW,
+                                   space: CGColorSpaceCreateDeviceGray(),
+                                   bitmapInfo: CGImageAlphaInfo.none.rawValue) {
+                ctx.translateBy(x: -org.x, y: -org.y)
+                ctx.setFillColor(gray: 0, alpha: 1)
+                ctx.fill(CGRect(x: org.x, y: org.y, width: CGFloat(bW), height: CGFloat(bH)))
+                let arc = jawArcPath(arcPts)
+                ctx.setLineCap(.round); ctx.setLineJoin(.round)
+                // Thick bright stroke → blur → dark shadow
+                ctx.setStrokeColor(gray: 1.0, alpha: 1)
+                ctx.setLineWidth(max(10.0, faceW * 0.08))
+                ctx.addPath(arc); ctx.strokePath()
+
+                if let cgImg = ctx.makeImage() {
+                    let raw = CIImage(cgImage: cgImg)
+                        .transformed(by: CGAffineTransform(translationX: org.x, y: org.y))
+                    // Tight blur → defined dark band
+                    let tight = raw.applyingFilter("CIGaussianBlur",
+                                                  parameters: [kCIInputRadiusKey: max(faceW * 0.05, 9.0)])
+                        .cropped(to: extent)
+                    // Wide blur → soft fade
+                    let wide  = raw.applyingFilter("CIGaussianBlur",
+                                                   parameters: [kCIInputRadiusKey: max(faceW * 0.15, 26.0)])
+                        .cropped(to: extent)
+
+                    // Layer A: tight core (very dark)
+                    result = applyDarkLayer(base: result, maskImg: tight, strength: 0.45 + 0.45 * dc)
+                    // Layer B: wide feather (moderate)
+                    result = applyDarkLayer(base: result, maskImg: wide,  strength: 0.22 + 0.28 * dc)
+                }
+            }
+        }
+
+        // ─── LAYER C+D: Jawbone Highlight + Rim Shadow (Viền hàm) ─────────────
+        if jawline > 0.001 {
+            let jl = CGFloat(jawline)
+
+            // Highlight: slightly ABOVE jawbone center
+            let lift = faceW * 0.020
+            let hlPts: [CGPoint] = [
+                CGPoint(x: leftMidJaw.x   - axisDown.x * lift,       y: leftMidJaw.y   - axisDown.y * lift),
+                CGPoint(x: leftLowerJaw.x - axisDown.x * lift * 0.5,  y: leftLowerJaw.y - axisDown.y * lift * 0.5),
+                CGPoint(x: chinTip.x      - axisDown.x * lift * 0.2,  y: chinTip.y      - axisDown.y * lift * 0.2),
+                CGPoint(x: rightLowerJaw.x - axisDown.x * lift * 0.5, y: rightLowerJaw.y - axisDown.y * lift * 0.5),
+                CGPoint(x: rightMidJaw.x   - axisDown.x * lift,       y: rightMidJaw.y   - axisDown.y * lift)
+            ]
+            // Rim shadow: slightly BELOW jawbone center
+            let rimDrop = faceW * 0.032
+            let rimPts = hlPts.map { CGPoint(x: $0.x + axisDown.x * rimDrop,
+                                              y: $0.y + axisDown.y * rimDrop) }
+
+            let bW = max(1, Int(faceW * 2.8))
+            let bH = max(1, Int(faceW * 1.3))
+            let allPts = hlPts + rimPts
+            let ox = allPts.map(\.x).min()! - faceW * 0.7
+            let oy = allPts.map(\.y).min()! - faceW * 0.3
+            let org = CGPoint(x: ox, y: oy)
+
+            // Highlight bitmap
+            if let ctx = CGContext(data: nil, width: bW, height: bH,
+                                   bitsPerComponent: 8, bytesPerRow: bW,
+                                   space: CGColorSpaceCreateDeviceGray(),
+                                   bitmapInfo: CGImageAlphaInfo.none.rawValue) {
+                ctx.translateBy(x: -org.x, y: -org.y)
+                ctx.setFillColor(gray: 0, alpha: 1)
+                ctx.fill(CGRect(x: org.x, y: org.y, width: CGFloat(bW), height: CGFloat(bH)))
+                let hlPath = jawArcPath(hlPts)
+                ctx.setLineCap(.round); ctx.setLineJoin(.round)
+                ctx.setStrokeColor(gray: 1.0, alpha: 1)
+                ctx.setLineWidth(max(3.0, faceW * 0.024))
+                ctx.addPath(hlPath); ctx.strokePath()
+
+                if let cgImg = ctx.makeImage() {
+                    let raw = CIImage(cgImage: cgImg)
+                        .transformed(by: CGAffineTransform(translationX: org.x, y: org.y))
+                    let hlMask = raw.applyingFilter("CIGaussianBlur",
+                                                   parameters: [kCIInputRadiusKey: max(faceW * 0.026, 4.5)])
+                        .cropped(to: extent)
+                    // Layer C: jawbone highlight — strong brightening
+                    result = applyLightLayer(base: result, maskImg: hlMask, strength: 0.30 + 0.42 * jl)
+                }
+            }
+
+            // Rim shadow bitmap
+            if let ctx2 = CGContext(data: nil, width: bW, height: bH,
+                                    bitsPerComponent: 8, bytesPerRow: bW,
+                                    space: CGColorSpaceCreateDeviceGray(),
+                                    bitmapInfo: CGImageAlphaInfo.none.rawValue) {
+                ctx2.translateBy(x: -org.x, y: -org.y)
+                ctx2.setFillColor(gray: 0, alpha: 1)
+                ctx2.fill(CGRect(x: org.x, y: org.y, width: CGFloat(bW), height: CGFloat(bH)))
+                let rimPath = jawArcPath(rimPts)
+                ctx2.setLineCap(.round); ctx2.setLineJoin(.round)
+                ctx2.setStrokeColor(gray: 1.0, alpha: 1)
+                ctx2.setLineWidth(max(4.0, faceW * 0.034))
+                ctx2.addPath(rimPath); ctx2.strokePath()
+
+                if let cgImg2 = ctx2.makeImage() {
+                    let raw2 = CIImage(cgImage: cgImg2)
+                        .transformed(by: CGAffineTransform(translationX: org.x, y: org.y))
+                    let rimMask = raw2.applyingFilter("CIGaussianBlur",
+                                                     parameters: [kCIInputRadiusKey: max(faceW * 0.038, 6.0)])
+                        .cropped(to: extent)
+                    // Layer D: rim shadow — dark band right under jawbone highlight
+                    result = applyDarkLayer(base: result, maskImg: rimMask, strength: 0.32 + 0.38 * jl)
+                }
+            }
+        }
+
+        // ─── LAYER E: Chin Tip Accent Highlight ───────────────────────────────
+        let combinedStrength = max(doubleChin, jawline)
+        if combinedStrength > 0.001 {
+            let s = CGFloat(combinedStrength)
+            let hlR = faceW * 0.068
+            let spot = CIImage(color: CIColor(red: 1.0, green: 0.97, blue: 0.93, alpha: 1.0))
+                .cropped(to: CGRect(x: chinTip.x - hlR, y: chinTip.y - hlR,
+                                    width: hlR * 2, height: hlR * 2))
+                .applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: hlR * 0.65])
+                .cropped(to: extent)
+            result = applyLightLayer(base: result, maskImg: spot, strength: 0.22 + 0.35 * s)
+        }
+
+        return result
+    }
+
     // MARK: - Makeup (Lipstick, Blush, Eyebrows, Eyeliner, Eyeshadow)
+
     private func applyMakeup(image: CIImage, makeup: MakeupSettings, landmarks: FaceMeshLandmarks, extent: CGRect) -> CIImage {
         guard landmarks.hasFace else { return image }
         var result = image
@@ -1741,24 +1986,39 @@ public final class BeautyRenderer {
         if makeup.lipPreset != "none" && makeup.lipOpacity > 0.01 {
             var lipR: CGFloat = 0.88; var lipG: CGFloat = 0.12; var lipB: CGFloat = 0.18
             switch makeup.lipPreset {
-            case "red":       lipR = 0.88; lipG = 0.12; lipB = 0.18
-            case "ruby":      lipR = 0.72; lipG = 0.08; lipB = 0.16
-            case "chili":     lipR = 0.78; lipG = 0.22; lipB = 0.16
-            case "cherry":    lipR = 0.68; lipG = 0.10; lipB = 0.20
-            case "wine":      lipR = 0.50; lipG = 0.08; lipB = 0.16
-            case "coral":     lipR = 0.90; lipG = 0.38; lipB = 0.32
-            case "orange":    lipR = 0.85; lipG = 0.35; lipB = 0.20
-            case "peach":     lipR = 0.92; lipG = 0.48; lipB = 0.44
-            case "rose":      lipR = 0.80; lipG = 0.32; lipB = 0.44
-            case "pink":      lipR = 0.92; lipG = 0.42; lipB = 0.58
-            case "nude":      lipR = 0.82; lipG = 0.50; lipB = 0.45
-            case "nudePink":  lipR = 0.85; lipG = 0.55; lipB = 0.55
-            case "berry":     lipR = 0.68; lipG = 0.16; lipB = 0.32
-            case "plum":      lipR = 0.48; lipG = 0.15; lipB = 0.28
-            case "brown":     lipR = 0.62; lipG = 0.32; lipB = 0.28
-            case "caramel":   lipR = 0.72; lipG = 0.38; lipB = 0.24
-            default:          lipR = 0.88; lipG = 0.12; lipB = 0.18
+            // ── Đỏ ─────────────────────────────────────────────────────────
+            case "red":         lipR = 0.88; lipG = 0.12; lipB = 0.18
+            case "ruby":        lipR = 0.72; lipG = 0.08; lipB = 0.16
+            case "chili":       lipR = 0.78; lipG = 0.22; lipB = 0.16
+            case "cherry":      lipR = 0.68; lipG = 0.10; lipB = 0.20
+            case "wine":        lipR = 0.50; lipG = 0.08; lipB = 0.16
+            // ── Cam / Hồng ─────────────────────────────────────────────────
+            case "coral":       lipR = 0.90; lipG = 0.38; lipB = 0.32
+            case "orange":      lipR = 0.85; lipG = 0.35; lipB = 0.20
+            case "peach":       lipR = 0.92; lipG = 0.48; lipB = 0.44
+            case "rose":        lipR = 0.80; lipG = 0.32; lipB = 0.44
+            case "pink":        lipR = 0.92; lipG = 0.42; lipB = 0.58
+            case "nude":        lipR = 0.82; lipG = 0.50; lipB = 0.45
+            case "nudePink":    lipR = 0.85; lipG = 0.55; lipB = 0.55
+            // ── Mận / Nâu ──────────────────────────────────────────────────
+            case "berry":       lipR = 0.68; lipG = 0.16; lipB = 0.32
+            case "plum":        lipR = 0.48; lipG = 0.15; lipB = 0.28
+            case "brown":       lipR = 0.62; lipG = 0.32; lipB = 0.28
+            case "caramel":     lipR = 0.72; lipG = 0.38; lipB = 0.24
+            // ── Tối / Dark ─────────────────────────────────────────────────
+            case "vampireRed":  lipR = 0.52; lipG = 0.03; lipB = 0.10   // đỏ ma cà rồng — gần huyết
+            case "merlot":      lipR = 0.44; lipG = 0.06; lipB = 0.14   // merlot đậm
+            case "darkPlum":    lipR = 0.36; lipG = 0.08; lipB = 0.28   // mận tím rất đậm
+            case "midnight":    lipR = 0.30; lipG = 0.06; lipB = 0.24   // đỏ tím đêm — gần đen
+            case "mulberry":    lipR = 0.44; lipG = 0.10; lipB = 0.32   // dâu đậm
+            case "deepBerry":   lipR = 0.38; lipG = 0.06; lipB = 0.20   // berry rất đậm
+            case "darkMauve":   lipR = 0.36; lipG = 0.14; lipB = 0.28   // hoa cà tối
+            case "espresso":    lipR = 0.30; lipG = 0.14; lipB = 0.08   // nâu espresso tối
+            case "sable":       lipR = 0.22; lipG = 0.14; lipB = 0.20   // xám tro tím
+            case "obsidian":    lipR = 0.14; lipG = 0.06; lipB = 0.10   // đen huyền (rất tối)
+            default:            lipR = 0.88; lipG = 0.12; lipB = 0.18
             }
+
 
             let lipStyle = makeup.lipStyle
             if let lipMask = createLipMask(landmarks: landmarks, style: lipStyle, extent: extent) {
