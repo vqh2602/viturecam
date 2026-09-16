@@ -2149,6 +2149,20 @@ public final class BeautyRenderer {
     // MARK: - 3D Face Makeup Masks
     public func createLipMask(landmarks: FaceMeshLandmarks, style: String = "full", extent: CGRect) -> CIImage? {
         guard landmarks.hasFace else { return nil }
+        if let pixels = landmarks.lipPixelMask {
+            let black = CIImage(color: .black).cropped(to: extent)
+            let coverage = pixels.composited(over: black).cropped(to: extent)
+            if style == "full" || style == "gloss" { return coverage }
+            // Style intensity remains independent from detected coverage. Every style
+            // (including gloss highlights) is clipped by the same current-frame pixels.
+            var geometric = landmarks
+            geometric.lipPixelMask = nil
+            if let styled = createLipMask(landmarks: geometric, style: style, extent: extent) {
+                return styled.applyingFilter("CIMultiplyCompositing", parameters: [kCIInputBackgroundImageKey: coverage])
+                    .cropped(to: extent)
+            }
+            return coverage
+        }
         if landmarks.landmarks.count == 468 {
             func pt(_ idx: Int) -> CGPoint {
                 let lm = landmarks.landmarks[idx]

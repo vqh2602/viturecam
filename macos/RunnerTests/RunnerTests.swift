@@ -1,5 +1,6 @@
 import Cocoa
 import CoreImage
+import CoreML
 import CoreVideo
 import XCTest
 @testable import Beauty_Camera
@@ -67,6 +68,62 @@ final class RunnerTests: XCTestCase {
             landmarks: landmarks ?? mesh())
         // Snapshot before the renderer reuses its mask texture.
         return CIImage(cgImage: try XCTUnwrap(context.createCGImage(CIImage(cvPixelBuffer: output), from: extent)))
+    }
+
+    func testSemanticLipLabelsExcludeMouthSkinAndRespectOrientation() throws {
+        let labels = try MLMultiArray(shape: [1, 3, 4], dataType: .float32)
+        // Model rows are top-down. Upper and lower lips are distinct labels.
+        let values = [Float](arrayLiteral: 0, 12, 12, 1, 1, 11, 11, 1, 0, 13, 13, 0)
+        for (i, value) in values.enumerated() { labels[i] = NSNumber(value: value) }
+        let mask = try XCTUnwrap(LipSegmenter.makeMask(labels: labels))
+        XCTAssertEqual(pixel(mask, x: 1, y: 2)[0], 255)
+        XCTAssertEqual(pixel(mask, x: 1, y: 0)[0], 255)
+        XCTAssertEqual(pixel(mask, x: 1, y: 1)[0], 0, "Inner mouth and teeth are never lip labels")
+        XCTAssertEqual(pixel(mask, x: 3, y: 2)[0], 0, "Skin remains clear")
+        let invalid = try MLMultiArray(shape: [2, 3, 4], dataType: .float32)
+        XCTAssertNil(LipSegmenter.makeMask(labels: invalid))
+    }
+
+    func testSemanticLipModelIsBundledAndDoesNotReuseLostFaceMask() throws {
+        XCTAssertNotNil(Bundle.main.url(forResource: "LipParsing", withExtension: "mlmodelc"))
+        let segmenter = LipSegmenter()
+        let source = try buffer()
+        context.render(CIImage(color: CIColor(red: 0.5, green: 0.4, blue: 0.3)).cropped(to: extent), to: source)
+        XCTAssertNotNil(segmenter.processFrame(pixelBuffer: source, landmarks: mesh()), "Bundled model must run")
+        XCTAssertNil(segmenter.processFrame(pixelBuffer: source, landmarks: FaceMeshLandmarks()))
+        let unavailable = LipSegmenter(modelURL: URL(fileURLWithPath: "/nonexistent/LipParsing.mlmodelc"))
+        XCTAssertNil(unavailable.processFrame(pixelBuffer: source, landmarks: mesh()))
+    }
+
+    func testPixelLipCoverageOverridesCoarseRibbonAndClipsStyles() throws {
+        let renderer = BeautyRenderer()
+        var landmarks = mesh()
+        landmarks.lipPixelMask = CIImage(color: .white)
+            .cropped(to: CGRect(x: 120, y: 99, width: 16, height: 18))
+        for style in ["full", "gloss"] {
+            let mask = try XCTUnwrap(renderer.createLipMask(landmarks: landmarks, style: style, extent: extent))
+            XCTAssertGreaterThan(pixel(mask, x: 128, y: 114)[0], 250, "Pixel coverage extends beyond coarse landmarks")
+            XCTAssertEqual(pixel(mask, x: 110, y: 104)[0], 0, "Rejected pixels inside the old ribbon remain clear")
+        }
+        for style in ["gradient", "liner"] {
+            let mask = try XCTUnwrap(renderer.createLipMask(landmarks: landmarks, style: style, extent: extent))
+            XCTAssertEqual(pixel(mask, x: 110, y: 104)[0], 0, "Every style respects pixel exclusions")
+        }
+        landmarks.hasFace = false
+        XCTAssertNil(renderer.createLipMask(landmarks: landmarks, extent: extent))
+    }
+
+    func testLipFilterFollowsRapidOpeningAndReversal() {
+        let bank = OneEuroFilterBank468()
+        var points = [SIMD3<Float>](repeating: SIMD3<Float>(0.5, 0.5, 0), count: 468)
+        _ = bank.filter(raw: points, timestamp: 1)
+        points[14].y = 0.53
+        let opened = bank.filter(raw: points, timestamp: 1 + 1.0 / 30)
+        XCTAssertGreaterThan(opened[14].y, 0.5269)
+        points[14].y = 0.5
+        let closed = bank.filter(raw: points, timestamp: 1 + 2.0 / 30)
+        XCTAssertLessThan(closed[14].y, 0.504, "Closing must not trail the previous open mouth")
+        XCTAssertEqual(closed[33], points[33], "Other facial features remain unchanged")
     }
 
     func testLipMaskExcludesMouthAndSurroundingSkin() throws {
