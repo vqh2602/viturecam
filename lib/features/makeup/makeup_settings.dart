@@ -147,6 +147,24 @@ class MakeupPresets {
     MakeupOption(id: 'champagne', name: 'Sâm banh', color: Color(0xFFE8C8A9)),
     MakeupOption(id: 'smoky', name: 'Khói đen', color: Color(0xFF505050)),
   ];
+  static const List<MakeupStyleOption> contourStyles = [
+    MakeupStyleOption(id: 'vShape', name: 'Mặt V-Line', icon: Icons.change_history),
+    MakeupStyleOption(id: 'natural', name: 'Tự nhiên', icon: Icons.auto_awesome),
+    MakeupStyleOption(id: 'sculpted', name: '3D sắc sảo', icon: Icons.layers),
+    MakeupStyleOption(id: 'nose', name: 'Thon gọn mũi', icon: Icons.tune),
+    MakeupStyleOption(id: 'soft', name: 'Mềm mại', icon: Icons.blur_on),
+  ];
+
+  static const List<MakeupOption> contourOptions = [
+    MakeupOption(id: 'none', name: 'None', color: Colors.transparent),
+    MakeupOption(id: 'natural', name: 'Nâu tự nhiên', color: Color(0xFF947561)),
+    MakeupOption(id: 'warm', name: 'Nâu ấm', color: Color(0xFF9E7052)),
+    MakeupOption(id: 'cool', name: 'Nâu lạnh khói', color: Color(0xFF857066)),
+    MakeupOption(id: 'bronze', name: 'Nâu đồng', color: Color(0xFFAF7A4D)),
+    MakeupOption(id: 'caramel', name: 'Caramel', color: Color(0xFFA67347)),
+    MakeupOption(id: 'deep', name: 'Nâu đậm', color: Color(0xFF73523D)),
+    MakeupOption(id: 'softTaupe', name: 'Nâu khói nhạt', color: Color(0xFF8C7A6B)),
+  ];
 }
 
 class MakeupSettings {
@@ -170,6 +188,10 @@ class MakeupSettings {
   final double eyeshadowOpacity; // 0..100
   final String eyeshadowStyle; // 'gradient', 'halo', 'cutCrease', 'outerV', 'douyin'
 
+  final String contourPreset;
+  final double contourOpacity; // 0..100
+  final String contourStyle;   // 'vShape', 'natural', 'sculpted', 'nose', 'soft'
+
   const MakeupSettings({
     this.lipPreset = 'none',
     this.lipOpacity = 60,
@@ -186,6 +208,9 @@ class MakeupSettings {
     this.eyeshadowPreset = 'none',
     this.eyeshadowOpacity = 50,
     this.eyeshadowStyle = 'gradient',
+    this.contourPreset = 'none',
+    this.contourOpacity = 50,
+    this.contourStyle = 'vShape',
   });
 
   bool get isModified =>
@@ -193,10 +218,12 @@ class MakeupSettings {
       (blushPreset != 'none' && blushOpacity > 0) ||
       (eyebrowPreset != 'none' && eyebrowOpacity > 0) ||
       (eyelinerPreset != 'none' && eyelinerOpacity > 0) ||
-      (eyeshadowPreset != 'none' && eyeshadowOpacity > 0);
+      (eyeshadowPreset != 'none' && eyeshadowOpacity > 0) ||
+      (contourPreset != 'none' && contourOpacity > 0);
 
   bool get hasLip => lipPreset != 'none' && lipOpacity > 0;
   bool get hasBlush => blushPreset != 'none' && blushOpacity > 0;
+  bool get hasContour => contourPreset != 'none' && contourOpacity > 0;
 
   bool isKeyActive(String key) {
     switch (key) {
@@ -210,6 +237,8 @@ class MakeupSettings {
         return eyelinerPreset != 'none' && eyelinerOpacity > 0;
       case 'eyeshadow':
         return eyeshadowPreset != 'none' && eyeshadowOpacity > 0;
+      case 'contour':
+        return contourPreset != 'none' && contourOpacity > 0;
       default:
         return false;
     }
@@ -231,6 +260,9 @@ class MakeupSettings {
     String? eyeshadowPreset,
     double? eyeshadowOpacity,
     String? eyeshadowStyle,
+    String? contourPreset,
+    double? contourOpacity,
+    String? contourStyle,
   }) {
     return MakeupSettings(
       lipPreset: lipPreset ?? this.lipPreset,
@@ -248,6 +280,9 @@ class MakeupSettings {
       eyeshadowPreset: eyeshadowPreset ?? this.eyeshadowPreset,
       eyeshadowOpacity: eyeshadowOpacity ?? this.eyeshadowOpacity,
       eyeshadowStyle: eyeshadowStyle ?? this.eyeshadowStyle,
+      contourPreset: contourPreset ?? this.contourPreset,
+      contourOpacity: contourOpacity ?? this.contourOpacity,
+      contourStyle: contourStyle ?? this.contourStyle,
     );
   }
 
@@ -268,6 +303,9 @@ class MakeupSettings {
       'eyeshadowPreset': eyeshadowPreset,
       'eyeshadowOpacity': eyeshadowOpacity / 100.0,
       'eyeshadowStyle': eyeshadowStyle,
+      'contourPreset': contourPreset,
+      'contourOpacity': contourOpacity / 100.0,
+      'contourStyle': contourStyle,
     };
   }
 
@@ -288,6 +326,9 @@ class MakeupSettings {
       eyeshadowPreset: json['eyeshadowPreset'] as String? ?? 'none',
       eyeshadowOpacity: (json['eyeshadowOpacity'] as num?)?.toDouble() ?? 50,
       eyeshadowStyle: json['eyeshadowStyle'] as String? ?? 'gradient',
+      contourPreset: json['contourPreset'] as String? ?? 'none',
+      contourOpacity: (json['contourOpacity'] as num?)?.toDouble() ?? 50,
+      contourStyle: json['contourStyle'] as String? ?? 'vShape',
     );
   }
 
@@ -308,6 +349,9 @@ class MakeupSettings {
       'eyeshadowPreset': eyeshadowPreset,
       'eyeshadowOpacity': eyeshadowOpacity,
       'eyeshadowStyle': eyeshadowStyle,
+      'contourPreset': contourPreset,
+      'contourOpacity': contourOpacity,
+      'contourStyle': contourStyle,
     };
   }
 }

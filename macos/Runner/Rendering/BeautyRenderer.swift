@@ -117,7 +117,8 @@ public final class BeautyRenderer {
             vec4 mouthParams,
             vec4 miscParams,
             vec4 browPts,
-            vec4 browParams
+            vec4 browParams,
+            vec4 sculptParams
         ) {
             vec2 p = destCoord();
             vec2 offset = vec2(0.0, 0.0);
@@ -805,6 +806,58 @@ public final class BeautyRenderer {
                 }
             }
 
+            // ==========================================
+            // GROUP 6: NỌNG CẰM & ĐƯỜNG VIỀN HÀM (DOUBLE CHIN & JAWLINE DEFINITION)
+            // ==========================================
+            float doubleChin = sculptParams.x; // Giảm nọng cằm (0..1)
+            float jawline    = sculptParams.y; // Tạo viền hàm sắc nét (0..1)
+
+            // A. Double Chin Reduction (Giảm nọng cằm)
+            // Anatomical submental fat pocket compression along face axis towards mandible
+            if (doubleChin > 0.001) {
+                vec2 submentalCenter = chinCenter + faceAxisDir * (faceW * 0.12);
+                float submentalRad = faceW * 0.22;
+                float distSub = length(p - submentalCenter);
+                if (distSub < submentalRad) {
+                    float t = distSub / submentalRad;
+                    float w = (1.0 - t * t) * (1.0 - t * t);
+                    // Protect chin bone/tip so chin structure remains natural
+                    float distToChin = length(p - chinCenter);
+                    float chinProtect = smoothstep(faceW * 0.03, faceW * 0.10, distToChin);
+                    // Tighten submental tissue upward toward mandible
+                    offset += faceAxisDir * (doubleChin * 0.28 * w * chinProtect * (faceW * 0.15));
+                    // Inward lateral compression
+                    float projNorm = dot(p - submentalCenter, axisNormal);
+                    offset += axisNormal * (projNorm * doubleChin * 0.32 * w * chinProtect);
+                }
+            }
+
+            // B. Jawline Definition (Tạo viền hàm sắc nét)
+            // Tightens and sculpts mandibular contour along lower & mid jaw angles
+            if (jawline > 0.001) {
+                float jawlineRad = faceW * 0.20;
+                vec2 leftJawPt = (leftLowerJaw + leftMidJaw) * 0.5;
+                vec2 rightJawPt = (rightLowerJaw + rightMidJaw) * 0.5;
+
+                // Left jawline tightening (camera left)
+                float distLJ = length(p - leftJawPt);
+                if (distLJ < jawlineRad) {
+                    float t = distLJ / jawlineRad;
+                    float w = (1.0 - t * t) * (1.0 - t * t);
+                    offset -= axisNormal * (jawline * 0.18 * w * innerGuard * jawlineRad);
+                    offset += faceAxisDir * (jawline * 0.08 * w * innerGuard * jawlineRad);
+                }
+
+                // Right jawline tightening (camera right)
+                float distRJ = length(p - rightJawPt);
+                if (distRJ < jawlineRad) {
+                    float t = distRJ / jawlineRad;
+                    float w = (1.0 - t * t) * (1.0 - t * t);
+                    offset += axisNormal * (jawline * 0.18 * w * innerGuard * jawlineRad);
+                    offset += faceAxisDir * (jawline * 0.08 * w * innerGuard * jawlineRad);
+                }
+            }
+
             return p + offset;
         }
         """
@@ -947,15 +1000,15 @@ public final class BeautyRenderer {
                          abs(face.nostrilWidth) > 0.01 ||
                          face.smile > 0.01 || face.smileCorners > 0.01 || face.mShapeLips > 0.01 || abs(face.mouthWidth) > 0.01 ||
                          abs(face.mouthSize) > 0.01 || abs(face.lipThickness) > 0.01 ||
-                         abs(face.mouthPosition) > 0.01
-
-
+                         abs(face.mouthPosition) > 0.01 ||
+                         face.doubleChin > 0.01 || face.jawline > 0.01
 
         // 2. Skin Beautification (Natural Edge-Preserving Bilateral Smoothing, Pore Texture, Translucent Whitening)
         let hasSkinBeauty = beauty.smooth > 0.01 || beauty.skinTone > 0.01 || beauty.skinToneType != "natural" ||
                             beauty.whitening > 0.01 || beauty.skinBrightness > 0.01 || beauty.redness > 0.01 ||
                             beauty.darkCircle > 0.01 || beauty.eyeBag > 0.01 ||
-                            beauty.teethWhitening > 0.01 || face.eyeBrightness > 0.01 || face.eyeSparkle > 0.01
+                            beauty.teethWhitening > 0.01 || face.eyeBrightness > 0.01 || face.eyeSparkle > 0.01 ||
+                            beauty.glassSkin > 0.01 || face.aegyoSal > 0.01
 
         if hasSkinBeauty && landmarks.hasFace {
             processedImage = applySkinBeauty(
@@ -968,12 +1021,13 @@ public final class BeautyRenderer {
             )
         }
 
-        // 3. 3D Face Makeup (Lipstick, Blush, Eyebrows, Eyeliner, Eyeshadow)
+        // 3. 3D Face Makeup (Lipstick, Blush, Eyebrows, Eyeliner, Eyeshadow, Contour)
         let hasMakeup = (makeup.lipPreset != "none" && makeup.lipOpacity > 0.01) ||
                         (makeup.blushPreset != "none" && makeup.blushOpacity > 0.01) ||
                         (makeup.eyebrowPreset != "none" && makeup.eyebrowOpacity > 0.01) ||
                         (makeup.eyelinerPreset != "none" && makeup.eyelinerOpacity > 0.01) ||
-                        (makeup.eyeshadowPreset != "none" && makeup.eyeshadowOpacity > 0.01)
+                        (makeup.eyeshadowPreset != "none" && makeup.eyeshadowOpacity > 0.01) ||
+                        (makeup.contourPreset != "none" && makeup.contourOpacity > 0.01)
 
         if hasMakeup && landmarks.hasFace {
             processedImage = applyMakeup(
@@ -1168,7 +1222,8 @@ public final class BeautyRenderer {
             CIVector(x: smile, y: mouthWidth, z: mouthSize, w: lipThickness),
             CIVector(x: mouthPos, y: nostrilWidth, z: smileCorners, w: mShapeLips),
             CIVector(x: leftBrowCenter.x, y: leftBrowCenter.y, z: rightBrowCenter.x, w: rightBrowCenter.y),
-            CIVector(x: eyebrowHeight, y: eyebrowTilt, z: eyebrowArch, w: hairline)
+            CIVector(x: eyebrowHeight, y: eyebrowTilt, z: eyebrowArch, w: hairline),
+            CIVector(x: CGFloat(face.doubleChin), y: CGFloat(face.jawline), z: 0.0, w: 0.0)
         ]
 
         if let warped = kernel.apply(extent: extent, roiCallback: { _, rect in rect }, image: image, arguments: args) {
@@ -1441,6 +1496,27 @@ public final class BeautyRenderer {
                     )
                 }
             }
+        }
+
+        // 7. Aegyo-Sal / Bọng mắt cười (face.aegyoSal)
+        if face.aegyoSal > 0.01 {
+            current = applyAegyoSal(
+                image: current,
+                intensity: face.aegyoSal,
+                landmarks: landmarks,
+                extent: extent
+            )
+        }
+
+        // 8. Glass Skin / Làm da bóng mịn (beauty.glassSkin)
+        if beauty.glassSkin > 0.01 {
+            current = applyGlassSkin(
+                image: current,
+                intensity: beauty.glassSkin,
+                landmarks: landmarks,
+                extent: extent,
+                skinMask: skinMask
+            )
         }
 
         return current
@@ -1942,6 +2018,16 @@ public final class BeautyRenderer {
                     }
                 }
             }
+        }
+
+        // 6. Contour & Highlight Makeup (Trang điểm tạo khối & bắt sáng đa phong cách)
+        if makeup.contourPreset != "none" && makeup.contourOpacity > 0.01 {
+            result = applyContour(
+                image: result,
+                makeup: makeup,
+                landmarks: landmarks,
+                extent: extent
+            )
         }
 
         return result
@@ -4638,6 +4724,592 @@ public final class BeautyRenderer {
         }
 
         return backgroundEffect
+    }
+
+    // MARK: - Aegyo-Sal / Bọng Mắt Cười
+    /// Creates realistic Korean/Douyin style aegyo-sal (youthful under-eye smile rolls).
+    /// Generates a luminous plump highlight directly under the lower lash line
+    /// combined with a soft depth shadow groove beneath to create a natural 3D smile bag.
+    private func applyAegyoSal(
+        image: CIImage,
+        intensity: Double,
+        landmarks: FaceMeshLandmarks,
+        extent: CGRect
+    ) -> CIImage {
+        guard intensity > 0.01, landmarks.hasFace else { return image }
+        let width = extent.width
+        let height = extent.height
+        let box = landmarks.boundingBox
+        let faceW = max(50.0, box.width * width)
+        let faceH = max(60.0, box.height * height)
+
+        func pt(_ p: CGPoint) -> CGPoint {
+            return CGPoint(x: p.x * width, y: (1.0 - p.y) * height)
+        }
+
+        func lmPt(_ idx: Int) -> CGPoint {
+            guard idx < landmarks.landmarks.count else { return .zero }
+            let lm = landmarks.landmarks[idx]
+            return CGPoint(x: CGFloat(lm.x) * width, y: CGFloat(1.0 - lm.y) * height)
+        }
+
+        // Lower eyelid curves
+        var rightLowerLash: [CGPoint] = []
+        var leftLowerLash: [CGPoint] = []
+
+        if landmarks.landmarks.count >= 468 {
+            // Camera Left (subject's right): lower lash line from inner to outer corner
+            let rIndices = [133, 155, 154, 153, 145, 144, 163, 7, 33]
+            rightLowerLash = rIndices.map { lmPt($0) }
+            // Camera Right (subject's left): lower lash line from inner to outer corner
+            let lIndices = [362, 382, 381, 380, 374, 373, 390, 249, 263]
+            leftLowerLash = lIndices.map { lmPt($0) }
+        } else if !landmarks.rightEyeContour.isEmpty && !landmarks.leftEyeContour.isEmpty {
+            let halfR = landmarks.rightEyeContour.count / 2
+            rightLowerLash = landmarks.rightEyeContour.suffix(from: halfR).map { pt($0) }
+            let halfL = landmarks.leftEyeContour.count / 2
+            leftLowerLash = landmarks.leftEyeContour.suffix(from: halfL).map { pt($0) }
+        } else {
+            let eyeR = pt(landmarks.rightEyeCenter)
+            let eyeL = pt(landmarks.leftEyeCenter)
+            let eyeSpan = faceW * 0.08
+            let offsetDown = faceH * 0.02
+            rightLowerLash = [
+                CGPoint(x: eyeR.x - eyeSpan, y: eyeR.y - offsetDown),
+                CGPoint(x: eyeR.x, y: eyeR.y - offsetDown * 1.5),
+                CGPoint(x: eyeR.x + eyeSpan, y: eyeR.y - offsetDown)
+            ]
+            leftLowerLash = [
+                CGPoint(x: eyeL.x - eyeSpan, y: eyeL.y - offsetDown),
+                CGPoint(x: eyeL.x, y: eyeL.y - offsetDown * 1.5),
+                CGPoint(x: eyeL.x + eyeSpan, y: eyeL.y - offsetDown)
+            ]
+        }
+
+        guard rightLowerLash.count >= 2, leftLowerLash.count >= 2 else { return image }
+
+        let allPoints = rightLowerLash + leftLowerLash
+        guard let minX = allPoints.map(\.x).min(), let maxX = allPoints.map(\.x).max(),
+              let minY = allPoints.map(\.y).min(), let maxY = allPoints.map(\.y).max() else { return image }
+
+        let bagPad = faceW * 0.06
+        let bagBounds = CGRect(
+            x: minX - bagPad,
+            y: minY - bagPad * 1.5,
+            width: (maxX - minX) + bagPad * 2.0,
+            height: (maxY - minY) + bagPad * 2.5
+        ).intersection(extent).integral
+
+        guard !bagBounds.isEmpty,
+              let bW = Int(exactly: bagBounds.width), let bH = Int(exactly: bagBounds.height),
+              bW > 0, bH > 0 else { return image }
+
+        // Render Highlight & Shadow into two separate mask buffers
+        let colorSpace = CGColorSpaceCreateDeviceGray()
+
+        // 1. Highlight Mask (the plump roll)
+        guard let hlContext = CGContext(
+            data: nil, width: bW, height: bH, bitsPerComponent: 8, bytesPerRow: bW,
+            space: colorSpace, bitmapInfo: CGImageAlphaInfo.none.rawValue
+        ) else { return image }
+        hlContext.setFillColor(gray: 0.0, alpha: 1.0)
+        hlContext.fill(CGRect(x: 0, y: 0, width: bW, height: bH))
+        hlContext.translateBy(x: -bagBounds.minX, y: -bagBounds.minY)
+
+        let hlStrokeWidth = max(2.5, faceW * 0.016)
+        hlContext.setLineWidth(hlStrokeWidth)
+        hlContext.setLineCap(.round)
+        hlContext.setLineJoin(.round)
+        hlContext.setStrokeColor(gray: 1.0, alpha: 1.0)
+
+        let rollOffset = faceH * 0.014
+        func drawOffsetPath(points: [CGPoint], dy: CGFloat, in ctx: CGContext) {
+            guard let first = points.first else { return }
+            let p = CGMutablePath()
+            p.move(to: CGPoint(x: first.x, y: first.y - dy))
+            for pt in points.dropFirst() {
+                p.addLine(to: CGPoint(x: pt.x, y: pt.y - dy))
+            }
+            ctx.addPath(p)
+            ctx.strokePath()
+        }
+
+        drawOffsetPath(points: rightLowerLash, dy: rollOffset, in: hlContext)
+        drawOffsetPath(points: leftLowerLash, dy: rollOffset, in: hlContext)
+
+        guard let hlBitmap = hlContext.makeImage() else { return image }
+        var hlMask = CIImage(cgImage: hlBitmap).transformed(by: CGAffineTransform(translationX: bagBounds.minX, y: bagBounds.minY))
+
+        // 2. Shadow Mask (the crease groove underneath)
+        guard let shContext = CGContext(
+            data: nil, width: bW, height: bH, bitsPerComponent: 8, bytesPerRow: bW,
+            space: colorSpace, bitmapInfo: CGImageAlphaInfo.none.rawValue
+        ) else { return image }
+        shContext.setFillColor(gray: 0.0, alpha: 1.0)
+        shContext.fill(CGRect(x: 0, y: 0, width: bW, height: bH))
+        shContext.translateBy(x: -bagBounds.minX, y: -bagBounds.minY)
+
+        let shStrokeWidth = max(1.5, faceW * 0.009)
+        shContext.setLineWidth(shStrokeWidth)
+        shContext.setLineCap(.round)
+        shContext.setLineJoin(.round)
+        shContext.setStrokeColor(gray: 1.0, alpha: 1.0)
+
+        let shadowOffset = faceH * 0.026
+        drawOffsetPath(points: rightLowerLash, dy: shadowOffset, in: shContext)
+        drawOffsetPath(points: leftLowerLash, dy: shadowOffset, in: shContext)
+
+        guard let shBitmap = shContext.makeImage() else { return image }
+        var shMask = CIImage(cgImage: shBitmap).transformed(by: CGAffineTransform(translationX: bagBounds.minX, y: bagBounds.minY))
+
+        // Soft Gaussian Blur for natural flesh integration
+        let blurHl = max(2.0, Double(faceW * 0.012))
+        let blurSh = max(1.5, Double(faceW * 0.008))
+
+        if let blurFilter = CIFilter(name: "CIGaussianBlur") {
+            blurFilter.setValue(hlMask, forKey: kCIInputImageKey)
+            blurFilter.setValue(blurHl, forKey: kCIInputRadiusKey)
+            if let out = blurFilter.outputImage?.cropped(to: extent) { hlMask = out }
+
+            blurFilter.setValue(shMask, forKey: kCIInputImageKey)
+            blurFilter.setValue(blurSh, forKey: kCIInputRadiusKey)
+            if let out = blurFilter.outputImage?.cropped(to: extent) { shMask = out }
+        }
+
+        var result = image
+
+        // A. Composite Shadow Crease (Natural soft taupe-brown shadow)
+        let shOpacity = CGFloat(intensity * 0.42)
+        let shadowColor = CIImage(color: CIColor(red: 0.38, green: 0.28, blue: 0.24, alpha: 1.0)).cropped(to: extent)
+        if let softLight = CIFilter(name: "CISoftLightBlendMode") {
+            softLight.setValue(shadowColor, forKey: kCIInputImageKey)
+            softLight.setValue(result, forKey: kCIInputBackgroundImageKey)
+            if let tinted = softLight.outputImage {
+                var effShMask = shMask
+                if let matrix = CIFilter(name: "CIColorMatrix") {
+                    matrix.setValue(shMask, forKey: kCIInputImageKey)
+                    matrix.setValue(CIVector(x: shOpacity, y: 0, z: 0, w: 0), forKey: "inputRVector")
+                    matrix.setValue(CIVector(x: 0, y: shOpacity, z: 0, w: 0), forKey: "inputGVector")
+                    matrix.setValue(CIVector(x: 0, y: 0, z: shOpacity, w: 0), forKey: "inputBVector")
+                    if let out = matrix.outputImage { effShMask = out }
+                }
+                if let blend = CIFilter(name: "CIBlendWithMask") {
+                    blend.setValue(tinted, forKey: kCIInputImageKey)
+                    blend.setValue(result, forKey: kCIInputBackgroundImageKey)
+                    blend.setValue(effShMask, forKey: kCIInputMaskImageKey)
+                    if let out = blend.outputImage { result = out }
+                }
+            }
+        }
+
+        // B. Composite Plump Highlight (Luminous champagne/ivory pearl)
+        let hlOpacity = CGFloat(intensity * 0.55)
+        let hlColor = CIImage(color: CIColor(red: 1.0, green: 0.96, blue: 0.92, alpha: 1.0)).cropped(to: extent)
+        if let softLight = CIFilter(name: "CISoftLightBlendMode") {
+            softLight.setValue(hlColor, forKey: kCIInputImageKey)
+            softLight.setValue(result, forKey: kCIInputBackgroundImageKey)
+            if let tinted = softLight.outputImage {
+                var effHlMask = hlMask
+                if let matrix = CIFilter(name: "CIColorMatrix") {
+                    matrix.setValue(hlMask, forKey: kCIInputImageKey)
+                    matrix.setValue(CIVector(x: hlOpacity, y: 0, z: 0, w: 0), forKey: "inputRVector")
+                    matrix.setValue(CIVector(x: 0, y: hlOpacity, z: 0, w: 0), forKey: "inputGVector")
+                    matrix.setValue(CIVector(x: 0, y: 0, z: hlOpacity, w: 0), forKey: "inputBVector")
+                    if let out = matrix.outputImage { effHlMask = out }
+                }
+                if let blend = CIFilter(name: "CIBlendWithMask") {
+                    blend.setValue(tinted, forKey: kCIInputImageKey)
+                    blend.setValue(result, forKey: kCIInputBackgroundImageKey)
+                    blend.setValue(effHlMask, forKey: kCIInputMaskImageKey)
+                    if let out = blend.outputImage { result = out }
+                }
+            }
+        }
+
+        return result
+    }
+
+    // MARK: - Contour & Highlight Makeup (Trang Điểm Tạo Khối & Bắt Sáng)
+    private func applyContour(
+        image: CIImage,
+        makeup: MakeupSettings,
+        landmarks: FaceMeshLandmarks,
+        extent: CGRect
+    ) -> CIImage {
+        guard makeup.contourPreset != "none", makeup.contourOpacity > 0.01, landmarks.hasFace else { return image }
+
+        let width = extent.width
+        let height = extent.height
+        let box = landmarks.boundingBox
+        let faceW = max(50.0, box.width * width)
+        let faceH = max(60.0, box.height * height)
+
+        func pt(_ p: CGPoint) -> CGPoint {
+            return CGPoint(x: p.x * width, y: (1.0 - p.y) * height)
+        }
+
+        // 1. Color Palette for Contour
+        var cR: CGFloat = 0.58; var cG: CGFloat = 0.46; var cB: CGFloat = 0.40
+        switch makeup.contourPreset {
+        case "taupe":      cR = 0.58; cG = 0.46; cB = 0.40 // Natural Taupe
+        case "warmBrown":  cR = 0.64; cG = 0.44; cB = 0.34 // Warm Brown
+        case "coolAsh":    cR = 0.52; cG = 0.46; cB = 0.46 // Cool Ash
+        case "bronze":     cR = 0.68; cG = 0.46; cB = 0.32 // Bronze Glow
+        case "caramel":    cR = 0.62; cG = 0.42; cB = 0.30 // Warm Caramel
+        case "deep":       cR = 0.42; cG = 0.30; cB = 0.24 // Deep Espresso
+        case "softTaupe":  cR = 0.66; cG = 0.54; cB = 0.48 // Soft Taupe
+        default:           cR = 0.58; cG = 0.46; cB = 0.40
+        }
+
+        // Highlight color: Warm champagne pearl
+        let hR: CGFloat = 0.98; let hG: CGFloat = 0.95; let hB: CGFloat = 0.90
+
+        let style = makeup.contourStyle // vShape, natural, sculpted, nose, soft
+
+        // Context for full face bounds
+        let faceBounds = CGRect(
+            x: box.minX * width,
+            y: (1.0 - box.maxY) * height,
+            width: box.width * width,
+            height: box.height * height
+        ).insetBy(dx: -faceW * 0.15, dy: -faceH * 0.15).intersection(extent).integral
+
+        guard !faceBounds.isEmpty,
+              let fbW = Int(exactly: faceBounds.width), let fbH = Int(exactly: faceBounds.height),
+              fbW > 0, fbH > 0 else { return image }
+
+        let colorSpace = CGColorSpaceCreateDeviceGray()
+
+        // Create Shadow Mask
+        guard let shCtx = CGContext(
+            data: nil, width: fbW, height: fbH, bitsPerComponent: 8, bytesPerRow: fbW,
+            space: colorSpace, bitmapInfo: CGImageAlphaInfo.none.rawValue
+        ) else { return image }
+        shCtx.setFillColor(gray: 0.0, alpha: 1.0)
+        shCtx.fill(CGRect(x: 0, y: 0, width: fbW, height: fbH))
+        shCtx.translateBy(x: -faceBounds.minX, y: -faceBounds.minY)
+
+        // Create Highlight Mask
+        guard let hlCtx = CGContext(
+            data: nil, width: fbW, height: fbH, bitsPerComponent: 8, bytesPerRow: fbW,
+            space: colorSpace, bitmapInfo: CGImageAlphaInfo.none.rawValue
+        ) else { return image }
+        hlCtx.setFillColor(gray: 0.0, alpha: 1.0)
+        hlCtx.fill(CGRect(x: 0, y: 0, width: fbW, height: fbH))
+        hlCtx.translateBy(x: -faceBounds.minX, y: -faceBounds.minY)
+
+        let noseBridgePt = pt(landmarks.noseBridge)
+        let noseTipPt = pt(landmarks.noseTip)
+        let leftAlarPt = pt(landmarks.leftAlar)
+        let rightAlarPt = pt(landmarks.rightAlar)
+        let chinTipPt = pt(landmarks.chinTip)
+        let foreheadPt = pt(landmarks.foreheadCenter)
+        let leftCheekPt = pt(landmarks.leftCheekCenter)
+        let rightCheekPt = pt(landmarks.rightCheekCenter)
+        let leftMidJawPt = pt(landmarks.leftMidJaw)
+        let rightMidJawPt = pt(landmarks.rightMidJaw)
+        let leftLowerJawPt = pt(landmarks.leftLowerJaw)
+        let rightLowerJawPt = pt(landmarks.rightLowerJaw)
+        let leftTemplePt = pt(landmarks.leftTemple)
+        let rightTemplePt = pt(landmarks.rightTemple)
+
+        shCtx.setLineCap(.round)
+        shCtx.setLineJoin(.round)
+        hlCtx.setLineCap(.round)
+        hlCtx.setLineJoin(.round)
+
+        // A. Nose Contour & Bridge Highlight (All styles, with nose style emphasized)
+        let noseStrokeW = max(3.0, faceW * (style == "nose" ? 0.024 : 0.018))
+        shCtx.setLineWidth(noseStrokeW)
+        shCtx.setStrokeColor(gray: style == "nose" ? 1.0 : 0.75, alpha: 1.0)
+
+        let noseOffset = faceW * 0.032
+        // Left nose bridge side
+        shCtx.move(to: CGPoint(x: noseBridgePt.x - noseOffset, y: noseBridgePt.y))
+        shCtx.addLine(to: CGPoint(x: leftAlarPt.x * 0.7 + noseTipPt.x * 0.3, y: leftAlarPt.y))
+        shCtx.strokePath()
+
+        // Right nose bridge side
+        shCtx.move(to: CGPoint(x: noseBridgePt.x + noseOffset, y: noseBridgePt.y))
+        shCtx.addLine(to: CGPoint(x: rightAlarPt.x * 0.7 + noseTipPt.x * 0.3, y: rightAlarPt.y))
+        shCtx.strokePath()
+
+        // Nose Bridge Highlight Stripe
+        let hlBridgeW = max(2.5, faceW * 0.014)
+        hlCtx.setLineWidth(hlBridgeW)
+        hlCtx.setStrokeColor(gray: 1.0, alpha: 1.0)
+        let bridgeMid = CGPoint(x: (noseBridgePt.x + noseTipPt.x) * 0.5, y: (noseBridgePt.y + noseTipPt.y) * 0.5)
+        hlCtx.move(to: CGPoint(x: noseBridgePt.x, y: noseBridgePt.y - faceH * 0.02))
+        hlCtx.addLine(to: CGPoint(x: bridgeMid.x, y: bridgeMid.y))
+        hlCtx.strokePath()
+
+        // Nose Tip Highlight Dot
+        let tipRad = max(2.0, faceW * 0.012)
+        hlCtx.setFillColor(gray: 1.0, alpha: 1.0)
+        hlCtx.fillEllipse(in: CGRect(x: noseTipPt.x - tipRad, y: noseTipPt.y - tipRad, width: tipRad * 2, height: tipRad * 2))
+
+        // B. Cheek Hollow & Cheekbone Contouring (styles != "nose")
+        if style != "nose" {
+            let cheekShW = max(8.0, faceW * (style == "sculpted" ? 0.065 : 0.045))
+            shCtx.setLineWidth(cheekShW)
+            shCtx.setStrokeColor(gray: style == "sculpted" ? 1.0 : 0.80, alpha: 1.0)
+
+            // Cheek hollow under zygoma (from ear forward toward mouth corner)
+            let leftEarJaw = CGPoint(x: leftTemplePt.x * 0.6 + leftMidJawPt.x * 0.4, y: leftTemplePt.y * 0.4 + leftMidJawPt.y * 0.6)
+            let rightEarJaw = CGPoint(x: rightTemplePt.x * 0.6 + rightMidJawPt.x * 0.4, y: rightTemplePt.y * 0.4 + rightMidJawPt.y * 0.6)
+
+            shCtx.move(to: leftEarJaw)
+            shCtx.addLine(to: CGPoint(x: leftCheekPt.x * 0.8 + leftLowerJawPt.x * 0.2, y: leftCheekPt.y - faceH * 0.03))
+            shCtx.strokePath()
+
+            shCtx.move(to: rightEarJaw)
+            shCtx.addLine(to: CGPoint(x: rightCheekPt.x * 0.8 + rightLowerJawPt.x * 0.2, y: rightCheekPt.y - faceH * 0.03))
+            shCtx.strokePath()
+
+            // Cheekbone Highlighting (on the apple & crest above the contour)
+            let hlCheekRad = max(5.0, faceW * 0.030)
+            let leftCrest = CGPoint(x: leftCheekPt.x, y: leftCheekPt.y + faceH * 0.03)
+            let rightCrest = CGPoint(x: rightCheekPt.x, y: rightCheekPt.y + faceH * 0.03)
+            hlCtx.fillEllipse(in: CGRect(x: leftCrest.x - hlCheekRad * 1.5, y: leftCrest.y - hlCheekRad, width: hlCheekRad * 3.0, height: hlCheekRad * 2.0))
+            hlCtx.fillEllipse(in: CGRect(x: rightCrest.x - hlCheekRad * 1.5, y: rightCrest.y - hlCheekRad, width: hlCheekRad * 3.0, height: hlCheekRad * 2.0))
+        }
+
+        // C. Jawline & Chin Shading
+        if style == "vShape" || style == "sculpted" {
+            let jawShW = max(6.0, faceW * (style == "vShape" ? 0.055 : 0.040))
+            shCtx.setLineWidth(jawShW)
+            shCtx.setStrokeColor(gray: 0.90, alpha: 1.0)
+
+            // Mandibular jawline strokes
+            shCtx.move(to: leftMidJawPt)
+            shCtx.addLine(to: leftLowerJawPt)
+            shCtx.addLine(to: CGPoint(x: chinTipPt.x - faceW * 0.04, y: chinTipPt.y))
+            shCtx.strokePath()
+
+            shCtx.move(to: rightMidJawPt)
+            shCtx.addLine(to: rightLowerJawPt)
+            shCtx.addLine(to: CGPoint(x: chinTipPt.x + faceW * 0.04, y: chinTipPt.y))
+            shCtx.strokePath()
+
+            // Sub-chin shadow
+            shCtx.move(to: CGPoint(x: chinTipPt.x - faceW * 0.05, y: chinTipPt.y - faceH * 0.02))
+            shCtx.addLine(to: CGPoint(x: chinTipPt.x + faceW * 0.05, y: chinTipPt.y - faceH * 0.02))
+            shCtx.strokePath()
+
+            // Center Chin Highlight
+            let chinHlRad = max(3.0, faceW * 0.018)
+            hlCtx.fillEllipse(in: CGRect(x: chinTipPt.x - chinHlRad, y: chinTipPt.y + faceH * 0.01 - chinHlRad, width: chinHlRad * 2, height: chinHlRad * 2))
+        }
+
+        // D. Forehead / Temple Contouring & Center Forehead Highlight
+        if style == "sculpted" || style == "natural" || style == "vShape" {
+            let templeShW = max(6.0, faceW * 0.040)
+            shCtx.setLineWidth(templeShW)
+            shCtx.setStrokeColor(gray: 0.70, alpha: 1.0)
+
+            shCtx.move(to: leftTemplePt)
+            shCtx.addLine(to: CGPoint(x: foreheadPt.x - faceW * 0.15, y: foreheadPt.y + faceH * 0.05))
+            shCtx.strokePath()
+
+            shCtx.move(to: rightTemplePt)
+            shCtx.addLine(to: CGPoint(x: foreheadPt.x + faceW * 0.15, y: foreheadPt.y + faceH * 0.05))
+            shCtx.strokePath()
+
+            // Forehead Center Highlight
+            let foreHlRad = max(6.0, faceW * 0.035)
+            hlCtx.fillEllipse(in: CGRect(x: foreheadPt.x - foreHlRad * 1.2, y: foreheadPt.y - foreHlRad * 0.8, width: foreHlRad * 2.4, height: foreHlRad * 1.6))
+        }
+
+        guard let shBitmap = shCtx.makeImage(), let hlBitmap = hlCtx.makeImage() else { return image }
+        var shMask = CIImage(cgImage: shBitmap).transformed(by: CGAffineTransform(translationX: faceBounds.minX, y: faceBounds.minY))
+        var hlMask = CIImage(cgImage: hlBitmap).transformed(by: CGAffineTransform(translationX: faceBounds.minX, y: faceBounds.minY))
+
+        // Feathering Gaussian Blur for seamless, diffused makeup blending
+        let blurRad = max(5.0, Double(faceW * 0.040))
+        if let blurFilter = CIFilter(name: "CIGaussianBlur") {
+            blurFilter.setValue(shMask, forKey: kCIInputImageKey)
+            blurFilter.setValue(blurRad, forKey: kCIInputRadiusKey)
+            if let out = blurFilter.outputImage?.cropped(to: extent) { shMask = out }
+
+            blurFilter.setValue(hlMask, forKey: kCIInputImageKey)
+            blurFilter.setValue(blurRad * 0.85, forKey: kCIInputRadiusKey)
+            if let out = blurFilter.outputImage?.cropped(to: extent) { hlMask = out }
+        }
+
+        var result = image
+
+        // Composite Contour Shading
+        let shadowOpacity = CGFloat(makeup.contourOpacity * 0.55)
+        let shadowColorImg = CIImage(color: CIColor(red: cR, green: cG, blue: cB, alpha: 1.0)).cropped(to: extent)
+        if let softLight = CIFilter(name: "CISoftLightBlendMode") {
+            softLight.setValue(shadowColorImg, forKey: kCIInputImageKey)
+            softLight.setValue(result, forKey: kCIInputBackgroundImageKey)
+            if let tinted = softLight.outputImage {
+                var effShMask = shMask
+                if let matrix = CIFilter(name: "CIColorMatrix") {
+                    matrix.setValue(shMask, forKey: kCIInputImageKey)
+                    matrix.setValue(CIVector(x: shadowOpacity, y: 0, z: 0, w: 0), forKey: "inputRVector")
+                    matrix.setValue(CIVector(x: 0, y: shadowOpacity, z: 0, w: 0), forKey: "inputGVector")
+                    matrix.setValue(CIVector(x: 0, y: 0, z: shadowOpacity, w: 0), forKey: "inputBVector")
+                    if let out = matrix.outputImage { effShMask = out }
+                }
+                if let blend = CIFilter(name: "CIBlendWithMask") {
+                    blend.setValue(tinted, forKey: kCIInputImageKey)
+                    blend.setValue(result, forKey: kCIInputBackgroundImageKey)
+                    blend.setValue(effShMask, forKey: kCIInputMaskImageKey)
+                    if let out = blend.outputImage { result = out }
+                }
+            }
+        }
+
+        // Composite Highlight
+        let hlOpacity = CGFloat(makeup.contourOpacity * 0.45)
+        let hlColorImg = CIImage(color: CIColor(red: hR, green: hG, blue: hB, alpha: 1.0)).cropped(to: extent)
+        if let softLight = CIFilter(name: "CISoftLightBlendMode") {
+            softLight.setValue(hlColorImg, forKey: kCIInputImageKey)
+            softLight.setValue(result, forKey: kCIInputBackgroundImageKey)
+            if let tinted = softLight.outputImage {
+                var effHlMask = hlMask
+                if let matrix = CIFilter(name: "CIColorMatrix") {
+                    matrix.setValue(hlMask, forKey: kCIInputImageKey)
+                    matrix.setValue(CIVector(x: hlOpacity, y: 0, z: 0, w: 0), forKey: "inputRVector")
+                    matrix.setValue(CIVector(x: 0, y: hlOpacity, z: 0, w: 0), forKey: "inputGVector")
+                    matrix.setValue(CIVector(x: 0, y: 0, z: hlOpacity, w: 0), forKey: "inputBVector")
+                    if let out = matrix.outputImage { effHlMask = out }
+                }
+                if let blend = CIFilter(name: "CIBlendWithMask") {
+                    blend.setValue(tinted, forKey: kCIInputImageKey)
+                    blend.setValue(result, forKey: kCIInputBackgroundImageKey)
+                    blend.setValue(effHlMask, forKey: kCIInputMaskImageKey)
+                    if let out = blend.outputImage { result = out }
+                }
+            }
+        }
+
+        return result
+    }
+
+    // MARK: - Glass Skin / Làm Da Bóng Mịn (Dewy Specular Glow)
+    /// Emulates Korean "Glass Skin" (mịn màng căng bóng tự nhiên).
+    /// Places liquid dewy specular highlights across facial focal points
+    /// (high cheekbones, nose bridge, tip, forehead center, and chin)
+    /// strictly bounded to skin mask with soft, translucent radiance.
+    private func applyGlassSkin(
+        image: CIImage,
+        intensity: Double,
+        landmarks: FaceMeshLandmarks,
+        extent: CGRect,
+        skinMask: CIImage?
+    ) -> CIImage {
+        guard intensity > 0.01, landmarks.hasFace else { return image }
+
+        let width = extent.width
+        let height = extent.height
+        let box = landmarks.boundingBox
+        let faceW = max(50.0, box.width * width)
+        let faceH = max(60.0, box.height * height)
+
+        func pt(_ p: CGPoint) -> CGPoint {
+            return CGPoint(x: p.x * width, y: (1.0 - p.y) * height)
+        }
+
+        let cheekAppleL = landmarks.leftCheekApple != .zero ? pt(landmarks.leftCheekApple) : pt(landmarks.leftCheekCenter)
+        let cheekAppleR = landmarks.rightCheekApple != .zero ? pt(landmarks.rightCheekApple) : pt(landmarks.rightCheekCenter)
+        let noseBridgePt = pt(landmarks.noseBridge)
+        let noseTipPt = pt(landmarks.noseTip)
+        let foreheadPt = pt(landmarks.foreheadCenter)
+        let chinTipPt = pt(landmarks.chinTip)
+
+        let faceBounds = CGRect(
+            x: box.minX * width,
+            y: (1.0 - box.maxY) * height,
+            width: box.width * width,
+            height: box.height * height
+        ).insetBy(dx: -faceW * 0.10, dy: -faceH * 0.10).intersection(extent).integral
+
+        guard !faceBounds.isEmpty,
+              let fbW = Int(exactly: faceBounds.width), let fbH = Int(exactly: faceBounds.height),
+              fbW > 0, fbH > 0 else { return image }
+
+        let colorSpace = CGColorSpaceCreateDeviceGray()
+        guard let ctx = CGContext(
+            data: nil, width: fbW, height: fbH, bitsPerComponent: 8, bytesPerRow: fbW,
+            space: colorSpace, bitmapInfo: CGImageAlphaInfo.none.rawValue
+        ) else { return image }
+
+        ctx.setFillColor(gray: 0.0, alpha: 1.0)
+        ctx.fill(CGRect(x: 0, y: 0, width: fbW, height: fbH))
+        ctx.translateBy(x: -faceBounds.minX, y: -faceBounds.minY)
+
+        // Draw specular dewy spots at high facial points
+        func drawGlowSpot(center: CGPoint, rx: CGFloat, ry: CGFloat, alpha: CGFloat) {
+            ctx.setFillColor(gray: alpha, alpha: 1.0)
+            ctx.fillEllipse(in: CGRect(x: center.x - rx, y: center.y - ry, width: rx * 2.0, height: ry * 2.0))
+        }
+
+        // 1. Cheekbone high points (dewy liquid sheen)
+        let cheekRx = faceW * 0.065
+        let cheekRy = faceH * 0.045
+        drawGlowSpot(center: CGPoint(x: cheekAppleL.x, y: cheekAppleL.y + faceH * 0.02), rx: cheekRx, ry: cheekRy, alpha: 0.75)
+        drawGlowSpot(center: CGPoint(x: cheekAppleR.x, y: cheekAppleR.y + faceH * 0.02), rx: cheekRx, ry: cheekRy, alpha: 0.75)
+
+        // 2. Nose bridge & tip (delicate specular reflection)
+        let midBridge = CGPoint(x: (noseBridgePt.x + noseTipPt.x) * 0.5, y: (noseBridgePt.y + noseTipPt.y) * 0.5)
+        drawGlowSpot(center: midBridge, rx: faceW * 0.016, ry: faceH * 0.035, alpha: 0.85)
+        drawGlowSpot(center: noseTipPt, rx: faceW * 0.018, ry: faceW * 0.018, alpha: 0.90)
+
+        // 3. Forehead center (subtle hydrated reflection)
+        drawGlowSpot(center: foreheadPt, rx: faceW * 0.055, ry: faceH * 0.030, alpha: 0.55)
+
+        // 4. Chin tip (youthful dewy point)
+        drawGlowSpot(center: CGPoint(x: chinTipPt.x, y: chinTipPt.y + faceH * 0.015), rx: faceW * 0.022, ry: faceH * 0.018, alpha: 0.65)
+
+        guard let spotBitmap = ctx.makeImage() else { return image }
+        var sheenMask = CIImage(cgImage: spotBitmap).transformed(by: CGAffineTransform(translationX: faceBounds.minX, y: faceBounds.minY))
+
+        // Blur for silky, seamless transition into skin
+        let blurRad = max(4.0, Double(faceW * 0.035))
+        if let blurFilter = CIFilter(name: "CIGaussianBlur") {
+            blurFilter.setValue(sheenMask, forKey: kCIInputImageKey)
+            blurFilter.setValue(blurRad, forKey: kCIInputRadiusKey)
+            if let out = blurFilter.outputImage?.cropped(to: extent) { sheenMask = out }
+        }
+
+        // Gate strictly by skinMask (or fullFaceSkinMask) to prevent any sheen outside skin
+        if let mask = skinMask ?? createFullFaceSkinMask(landmarks: landmarks, extent: extent) {
+            if let multiplyMask = CIFilter(name: "CIMultiplyCompositing") {
+                multiplyMask.setValue(sheenMask, forKey: kCIInputImageKey)
+                multiplyMask.setValue(mask, forKey: kCIInputBackgroundImageKey)
+                if let out = multiplyMask.outputImage?.cropped(to: extent) { sheenMask = out }
+            }
+        }
+
+        // Composite dewy sheen with CIScreenBlendMode
+        let glowOpacity = CGFloat(intensity * 0.40)
+        let sheenColor = CIImage(color: CIColor(red: 1.0, green: 0.98, blue: 0.95, alpha: 1.0)).cropped(to: extent)
+
+        if let screenBlend = CIFilter(name: "CIScreenBlendMode") {
+            screenBlend.setValue(sheenColor, forKey: kCIInputImageKey)
+            screenBlend.setValue(image, forKey: kCIInputBackgroundImageKey)
+            if let screened = screenBlend.outputImage {
+                var effMask = sheenMask
+                if let matrix = CIFilter(name: "CIColorMatrix") {
+                    matrix.setValue(sheenMask, forKey: kCIInputImageKey)
+                    matrix.setValue(CIVector(x: glowOpacity, y: 0, z: 0, w: 0), forKey: "inputRVector")
+                    matrix.setValue(CIVector(x: 0, y: glowOpacity, z: 0, w: 0), forKey: "inputGVector")
+                    matrix.setValue(CIVector(x: 0, y: 0, z: glowOpacity, w: 0), forKey: "inputBVector")
+                    if let out = matrix.outputImage { effMask = out }
+                }
+                if let blend = CIFilter(name: "CIBlendWithMask") {
+                    blend.setValue(screened, forKey: kCIInputImageKey)
+                    blend.setValue(image, forKey: kCIInputBackgroundImageKey)
+                    blend.setValue(effMask, forKey: kCIInputMaskImageKey)
+                    if let out = blend.outputImage { return out }
+                }
+            }
+        }
+
+        return image
     }
 
     // MARK: - Split Comparison

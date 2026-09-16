@@ -136,6 +136,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get beautyEyeBag => 'Bọng mắt';
 
   @override
+  String get beautyGlassSkin => 'Da bóng mịn';
+
+  @override
   String get sliderSkinSmoothing => 'Mức độ làm mịn da';
 
   @override
@@ -158,6 +161,9 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get sliderEyeBagReduction => 'Giảm bọng mắt';
+
+  @override
+  String get sliderGlassSkin => 'Mức độ da bóng mịn';
 
   @override
   String get sliderTeethWhitening => 'Làm trắng răng';
@@ -247,6 +253,12 @@ class AppLocalizationsVi extends AppLocalizations {
   String get reshapeTemple => 'Thái dương';
 
   @override
+  String get reshapeDoubleChin => 'Giảm nọng cằm';
+
+  @override
+  String get reshapeJawline => 'Viền hàm';
+
+  @override
   String get reshapeNoseWid => 'Rộng mũi';
 
   @override
@@ -278,6 +290,9 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get reshapeEyeSparkle => 'Long lanh';
+
+  @override
+  String get reshapeAegyoSal => 'Bọng mắt cười';
 
   @override
   String get reshapeEyebrowHeight => 'Độ cao';
@@ -400,7 +415,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get sparkleNatural => 'Tự nhiên';
 
   @override
-  String get sparkleStarlight => 'Ngôi sao';
+  String get sparkleStarlight => 'Ánh sao';
 
   @override
   String get sparkleRing => 'Vòng sáng';
@@ -425,6 +440,9 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get makeupEyeshadow => 'Phấn mắt';
+
+  @override
+  String get makeupContour => 'Tạo khối';
 
   @override
   String makeupIntensity(String name) {
@@ -498,6 +516,18 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get styleDouyin => 'Douyin';
+
+  @override
+  String get styleVShape => 'Mặt V-Line';
+
+  @override
+  String get styleSculpted => '3D sắc sảo';
+
+  @override
+  String get styleNoseContour => 'Thon gọn mũi';
+
+  @override
+  String get styleSoftContour => 'Mềm mại';
 
   @override
   String get resetColorTooltip => 'Đặt lại màu sắc';

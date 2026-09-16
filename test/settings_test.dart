@@ -17,33 +17,37 @@ void main() {
       expect(settings.skinToneType, 'natural');
       expect(settings.isModified, false);
 
-      final modified = settings.copyWith(smooth: 45, skinTone: 60, skinToneType: 'porcelain');
+      final modified = settings.copyWith(smooth: 45, skinTone: 60, skinToneType: 'porcelain', glassSkin: 70);
       expect(modified.smooth, 45);
       expect(modified.skinTone, 60);
       expect(modified.skinToneType, 'porcelain');
+      expect(modified.glassSkin, 70);
       expect(modified.isModified, true);
       expect(modified.isKeyActive('smooth'), true);
       expect(modified.isKeyActive('skinTone'), true);
+      expect(modified.isKeyActive('glassSkin'), true);
       expect(modified.isKeyActive('whitening'), false);
     });
 
     test('normalization toMap', () {
-      const settings = BeautySettings(smooth: 50, whitening: 80, skinTone: 70, skinToneType: 'peach');
+      const settings = BeautySettings(smooth: 50, whitening: 80, skinTone: 70, skinToneType: 'peach', glassSkin: 65);
       final map = settings.toMap();
       expect(map['smooth'], 0.5);
       expect(map['whitening'], 0.8);
       expect(map['skinTone'], 0.7);
       expect(map['skinToneType'], 'peach');
+      expect(map['glassSkin'], 0.65);
     });
 
     test('json roundtrip', () {
-      const settings = BeautySettings(smooth: 30, teethWhitening: 60, skinTone: 55, skinToneType: 'rosy');
+      const settings = BeautySettings(smooth: 30, teethWhitening: 60, skinTone: 55, skinToneType: 'rosy', glassSkin: 40);
       final json = settings.toJson();
       final restored = BeautySettings.fromJson(json);
       expect(restored.smooth, 30);
       expect(restored.teethWhitening, 60);
       expect(restored.skinTone, 55);
       expect(restored.skinToneType, 'rosy');
+      expect(restored.glassSkin, 40);
     });
   });
 
@@ -57,6 +61,9 @@ void main() {
       expect(settings.hairline, 0);
       expect(settings.templeWidth, 0);
       expect(settings.cheekWidth, 0);
+      expect(settings.doubleChin, 0);
+      expect(settings.jawline, 0);
+      expect(settings.aegyoSal, 0);
       expect(settings.eyeBrightness, 0);
       expect(settings.eyeSparkle, 0);
       expect(settings.eyeSparkleStyle, 'starlight');
@@ -68,6 +75,9 @@ void main() {
         cheekWidth: -30,
         templeWidth: 20,
         hairline: -40,
+        doubleChin: 50,
+        jawline: 65,
+        aegyoSal: 55,
         eyeBrightness: 60,
         eyeSparkle: 75,
         eyeSparkleStyle: 'crystal',
@@ -82,6 +92,9 @@ void main() {
       expect(modified.isKeyActive('cheekWidth'), true);
       expect(modified.isKeyActive('templeWidth'), true);
       expect(modified.isKeyActive('hairline'), true);
+      expect(modified.isKeyActive('doubleChin'), true);
+      expect(modified.isKeyActive('jawline'), true);
+      expect(modified.isKeyActive('aegyoSal'), true);
       expect(modified.isKeyActive('eyeBrightness'), true);
       expect(modified.isKeyActive('eyeSparkle'), true);
       expect(modified.isKeyActive('smileCorners'), true);
@@ -95,6 +108,9 @@ void main() {
       expect(map['cheekWidth'], -0.6);
       expect(map['templeWidth'], 0.4);
       expect(map['hairline'], -0.8);
+      expect(map['doubleChin'], 0.5);
+      expect(map['jawline'], 0.65);
+      expect(map['aegyoSal'], 0.55);
       expect(map['eyeBrightness'], 0.6);
       expect(map['eyeSparkle'], 0.75);
       expect(map['eyeSparkleStyle'], 'crystal');
@@ -108,6 +124,9 @@ void main() {
       const settings = ReshapeSettings(
         smile: 30,
         smileCorners: 75,
+        doubleChin: 40,
+        jawline: 60,
+        aegyoSal: 50,
         eyebrowHeight: 35,
         eyebrowArch: 15,
         eyebrowTilt: -20,
@@ -122,6 +141,9 @@ void main() {
       final restored = ReshapeSettings.fromJson(json);
       expect(restored.smile, 30);
       expect(restored.smileCorners, 75);
+      expect(restored.doubleChin, 40);
+      expect(restored.jawline, 60);
+      expect(restored.aegyoSal, 50);
       expect(restored.eyebrowHeight, 35);
       expect(restored.eyebrowArch, 15);
       expect(restored.eyebrowTilt, -20);
@@ -144,20 +166,30 @@ void main() {
         eyebrowStyle: 'korean',
         eyelinerStyle: 'fox',
         eyeshadowStyle: 'douyin',
+        contourPreset: 'natural',
+        contourOpacity: 65,
+        contourStyle: 'vShape',
       );
       expect(settings.isModified, true);
       expect(settings.isKeyActive('lip'), true);
+      expect(settings.isKeyActive('contour'), true);
       expect(settings.isKeyActive('blush'), false);
       expect(settings.lipStyle, 'gloss');
       expect(settings.blushStyle, 'sunkissed');
       expect(settings.eyebrowStyle, 'korean');
       expect(settings.eyelinerStyle, 'fox');
       expect(settings.eyeshadowStyle, 'douyin');
+      expect(settings.contourPreset, 'natural');
+      expect(settings.contourOpacity, 65);
+      expect(settings.contourStyle, 'vShape');
 
       final map = settings.toMap();
       expect(map['lipPreset'], 'rose');
       expect(map['lipOpacity'], 0.7);
       expect(map['lipStyle'], 'gloss');
+      expect(map['contourPreset'], 'natural');
+      expect(map['contourOpacity'], 0.65);
+      expect(map['contourStyle'], 'vShape');
       expect(map['blushStyle'], 'sunkissed');
       expect(map['eyebrowStyle'], 'korean');
       expect(map['eyelinerStyle'], 'fox');

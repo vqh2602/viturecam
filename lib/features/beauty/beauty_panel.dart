@@ -26,6 +26,7 @@ class BeautyPanel extends ConsumerWidget {
       {'id': 'redness', 'label': l10n.beautyRedness, 'icon': Icons.spa_outlined},
       {'id': 'darkCircle', 'label': l10n.beautyDarkCircle, 'icon': Icons.remove_red_eye_outlined},
       {'id': 'eyeBag', 'label': l10n.beautyEyeBag, 'icon': Icons.visibility_outlined},
+      {'id': 'glassSkin', 'label': l10n.beautyGlassSkin, 'icon': Icons.auto_awesome},
     ];
 
     Widget buildCurrentSlider() {
@@ -174,6 +175,13 @@ class BeautyPanel extends ConsumerWidget {
             value: b.teethWhitening,
             defaultValue: 0,
             onChanged: (v) => controller.updateBeauty(b.copyWith(teethWhitening: v)),
+          );
+        case 'glassSkin':
+          return BeautySlider(
+            label: l10n.sliderGlassSkin,
+            value: b.glassSkin,
+            defaultValue: 0,
+            onChanged: (v) => controller.updateBeauty(b.copyWith(glassSkin: v)),
           );
         default:
           return BeautySlider(

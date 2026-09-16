@@ -12,6 +12,8 @@ class ReshapeSettings {
   final double forehead; // -50..50
   final double hairline; // -50..50
   final double templeWidth; // -50..50
+  final double doubleChin; // 0..100
+  final double jawline; // 0..100
 
   // Eyes
   final double eyeSize; // 0..100
@@ -22,6 +24,7 @@ class ReshapeSettings {
   final double eyeBrightness; // 0..100
   final double eyeSparkle; // 0..100
   final String eyeSparkleStyle; // 'natural', 'starlight', 'ring', 'crystal'
+  final double aegyoSal; // 0..100
 
   // Eyebrows
   final double eyebrowHeight; // -50..50
@@ -55,6 +58,8 @@ class ReshapeSettings {
     this.forehead = 0,
     this.hairline = 0,
     this.templeWidth = 0,
+    this.doubleChin = 0,
+    this.jawline = 0,
     this.eyeSize = 0,
     this.eyeWidth = 0,
     this.eyeHeight = 0,
@@ -63,6 +68,7 @@ class ReshapeSettings {
     this.eyeBrightness = 0,
     this.eyeSparkle = 0,
     this.eyeSparkleStyle = 'starlight',
+    this.aegyoSal = 0,
     this.eyebrowHeight = 0,
     this.eyebrowArch = 0,
     this.eyebrowTilt = 0,
@@ -91,6 +97,8 @@ class ReshapeSettings {
       forehead != 0 ||
       hairline != 0 ||
       templeWidth != 0 ||
+      doubleChin != 0 ||
+      jawline != 0 ||
       eyeSize != 0 ||
       eyeWidth != 0 ||
       eyeHeight != 0 ||
@@ -99,6 +107,7 @@ class ReshapeSettings {
       eyeBrightness != 0 ||
       eyeSparkle != 0 ||
       eyeSparkleStyle != 'starlight' ||
+      aegyoSal != 0 ||
       eyebrowHeight != 0 ||
       eyebrowArch != 0 ||
       eyebrowTilt != 0 ||
@@ -137,6 +146,10 @@ class ReshapeSettings {
         return hairline != 0;
       case 'templeWidth':
         return templeWidth != 0;
+      case 'doubleChin':
+        return doubleChin != 0;
+      case 'jawline':
+        return jawline != 0;
       case 'eyeSize':
         return eyeSize != 0;
       case 'eyeWidth':
@@ -151,6 +164,8 @@ class ReshapeSettings {
         return eyeBrightness != 0;
       case 'eyeSparkle':
         return eyeSparkle != 0 || eyeSparkleStyle != 'starlight';
+      case 'aegyoSal':
+        return aegyoSal != 0;
       case 'eyebrowHeight':
         return eyebrowHeight != 0;
       case 'eyebrowArch':
@@ -197,6 +212,8 @@ class ReshapeSettings {
     double? forehead,
     double? hairline,
     double? templeWidth,
+    double? doubleChin,
+    double? jawline,
     double? eyeSize,
     double? eyeWidth,
     double? eyeHeight,
@@ -205,6 +222,7 @@ class ReshapeSettings {
     double? eyeBrightness,
     double? eyeSparkle,
     String? eyeSparkleStyle,
+    double? aegyoSal,
     double? eyebrowHeight,
     double? eyebrowArch,
     double? eyebrowTilt,
@@ -232,6 +250,8 @@ class ReshapeSettings {
       forehead: forehead ?? this.forehead,
       hairline: hairline ?? this.hairline,
       templeWidth: templeWidth ?? this.templeWidth,
+      doubleChin: doubleChin ?? this.doubleChin,
+      jawline: jawline ?? this.jawline,
       eyeSize: eyeSize ?? this.eyeSize,
       eyeWidth: eyeWidth ?? this.eyeWidth,
       eyeHeight: eyeHeight ?? this.eyeHeight,
@@ -240,6 +260,7 @@ class ReshapeSettings {
       eyeBrightness: eyeBrightness ?? this.eyeBrightness,
       eyeSparkle: eyeSparkle ?? this.eyeSparkle,
       eyeSparkleStyle: eyeSparkleStyle ?? this.eyeSparkleStyle,
+      aegyoSal: aegyoSal ?? this.aegyoSal,
       eyebrowHeight: eyebrowHeight ?? this.eyebrowHeight,
       eyebrowArch: eyebrowArch ?? this.eyebrowArch,
       eyebrowTilt: eyebrowTilt ?? this.eyebrowTilt,
@@ -270,6 +291,8 @@ class ReshapeSettings {
       'forehead': forehead / 50.0,
       'hairline': hairline / 50.0,
       'templeWidth': templeWidth / 50.0,
+      'doubleChin': doubleChin / 100.0,
+      'jawline': jawline / 100.0,
       'eyeSize': eyeSize / 100.0,
       'eyeWidth': eyeWidth / 50.0,
       'eyeHeight': eyeHeight / 50.0,
@@ -278,6 +301,7 @@ class ReshapeSettings {
       'eyeBrightness': eyeBrightness / 100.0,
       'eyeSparkle': eyeSparkle / 100.0,
       'eyeSparkleStyle': eyeSparkleStyle,
+      'aegyoSal': aegyoSal / 100.0,
       'eyebrowHeight': eyebrowHeight / 50.0,
       'eyebrowArch': eyebrowArch / 50.0,
       'eyebrowTilt': eyebrowTilt / 50.0,
@@ -308,6 +332,8 @@ class ReshapeSettings {
       forehead: (json['forehead'] as num?)?.toDouble() ?? 0,
       hairline: (json['hairline'] as num?)?.toDouble() ?? 0,
       templeWidth: (json['templeWidth'] as num?)?.toDouble() ?? 0,
+      doubleChin: (json['doubleChin'] as num?)?.toDouble() ?? 0,
+      jawline: (json['jawline'] as num?)?.toDouble() ?? 0,
       eyeSize: (json['eyeSize'] as num?)?.toDouble() ?? 0,
       eyeWidth: (json['eyeWidth'] as num?)?.toDouble() ?? 0,
       eyeHeight: (json['eyeHeight'] as num?)?.toDouble() ?? 0,
@@ -316,6 +342,7 @@ class ReshapeSettings {
       eyeBrightness: (json['eyeBrightness'] as num?)?.toDouble() ?? 0,
       eyeSparkle: (json['eyeSparkle'] as num?)?.toDouble() ?? 0,
       eyeSparkleStyle: (json['eyeSparkleStyle'] as String?) ?? 'starlight',
+      aegyoSal: (json['aegyoSal'] as num?)?.toDouble() ?? 0,
       eyebrowHeight: (json['eyebrowHeight'] as num?)?.toDouble() ?? 0,
       eyebrowArch: (json['eyebrowArch'] as num?)?.toDouble() ?? 0,
       eyebrowTilt: (json['eyebrowTilt'] as num?)?.toDouble() ?? 0,
@@ -346,6 +373,8 @@ class ReshapeSettings {
       'forehead': forehead,
       'hairline': hairline,
       'templeWidth': templeWidth,
+      'doubleChin': doubleChin,
+      'jawline': jawline,
       'eyeSize': eyeSize,
       'eyeWidth': eyeWidth,
       'eyeHeight': eyeHeight,
@@ -354,6 +383,7 @@ class ReshapeSettings {
       'eyeBrightness': eyeBrightness,
       'eyeSparkle': eyeSparkle,
       'eyeSparkleStyle': eyeSparkleStyle,
+      'aegyoSal': aegyoSal,
       'eyebrowHeight': eyebrowHeight,
       'eyebrowArch': eyebrowArch,
       'eyebrowTilt': eyebrowTilt,

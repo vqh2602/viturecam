@@ -47,6 +47,7 @@
   "beautyRedness": "Giảm đỏ",
   "beautyDarkCircle": "Quầng thâm",
   "beautyEyeBag": "Bọng mắt",
+  "beautyGlassSkin": "Da bóng mịn",
 
   "sliderSkinSmoothing": "Mức độ làm mịn da",
   "sliderTexturePreservation": "Giữ lại chi tiết da",
@@ -56,6 +57,7 @@
   "sliderRednessReduction": "Khử sắc đỏ da",
   "sliderDarkCircleReduction": "Xóa quầng thâm mắt",
   "sliderEyeBagReduction": "Giảm bọng mắt",
+  "sliderGlassSkin": "Mức độ da bóng mịn",
   "sliderTeethWhitening": "Làm trắng răng",
 
   "toneNatural": "Tự nhiên",
@@ -88,6 +90,8 @@
   "reshapeForehead": "Trán",
   "reshapeHairline": "Chân tóc",
   "reshapeTemple": "Thái dương",
+  "reshapeDoubleChin": "Giảm nọng cằm",
+  "reshapeJawline": "Viền hàm",
 
   "reshapeNoseWid": "Rộng mũi",
   "reshapeNoseBridge": "Sống mũi",
@@ -101,6 +105,7 @@
   "reshapeEyeAngle": "Góc mắt",
   "reshapeEyeBrighten": "Sáng mắt",
   "reshapeEyeSparkle": "Long lanh",
+  "reshapeAegyoSal": "Bọng mắt cười",
 
   "reshapeEyebrowHeight": "Độ cao",
   "reshapeEyebrowArch": "Cung mày",
@@ -145,7 +150,7 @@
   "sliderMouthPosition": "Vị trí miệng",
 
   "sparkleNatural": "Tự nhiên",
-  "sparkleStarlight": "Ngôi sao",
+  "sparkleStarlight": "Ánh sao",
   "sparkleRing": "Vòng sáng",
   "sparkleCrystal": "Pha lê",
 
@@ -155,6 +160,7 @@
   "makeupEyebrow": "Kẻ mày",
   "makeupEyeliner": "Kẻ mắt",
   "makeupEyeshadow": "Phấn mắt",
+  "makeupContour": "Tạo khối",
   "makeupIntensity": "Độ đậm {name}",
   "selectMakeupColorBelow": "Chọn màu {name} bên dưới",
 
@@ -179,6 +185,10 @@
   "styleCutCrease": "Cắt mí",
   "styleOuterV": "Đuôi V",
   "styleDouyin": "Douyin",
+  "styleVShape": "Mặt V-Line",
+  "styleSculpted": "3D sắc sảo",
+  "styleNoseContour": "Thon gọn mũi",
+  "styleSoftContour": "Mềm mại",
 
   "resetColorTooltip": "Đặt lại màu sắc",
   "colorExposure": "Phơi sáng",
