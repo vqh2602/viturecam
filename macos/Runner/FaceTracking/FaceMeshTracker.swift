@@ -155,6 +155,7 @@ public final class FaceMeshTracker {
     private var frameTimestamp: TimeInterval = 0
     private var imageSize: CGSize = .zero
     private let lock = NSLock()
+    public var needsLipRefinement: Bool = false
 
     public init() {
         setupModel()
@@ -474,8 +475,14 @@ public final class FaceMeshTracker {
         defer { lock.unlock() }
         // Refine against this frame AFTER temporal filtering so a freshly closed
         // mouth is not pulled apart again by the previous frame's lip positions.
-        let smoothedPoints = LipContourRefiner.refine(
-            filterBank.filter(raw: rawPoints, timestamp: frameTimestamp), in: pixelBuffer)
+        // Only run expensive CPU pixel buffer locking if lip makeup is actually enabled.
+        let filtered = filterBank.filter(raw: rawPoints, timestamp: frameTimestamp)
+        let smoothedPoints: [SIMD3<Float>]
+        if needsLipRefinement {
+            smoothedPoints = LipContourRefiner.refine(filtered, in: pixelBuffer)
+        } else {
+            smoothedPoints = filtered
+        }
 
         var res = FaceMeshLandmarks()
         res.hasFace = true

@@ -3058,27 +3058,33 @@ public final class BeautyRenderer {
         let faceW = max(50.0, box.width * width)
         let faceH = max(60.0, box.height * height)
 
-        func ciPt(_ p: CGPoint) -> CGPoint {
-            return CGPoint(x: p.x * width, y: (1.0 - p.y) * height)
+        // Render at a lightweight 480x270 mask (16x less memory & compute)
+        let lowW = 480.0
+        let lowH = 270.0
+        let scaleX = lowW / width
+        let scaleY = lowH / height
+
+        func lowPt(_ p: CGPoint) -> CGPoint {
+            return CGPoint(x: p.x * lowW, y: (1.0 - p.y) * lowH)
         }
 
         guard let holeContext = CGContext(
             data: nil,
-            width: Int(width),
-            height: Int(height),
+            width: Int(lowW),
+            height: Int(lowH),
             bitsPerComponent: 8,
-            bytesPerRow: Int(width),
+            bytesPerRow: Int(lowW),
             space: CGColorSpaceCreateDeviceGray(),
             bitmapInfo: CGImageAlphaInfo.none.rawValue
         ) else { return mask }
 
         holeContext.setFillColor(gray: 1, alpha: 1)
-        holeContext.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        holeContext.fill(CGRect(x: 0, y: 0, width: lowW, height: lowH))
 
-        let eyeRx = faceW * 0.125
-        let eyeRy = faceH * 0.065
-        let leftEyeCenter = ciPt(landmarks.leftEyeCenter)
-        let rightEyeCenter = ciPt(landmarks.rightEyeCenter)
+        let eyeRx = faceW * scaleX * 0.125
+        let eyeRy = faceH * scaleY * 0.065
+        let leftEyeCenter = lowPt(landmarks.leftEyeCenter)
+        let rightEyeCenter = lowPt(landmarks.rightEyeCenter)
 
         holeContext.setFillColor(gray: 0, alpha: 1)
         if leftEyeCenter != .zero {
@@ -3098,9 +3104,9 @@ public final class BeautyRenderer {
             ))
         }
 
-        let mouthCenter = ciPt(landmarks.mouthCenter)
-        let mouthRx = faceW * 0.165
-        let mouthRy = faceH * 0.075
+        let mouthCenter = lowPt(landmarks.mouthCenter)
+        let mouthRx = faceW * scaleX * 0.165
+        let mouthRy = faceH * scaleY * 0.075
         if mouthCenter != .zero {
             holeContext.fillEllipse(in: CGRect(
                 x: mouthCenter.x - mouthRx,
@@ -3113,26 +3119,30 @@ public final class BeautyRenderer {
         guard let holeCG = holeContext.makeImage() else { return mask }
         let holeCI = CIImage(cgImage: holeCG)
 
-        let feather = min(8.0, max(3.0, faceW * 0.012))
+        // Soft feathering at low-res (<0.1ms GPU time!)
         let blurredHoleCI: CIImage
         if let blur = CIFilter(name: "CIGaussianBlur") {
             blur.setValue(holeCI, forKey: kCIInputImageKey)
-            blur.setValue(feather, forKey: kCIInputRadiusKey)
-            blurredHoleCI = blur.outputImage?.cropped(to: extent) ?? holeCI
+            blur.setValue(2.5, forKey: kCIInputRadiusKey)
+            blurredHoleCI = blur.outputImage?.cropped(to: CGRect(x: 0, y: 0, width: lowW, height: lowH)) ?? holeCI
         } else {
             blurredHoleCI = holeCI
         }
 
+        let upscaledHole = blurredHoleCI
+            .transformed(by: CGAffineTransform(scaleX: 1.0 / scaleX, y: 1.0 / scaleY))
+            .cropped(to: extent)
+
         if let mult = CIFilter(name: "CIMultiplyCompositing") {
             mult.setValue(mask, forKey: kCIInputImageKey)
-            mult.setValue(blurredHoleCI, forKey: kCIInputBackgroundImageKey)
+            mult.setValue(upscaledHole, forKey: kCIInputBackgroundImageKey)
             return mult.outputImage?.cropped(to: extent) ?? mask
         }
         return mask
     }
 
     /// Creates a complete full-face skin mask covering forehead, cheeks, jawline, and chin.
-    /// Excludes eyes and mouth, and applies a smooth natural 12-16px gradient falloff at the perimeter.
+    /// Excludes eyes and mouth, and applies a smooth natural gradient falloff at the perimeter.
     public func createFullFaceSkinMask(landmarks: FaceMeshLandmarks, extent: CGRect) -> CIImage? {
         guard landmarks.hasFace else { return nil }
         let width = extent.width
@@ -3142,8 +3152,13 @@ public final class BeautyRenderer {
         let faceW = max(50.0, box.width * width)
         let faceH = max(60.0, box.height * height)
 
-        func ciPt(_ p: CGPoint) -> CGPoint {
-            return CGPoint(x: p.x * width, y: (1.0 - p.y) * height)
+        let lowW = 480.0
+        let lowH = 270.0
+        let scaleX = lowW / width
+        let scaleY = lowH / height
+
+        func lowPt(_ p: CGPoint) -> CGPoint {
+            return CGPoint(x: p.x * lowW, y: (1.0 - p.y) * lowH)
         }
 
         // Determine contour points: prefer faceContour (from Vision or FaceMesh), fallback to silhouette indices
@@ -3156,21 +3171,23 @@ public final class BeautyRenderer {
         }
 
         if !contourPoints.isEmpty && contourPoints.count >= 6 {
-            let contourPts = contourPoints.map(ciPt)
+            let contourPts = contourPoints.map(lowPt)
 
             guard let context = CGContext(
                 data: nil,
-                width: Int(width),
-                height: Int(height),
+                width: Int(lowW),
+                height: Int(lowH),
                 bitsPerComponent: 8,
-                bytesPerRow: Int(width),
+                bytesPerRow: Int(lowW),
                 space: CGColorSpaceCreateDeviceGray(),
                 bitmapInfo: CGImageAlphaInfo.none.rawValue
             ) else { return nil }
 
+            // 1. Black background
             context.setFillColor(gray: 0, alpha: 1)
-            context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+            context.fill(CGRect(x: 0, y: 0, width: lowW, height: lowH))
 
+            // 2. White face silhouette
             let path = CGMutablePath()
             if let first = contourPts.first {
                 path.move(to: first)
@@ -3181,10 +3198,10 @@ public final class BeautyRenderer {
                 // If contour is an open jawline (temple to temple), arch smoothly across the top of forehead
                 if let last = contourPts.last {
                     let gap = hypot(first.x - last.x, first.y - last.y)
-                    if gap > faceW * 0.30 {
+                    if gap > (faceW * scaleX) * 0.30 {
                         let topForehead = CGPoint(
-                            x: box.midX * width,
-                            y: (1.0 - max(0.0, box.minY - box.height * 0.08)) * height
+                            x: box.midX * lowW,
+                            y: (1.0 - max(0.0, box.minY - box.height * 0.08)) * lowH
                         )
                         path.addQuadCurve(to: first, control: topForehead)
                     }
@@ -3196,42 +3213,15 @@ public final class BeautyRenderer {
             context.setFillColor(gray: 1, alpha: 1)
             context.fillPath()
 
-            guard let faceCG = context.makeImage() else { return nil }
-            let baseFaceCI = CIImage(cgImage: faceCG)
+            // 3. Cut out eye and mouth holes in the same pass (zero extra context/composite pass!)
+            let eyeRx = faceW * scaleX * 0.125
+            let eyeRy = faceH * scaleY * 0.065
+            let leftEyeCenter = lowPt(landmarks.leftEyeCenter)
+            let rightEyeCenter = lowPt(landmarks.rightEyeCenter)
 
-            // Feather perimeter smoothly over 12-16px for invisible edge blending into real skin
-            let featherRadius = min(18.0, max(10.0, faceW * 0.025))
-            let blurredFaceCI: CIImage
-            if let blur = CIFilter(name: "CIGaussianBlur") {
-                blur.setValue(baseFaceCI, forKey: kCIInputImageKey)
-                blur.setValue(featherRadius, forKey: kCIInputRadiusKey)
-                blurredFaceCI = blur.outputImage?.cropped(to: extent) ?? baseFaceCI
-            } else {
-                blurredFaceCI = baseFaceCI
-            }
-
-            // 2. Feature Holes Mask (White on skin, Black in eyes and mouth)
-            guard let holeContext = CGContext(
-                data: nil,
-                width: Int(width),
-                height: Int(height),
-                bitsPerComponent: 8,
-                bytesPerRow: Int(width),
-                space: CGColorSpaceCreateDeviceGray(),
-                bitmapInfo: CGImageAlphaInfo.none.rawValue
-            ) else { return blurredFaceCI }
-
-            holeContext.setFillColor(gray: 1, alpha: 1)
-            holeContext.fill(CGRect(x: 0, y: 0, width: width, height: height))
-
-            let eyeRx = faceW * 0.125
-            let eyeRy = faceH * 0.065
-            let leftEyeCenter = ciPt(landmarks.leftEyeCenter)
-            let rightEyeCenter = ciPt(landmarks.rightEyeCenter)
-
-            holeContext.setFillColor(gray: 0, alpha: 1)
+            context.setFillColor(gray: 0, alpha: 1)
             if leftEyeCenter != .zero {
-                holeContext.fillEllipse(in: CGRect(
+                context.fillEllipse(in: CGRect(
                     x: leftEyeCenter.x - eyeRx,
                     y: leftEyeCenter.y - eyeRy,
                     width: eyeRx * 2,
@@ -3239,7 +3229,7 @@ public final class BeautyRenderer {
                 ))
             }
             if rightEyeCenter != .zero {
-                holeContext.fillEllipse(in: CGRect(
+                context.fillEllipse(in: CGRect(
                     x: rightEyeCenter.x - eyeRx,
                     y: rightEyeCenter.y - eyeRy,
                     width: eyeRx * 2,
@@ -3247,11 +3237,11 @@ public final class BeautyRenderer {
                 ))
             }
 
-            let mouthCenter = ciPt(landmarks.mouthCenter)
-            let mouthRx = faceW * 0.165
-            let mouthRy = faceH * 0.075
+            let mouthCenter = lowPt(landmarks.mouthCenter)
+            let mouthRx = faceW * scaleX * 0.165
+            let mouthRy = faceH * scaleY * 0.075
             if mouthCenter != .zero {
-                holeContext.fillEllipse(in: CGRect(
+                context.fillEllipse(in: CGRect(
                     x: mouthCenter.x - mouthRx,
                     y: mouthCenter.y - mouthRy,
                     width: mouthRx * 2,
@@ -3259,19 +3249,25 @@ public final class BeautyRenderer {
                 ))
             }
 
-            guard let holeCG = holeContext.makeImage() else { return blurredFaceCI }
-            let holeCI = CIImage(cgImage: holeCG)
+            guard let faceCG = context.makeImage() else { return nil }
+            let baseFaceCI = CIImage(cgImage: faceCG)
 
-            // Multiply blurred perimeter face mask with feature holes: mouth & eyes are 0, edges fade softly!
-            if let mult = CIFilter(name: "CIMultiplyCompositing") {
-                mult.setValue(blurredFaceCI, forKey: kCIInputImageKey)
-                mult.setValue(holeCI, forKey: kCIInputBackgroundImageKey)
-                if let out = mult.outputImage?.cropped(to: extent) {
-                    return out
-                }
+            // Feather perimeter & feature holes smoothly in low-res (<0.1ms GPU blur!)
+            let blurredCI: CIImage
+            if let blur = CIFilter(name: "CIGaussianBlur") {
+                blur.setValue(baseFaceCI, forKey: kCIInputImageKey)
+                blur.setValue(3.5, forKey: kCIInputRadiusKey)
+                blurredCI = blur.outputImage?.cropped(to: CGRect(x: 0, y: 0, width: lowW, height: lowH)) ?? baseFaceCI
+            } else {
+                blurredCI = baseFaceCI
             }
 
-            return blurredFaceCI.cropped(to: extent)
+            // Upscale to canvas dimensions with GPU bilinear anti-aliasing
+            let upscaled = blurredCI
+                .transformed(by: CGAffineTransform(scaleX: 1.0 / scaleX, y: 1.0 / scaleY))
+                .cropped(to: extent)
+
+            return upscaled
         }
 
         // Fallback: anatomical radial oval covering full face

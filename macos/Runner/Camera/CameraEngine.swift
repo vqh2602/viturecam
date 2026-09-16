@@ -26,9 +26,12 @@ public final class CameraEngine: NSObject, AVCaptureVideoDataOutputSampleBufferD
     }
 
     public static func getAvailableCameras() -> [[String: Any]] {
-        var deviceTypes: [AVCaptureDevice.DeviceType] = [.builtInWideAngleCamera, .externalUnknown]
+        var deviceTypes: [AVCaptureDevice.DeviceType] = [.builtInWideAngleCamera]
         if #available(macOS 14.0, *) {
+            deviceTypes.append(.external)
             deviceTypes.append(.continuityCamera)
+        } else {
+            deviceTypes.append(.externalUnknown)
         }
 
         let discoverySession = AVCaptureDevice.DiscoverySession(
