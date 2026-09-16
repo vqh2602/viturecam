@@ -807,56 +807,13 @@ public final class BeautyRenderer {
             }
 
             // ==========================================
+            // ==========================================
             // GROUP 6: NỌNG CẰM & ĐƯỜNG VIỀN HÀM (DOUBLE CHIN & JAWLINE DEFINITION)
             // ==========================================
-            float doubleChin = sculptParams.x; // Giảm nọng cằm (0..1)
-            float jawline    = sculptParams.y; // Tạo viền hàm sắc nét (0..1)
-
-            // A. Double Chin Reduction (Giảm nọng cằm)
-            // Anatomical submental fat pocket compression along face axis towards mandible
-            if (doubleChin > 0.001) {
-                vec2 submentalCenter = chinCenter + faceAxisDir * (faceW * 0.12);
-                float submentalRad = faceW * 0.22;
-                float distSub = length(p - submentalCenter);
-                if (distSub < submentalRad) {
-                    float t = distSub / submentalRad;
-                    float w = (1.0 - t * t) * (1.0 - t * t);
-                    // Protect chin bone/tip so chin structure remains natural
-                    float distToChin = length(p - chinCenter);
-                    float chinProtect = smoothstep(faceW * 0.03, faceW * 0.10, distToChin);
-                    // Tighten submental tissue upward toward mandible
-                    offset += faceAxisDir * (doubleChin * 0.28 * w * chinProtect * (faceW * 0.15));
-                    // Inward lateral compression
-                    float projNorm = dot(p - submentalCenter, axisNormal);
-                    offset += axisNormal * (projNorm * doubleChin * 0.32 * w * chinProtect);
-                }
-            }
-
-            // B. Jawline Definition (Tạo viền hàm sắc nét)
-            // Tightens and sculpts mandibular contour along lower & mid jaw angles
-            if (jawline > 0.001) {
-                float jawlineRad = faceW * 0.20;
-                vec2 leftJawPt = (leftLowerJaw + leftMidJaw) * 0.5;
-                vec2 rightJawPt = (rightLowerJaw + rightMidJaw) * 0.5;
-
-                // Left jawline tightening (camera left)
-                float distLJ = length(p - leftJawPt);
-                if (distLJ < jawlineRad) {
-                    float t = distLJ / jawlineRad;
-                    float w = (1.0 - t * t) * (1.0 - t * t);
-                    offset -= axisNormal * (jawline * 0.18 * w * innerGuard * jawlineRad);
-                    offset += faceAxisDir * (jawline * 0.08 * w * innerGuard * jawlineRad);
-                }
-
-                // Right jawline tightening (camera right)
-                float distRJ = length(p - rightJawPt);
-                if (distRJ < jawlineRad) {
-                    float t = distRJ / jawlineRad;
-                    float w = (1.0 - t * t) * (1.0 - t * t);
-                    offset += axisNormal * (jawline * 0.18 * w * innerGuard * jawlineRad);
-                    offset += faceAxisDir * (jawline * 0.08 * w * innerGuard * jawlineRad);
-                }
-            }
+            // Note: Double chin reduction and jawline definition are handled via
+            // anatomical optical submental depth shadowing & mandibular bone definition
+            // in applySubmentalJawlineDepth(), rather than geometric distortion.
+            // This prevents neck, collar, and background warping/stretching artifacts.
 
             return p + offset;
         }
@@ -1000,8 +957,7 @@ public final class BeautyRenderer {
                          abs(face.nostrilWidth) > 0.01 ||
                          face.smile > 0.01 || face.smileCorners > 0.01 || face.mShapeLips > 0.01 || abs(face.mouthWidth) > 0.01 ||
                          abs(face.mouthSize) > 0.01 || abs(face.lipThickness) > 0.01 ||
-                         abs(face.mouthPosition) > 0.01 ||
-                         face.doubleChin > 0.01 || face.jawline > 0.01
+                         abs(face.mouthPosition) > 0.01
 
         // 2. Skin Beautification (Natural Edge-Preserving Bilateral Smoothing, Pore Texture, Translucent Whitening)
         let hasSkinBeauty = beauty.smooth > 0.01 || beauty.skinTone > 0.01 || beauty.skinToneType != "natural" ||
@@ -1035,6 +991,18 @@ public final class BeautyRenderer {
                 makeup: makeup,
                 landmarks: landmarks,
                 extent: extent
+            )
+        }
+
+        // 3b. Submental Depth & Jawline Contouring (Giảm nọng cằm & Viền hàm bằng hiệu ứng đổ bóng chiều sâu thay vì méo hình)
+        if (face.doubleChin > 0.001 || face.jawline > 0.001) && landmarks.hasFace {
+            processedImage = applySubmentalJawlineDepth(
+                image: processedImage,
+                doubleChin: face.doubleChin,
+                jawline: face.jawline,
+                landmarks: landmarks,
+                extent: extent,
+                skinMask: skinMask
             )
         }
 

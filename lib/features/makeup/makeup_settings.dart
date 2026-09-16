@@ -157,12 +157,19 @@ class MakeupPresets {
 
   static const List<MakeupOption> contourOptions = [
     MakeupOption(id: 'none', name: 'None', color: Colors.transparent),
-    MakeupOption(id: 'natural', name: 'Nâu tự nhiên', color: Color(0xFF947561)),
-    MakeupOption(id: 'warm', name: 'Nâu ấm', color: Color(0xFF9E7052)),
-    MakeupOption(id: 'cool', name: 'Nâu lạnh khói', color: Color(0xFF857066)),
+    MakeupOption(id: 'natural', name: 'Nâu tự nhiên', color: Color(0xFF8A6A55)),
+    MakeupOption(id: 'warm', name: 'Nâu ấm tự nhiên', color: Color(0xFF8C5C3D)),
+    MakeupOption(id: 'cool', name: 'Nâu lạnh khói', color: Color(0xFF705A53)),
+    MakeupOption(id: 'caramel', name: 'Caramel', color: Color(0xFF7D4E2D)),
     MakeupOption(id: 'bronze', name: 'Nâu đồng', color: Color(0xFFAF7A4D)),
-    MakeupOption(id: 'caramel', name: 'Caramel', color: Color(0xFFA67347)),
-    MakeupOption(id: 'deep', name: 'Nâu đậm', color: Color(0xFF73523D)),
+    MakeupOption(id: 'deep', name: 'Nâu đậm tự nhiên', color: Color(0xFF66432F)),
+    MakeupOption(id: 'deepEspresso', name: 'Espresso trầm', color: Color(0xFF4A2C1C)),
+    MakeupOption(id: 'chocolate', name: 'Sô-cô-la đen', color: Color(0xFF3B2014)),
+    MakeupOption(id: 'ebony', name: 'Nâu mun đậm', color: Color(0xFF2E1710)),
+    MakeupOption(id: 'mahogany', name: 'Gỗ gụ tối', color: Color(0xFF421E14)),
+    MakeupOption(id: 'shadowTaupe', name: 'Xám khói sâu', color: Color(0xFF4C3E3A)),
+    MakeupOption(id: 'deepBronze', name: 'Đồng tối 3D', color: Color(0xFF57321A)),
+    MakeupOption(id: 'midnight', name: 'Nâu đen góc cạnh', color: Color(0xFF24140E)),
     MakeupOption(id: 'softTaupe', name: 'Nâu khói nhạt', color: Color(0xFF8C7A6B)),
   ];
 }

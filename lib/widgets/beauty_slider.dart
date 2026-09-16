@@ -32,9 +32,7 @@ class BeautySlider extends StatelessWidget {
     final valueText = isCentered && displayVal > 0 ? '+$displayVal' : '$displayVal';
     final resetAction = onReset ?? () => onChanged(defaultValue);
 
-    return GestureDetector(
-      onDoubleTap: resetAction,
-      child: Container(
+    return Container(
         height: 56,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         child: Column(
@@ -113,8 +111,7 @@ class BeautySlider extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
+      );
   }
 }
 
