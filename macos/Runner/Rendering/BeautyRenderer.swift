@@ -14,6 +14,26 @@ public final class BeautyRenderer {
     private var skinSmoothKernel: CIKernel?
     private var smoothedTeethOpenGate: Float = 0.0
     private var hasPreviousTeethFrame: Bool = false
+
+    // MARK: - Mask & Makeup Result Cache
+    // Landmark key dựa trên vị trí mũi (thay đổi khi mặt di chuyển > ~1px)
+    // Key = 0 nghĩa là chưa có cache
+    private struct MakeupMaskCache {
+        var key: Int = 0
+        var style: String = ""
+        var mask: CIImage? = nil
+    }
+    private var lipMaskCache = MakeupMaskCache()
+    private var eyebrowMaskCache = MakeupMaskCache()
+    private var eyelinerMaskCache = MakeupMaskCache()
+    private var eyeshadowMaskCache = MakeupMaskCache()
+    private var blushMaskCache = MakeupMaskCache()
+    private var skinMaskCache = MakeupMaskCache()
+    private var glassSkinMaskCache = MakeupMaskCache()
+    // Makeup composite result cache
+    private var lastMakeupKey: Int = 0
+    private var lastMakeupStyle: String = ""
+    private var lastMakeupResult: CIImage? = nil
     private lazy var personSegmentationRequest: Any? = {
         if #available(macOS 12.0, *) {
             let req = VNGeneratePersonSegmentationRequest()
@@ -85,8 +105,9 @@ public final class BeautyRenderer {
         }
         self.mtlDevice = device
         self.ciContext = CIContext(mtlDevice: device, options: [
-            .cacheIntermediates: false,
-            .priorityRequestLow: false
+            .cacheIntermediates: true,   // Tái sử dụng intermediate GPU results, giảm recalculation
+            .priorityRequestLow: true,   // Tránh full-blast GPU → giảm nhiệt, hạn chế thermal throttle
+            .workingColorSpace: CGColorSpaceCreateDeviceRGB(),  // Bỏ qua color space conversion trung gian
         ])
         self.colorSpace = CGColorSpaceCreateDeviceRGB()
         self.faceMeshRenderer = FaceMeshRenderer(device: device)
@@ -853,13 +874,8 @@ public final class BeautyRenderer {
             vec2 d12 = vec2(-2.0,    0.0);
             vec2 d13 = vec2(-1.414,  1.414);
             vec2 d14 = vec2( 0.0,    2.0);
-
-            vec2 d15 = vec2( 2.77,   1.6);
-            vec2 d16 = vec2( 2.77,  -1.6);
-            vec2 d17 = vec2( 0.0,   -3.2);
-            vec2 d18 = vec2(-2.77,  -1.6);
-            vec2 d19 = vec2(-2.77,   1.6);
-            vec2 d20 = vec2( 0.0,    3.2);
+            // Note: Outer ring (d15-d20, r~3.2px) removed for performance.
+            // 14-sample bilateral still provides excellent skin smoothing quality.
 
             vec3 col; vec3 diff; float distSq; float w;
 
@@ -878,13 +894,6 @@ public final class BeautyRenderer {
             col = sample(originalImage, pos + d12 * sampleRadius).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold) * 0.75; accumColor += col * w; totalWeight += w;
             col = sample(originalImage, pos + d13 * sampleRadius).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold) * 0.75; accumColor += col * w; totalWeight += w;
             col = sample(originalImage, pos + d14 * sampleRadius).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold) * 0.75; accumColor += col * w; totalWeight += w;
-
-            col = sample(originalImage, pos + d15 * sampleRadius).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold) * 0.50; accumColor += col * w; totalWeight += w;
-            col = sample(originalImage, pos + d16 * sampleRadius).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold) * 0.50; accumColor += col * w; totalWeight += w;
-            col = sample(originalImage, pos + d17 * sampleRadius).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold) * 0.50; accumColor += col * w; totalWeight += w;
-            col = sample(originalImage, pos + d18 * sampleRadius).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold) * 0.50; accumColor += col * w; totalWeight += w;
-            col = sample(originalImage, pos + d19 * sampleRadius).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold) * 0.50; accumColor += col * w; totalWeight += w;
-            col = sample(originalImage, pos + d20 * sampleRadius).rgb; diff = col - centerRGB; distSq = dot(diff, diff); w = exp(-distSq * skinThreshold) * 0.50; accumColor += col * w; totalWeight += w;
 
             vec3 smoothed = accumColor / totalWeight;
 
@@ -941,7 +950,19 @@ public final class BeautyRenderer {
         if !landmarks.hasFace {
             hasPreviousTeethFrame = false
             smoothedTeethOpenGate = 0.0
+            // Invalidate tất cả mask cache khi mất khuôn mặt
+            lipMaskCache = MakeupMaskCache()
+            eyebrowMaskCache = MakeupMaskCache()
+            eyelinerMaskCache = MakeupMaskCache()
+            eyeshadowMaskCache = MakeupMaskCache()
+            blushMaskCache = MakeupMaskCache()
+            skinMaskCache = MakeupMaskCache()
+            glassSkinMaskCache = MakeupMaskCache()
+            lastMakeupKey = 0
+            lastMakeupStyle = ""
+            lastMakeupResult = nil
         }
+
 
         // 1. 3D Face Reshaping (Smooth GPU Warp using 468 landmark anchors - zero polygon overlays)
         let hasReshape = face.slimFace > 0.01 || face.smallFace > 0.01 || face.vFace > 0.01 ||
@@ -1283,7 +1304,22 @@ public final class BeautyRenderer {
 
         // Dual-Core Mask: Core 2 (Selfie Multiclass Segmentation Class 3: Face-Skin)
         // Fallback: Core 1 (MediaPipe Face Landmarker convex contour)
-        let maskToUse = createFaceSkinMask(segmentationMask: skinMask, landmarks: landmarks, extent: extent)
+        // Cache để tránh CGContext CPU rendering mỗi frame
+        let skinLandmarkKey = makeLandmarkKey(landmarks)
+        let hasSkinMaskSegmentation = skinMask != nil
+        let skinMaskStyleKey = hasSkinMaskSegmentation ? "seg" : "landmark"
+        let maskToUse: CIImage?
+        if skinMaskCache.key == skinLandmarkKey && skinMaskCache.style == skinMaskStyleKey,
+           let cachedSkin = skinMaskCache.mask {
+            maskToUse = cachedSkin
+        } else {
+            let generated = createFaceSkinMask(segmentationMask: skinMask, landmarks: landmarks, extent: extent)
+            skinMaskCache.key = skinLandmarkKey
+            skinMaskCache.style = skinMaskStyleKey
+            skinMaskCache.mask = generated
+            maskToUse = generated
+        }
+
 
         // Edge-aware natural smoothing with radius proportional to face scale & micro-pore retention
         if beauty.smooth > 0.01 {
@@ -1969,6 +2005,15 @@ public final class BeautyRenderer {
 
     // MARK: - Makeup (Lipstick, Blush, Eyebrows, Eyeliner, Eyeshadow)
 
+    // MARK: - Landmark Key Helper (dùng cho mask cache)
+    // Tạo key int từ vị trí mũi (normalized 0..1) → stable ở ~1px granularity trên 1920px
+    private func makeLandmarkKey(_ landmarks: FaceMeshLandmarks) -> Int {
+        let nt = landmarks.noseTip
+        let lx = Int(nt.x * 2000)
+        let ly = Int(nt.y * 2000)
+        return lx &* 100000 &+ ly
+    }
+
     private func applyMakeup(image: CIImage, makeup: MakeupSettings, landmarks: FaceMeshLandmarks, extent: CGRect) -> CIImage {
         guard landmarks.hasFace else { return image }
         var result = image
@@ -1982,7 +2027,27 @@ public final class BeautyRenderer {
             return CGPoint(x: p.x * width, y: (1.0 - p.y) * height)
         }
 
+        // ── Per-Mask Cache Key ─────────────────────────────────────────────────
+        // Tính key từ vị trí mũi (~1px granularity ở 1920px).
+        // Mỗi mask chỉ được regenerate khi landmark thay đổi ĐÁN KỂ hoặc style thay đổi.
+        let currentLandmarkKey = makeLandmarkKey(landmarks)
+
+        // Helper inline: trả về cached mask nếu key+style khớp, nếu không gọi generator
+        func cachedMask(_ cache: inout MakeupMaskCache, style: String, generator: () -> CIImage?) -> CIImage? {
+            if cache.key == currentLandmarkKey && cache.style == style, let m = cache.mask {
+                return m
+            }
+            let m = generator()
+            cache.key = currentLandmarkKey
+            cache.style = style
+            cache.mask = m
+            return m
+        }
+
+        // ── End Cache Setup ────────────────────────────────────────────────────
+
         // 1. Lipstick (Exact 3D Contour Mask with Teeth & Oral Cavity Cutout + Styles: Full, Gradient, Liner, Gloss)
+
         if makeup.lipPreset != "none" && makeup.lipOpacity > 0.01 {
             var lipR: CGFloat = 0.88; var lipG: CGFloat = 0.12; var lipB: CGFloat = 0.18
             switch makeup.lipPreset {
@@ -2021,7 +2086,9 @@ public final class BeautyRenderer {
 
 
             let lipStyle = makeup.lipStyle
-            if let lipMask = createLipMask(landmarks: landmarks, style: lipStyle, extent: extent) {
+            if let lipMask = cachedMask(&lipMaskCache, style: lipStyle + makeup.lipPreset, generator: {
+                self.createLipMask(landmarks: landmarks, style: lipStyle, extent: extent)
+            }) {
                 let colorImg = CIImage(color: CIColor(red: lipR, green: lipG, blue: lipB, alpha: 1.0)).cropped(to: extent)
                 if let softLight = CIFilter(name: "CISoftLightBlendMode") {
                     softLight.setValue(colorImg, forKey: kCIInputImageKey)
@@ -2101,14 +2168,16 @@ public final class BeautyRenderer {
             default:           bR = 0.98; bG = 0.48; bB = 0.56
             }
 
-            if let blushOverlay = createStyledBlush(
-                extent: extent,
-                landmarks: landmarks,
-                style: makeup.blushStyle,
-                faceW: faceW,
-                intensity: makeup.blushOpacity * 0.55,
-                colorR: bR, colorG: bG, colorB: bB
-            ) {
+            if let blushOverlay = cachedMask(&blushMaskCache, style: makeup.blushStyle + makeup.blushPreset + String(format: "%.2f", makeup.blushOpacity), generator: {
+                self.createStyledBlush(
+                    extent: extent,
+                    landmarks: landmarks,
+                    style: makeup.blushStyle,
+                    faceW: faceW,
+                    intensity: makeup.blushOpacity * 0.55,
+                    colorR: bR, colorG: bG, colorB: bB
+                )
+            }) {
                 if let softLight = CIFilter(name: "CISoftLightBlendMode") {
                     softLight.setValue(blushOverlay, forKey: kCIInputImageKey)
                     softLight.setValue(result, forKey: kCIInputBackgroundImageKey)
@@ -2136,7 +2205,9 @@ public final class BeautyRenderer {
             default:          eR = 0.30; eG = 0.22; eB = 0.18
             }
 
-            if let browMask = createEyebrowMask(landmarks: landmarks, style: makeup.eyebrowStyle, faceW: faceW, extent: extent) {
+            if let browMask = cachedMask(&eyebrowMaskCache, style: makeup.eyebrowStyle + makeup.eyebrowPreset, generator: {
+                self.createEyebrowMask(landmarks: landmarks, style: makeup.eyebrowStyle, faceW: faceW, extent: extent)
+            }) {
                 let colorImg = CIImage(color: CIColor(red: eR, green: eG, blue: eB, alpha: 1.0)).cropped(to: extent)
                 if let multiply = CIFilter(name: "CIMultiplyBlendMode") {
                     multiply.setValue(colorImg, forKey: kCIInputImageKey)
@@ -2179,7 +2250,9 @@ public final class BeautyRenderer {
 
             let linerStyle = (makeup.eyelinerPreset == "cat" && makeup.eyelinerStyle == "classic") ? "cat" : makeup.eyelinerStyle
 
-            if let linerMask = createEyelinerMask(landmarks: landmarks, style: linerStyle, faceW: faceW, extent: extent) {
+            if let linerMask = cachedMask(&eyelinerMaskCache, style: linerStyle + makeup.eyelinerPreset, generator: {
+                self.createEyelinerMask(landmarks: landmarks, style: linerStyle, faceW: faceW, extent: extent)
+            }) {
                 let colorImg = CIImage(color: CIColor(red: lR, green: lG, blue: lB, alpha: 1.0)).cropped(to: extent)
                 let filterName = (makeup.eyelinerPreset == "white") ? "CIScreenBlendMode" : "CIMultiplyBlendMode"
                 if let blendFilter = CIFilter(name: filterName) {
@@ -2222,7 +2295,9 @@ public final class BeautyRenderer {
             default:          sR = 0.63; sG = 0.53; sB = 0.50
             }
 
-            if let shadowMask = createEyeshadowMask(landmarks: landmarks, style: makeup.eyeshadowStyle, faceW: faceW, extent: extent) {
+            if let shadowMask = cachedMask(&eyeshadowMaskCache, style: makeup.eyeshadowStyle + makeup.eyeshadowPreset, generator: {
+                self.createEyeshadowMask(landmarks: landmarks, style: makeup.eyeshadowStyle, faceW: faceW, extent: extent)
+            }) {
                 let colorImg = CIImage(color: CIColor(red: sR, green: sG, blue: sB, alpha: 1.0)).cropped(to: extent)
                 if let softLight = CIFilter(name: "CISoftLightBlendMode") {
                     softLight.setValue(colorImg, forKey: kCIInputImageKey)
@@ -2260,6 +2335,8 @@ public final class BeautyRenderer {
 
         return result
     }
+
+
 
     // MARK: - 3D Face Teeth Whitening Mask (Anti-Flicker Stabilized Oral Aperture)
     /// Creates an anatomically stabilized inner mouth aperture mask for teeth whitening.
