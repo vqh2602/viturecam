@@ -245,5 +245,20 @@
   "statProcessing": "Xử lý",
   "statTracking": "Nhận diện",
   "statDropped": "Bỏ khung",
-  "statResolution": "Độ phân giải"
+  "statResolution": "Độ phân giải",
+
+  "softwareUpdate": "Cập nhật ứng dụng",
+  "updateCheck": "Kiểm tra cập nhật",
+  "updateChecking": "Đang kiểm tra...",
+  "updateAvailableTitle": "Đã có phiên bản mới",
+  "updateAvailableSubtitle": "Phiên bản {version} đã sẵn sàng để cài đặt.",
+  "updateCurrentVersion": "Phiên bản hiện tại: {version}",
+  "updateLatest": "Bạn đang dùng phiên bản mới nhất ({version})",
+  "updateReleaseNotes": "Ghi chú phát hành",
+  "updateNow": "Cập nhật ngay",
+  "updateLater": "Để sau",
+  "updateDownloading": "Đang tải bản cập nhật...",
+  "updateInstalling": "Đang cài đặt và khởi động lại...",
+  "updateError": "Không thể cập nhật: {error}",
+  "updateCancel": "Hủy"
 }

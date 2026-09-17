@@ -690,4 +690,54 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get statResolution => 'Resolution';
+
+  @override
+  String get softwareUpdate => 'Software Update';
+
+  @override
+  String get updateCheck => 'Check for Updates';
+
+  @override
+  String get updateChecking => 'Checking for updates...';
+
+  @override
+  String get updateAvailableTitle => 'New Version Available';
+
+  @override
+  String updateAvailableSubtitle(String version) {
+    return 'Version $version is ready to install.';
+  }
+
+  @override
+  String updateCurrentVersion(String version) {
+    return 'Current version: $version';
+  }
+
+  @override
+  String updateLatest(String version) {
+    return 'You are on the latest version ($version)';
+  }
+
+  @override
+  String get updateReleaseNotes => 'Release Notes';
+
+  @override
+  String get updateNow => 'Update Now';
+
+  @override
+  String get updateLater => 'Later';
+
+  @override
+  String get updateDownloading => 'Downloading update...';
+
+  @override
+  String get updateInstalling => 'Installing and restarting...';
+
+  @override
+  String updateError(String error) {
+    return 'Update failed: $error';
+  }
+
+  @override
+  String get updateCancel => 'Cancel';
 }

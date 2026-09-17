@@ -1441,6 +1441,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Resolution'**
   String get statResolution;
+
+  /// No description provided for @softwareUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Software Update'**
+  String get softwareUpdate;
+
+  /// No description provided for @updateCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Check for Updates'**
+  String get updateCheck;
+
+  /// No description provided for @updateChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking for updates...'**
+  String get updateChecking;
+
+  /// No description provided for @updateAvailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New Version Available'**
+  String get updateAvailableTitle;
+
+  /// No description provided for @updateAvailableSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Version {version} is ready to install.'**
+  String updateAvailableSubtitle(String version);
+
+  /// No description provided for @updateCurrentVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Current version: {version}'**
+  String updateCurrentVersion(String version);
+
+  /// No description provided for @updateLatest.
+  ///
+  /// In en, this message translates to:
+  /// **'You are on the latest version ({version})'**
+  String updateLatest(String version);
+
+  /// No description provided for @updateReleaseNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Release Notes'**
+  String get updateReleaseNotes;
+
+  /// No description provided for @updateNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Now'**
+  String get updateNow;
+
+  /// No description provided for @updateLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get updateLater;
+
+  /// No description provided for @updateDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading update...'**
+  String get updateDownloading;
+
+  /// No description provided for @updateInstalling.
+  ///
+  /// In en, this message translates to:
+  /// **'Installing and restarting...'**
+  String get updateInstalling;
+
+  /// No description provided for @updateError.
+  ///
+  /// In en, this message translates to:
+  /// **'Update failed: {error}'**
+  String updateError(String error);
+
+  /// No description provided for @updateCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get updateCancel;
 }
 
 class _AppLocalizationsDelegate

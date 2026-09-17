@@ -268,5 +268,40 @@
   "statProcessing": "Processing",
   "statTracking": "Tracking",
   "statDropped": "Dropped",
-  "statResolution": "Resolution"
+  "statResolution": "Resolution",
+
+  "softwareUpdate": "Software Update",
+  "updateCheck": "Check for Updates",
+  "updateChecking": "Checking for updates...",
+  "updateAvailableTitle": "New Version Available",
+  "updateAvailableSubtitle": "Version {version} is ready to install.",
+  "@updateAvailableSubtitle": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  },
+  "updateCurrentVersion": "Current version: {version}",
+  "@updateCurrentVersion": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  },
+  "updateLatest": "You are on the latest version ({version})",
+  "@updateLatest": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  },
+  "updateReleaseNotes": "Release Notes",
+  "updateNow": "Update Now",
+  "updateLater": "Later",
+  "updateDownloading": "Downloading update...",
+  "updateInstalling": "Installing and restarting...",
+  "updateError": "Update failed: {error}",
+  "@updateError": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "updateCancel": "Cancel"
 }

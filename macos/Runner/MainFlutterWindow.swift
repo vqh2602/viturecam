@@ -137,6 +137,34 @@ class MainFlutterWindow: NSWindow {
             }
         }
 
+        let updaterRegistrar = controller.registrar(forPlugin: "BeautyCameraUpdater")
+        let updaterChan = FlutterMethodChannel(name: "com.beautycamera/updater", binaryMessenger: updaterRegistrar.messenger)
+        updaterChan.setMethodCallHandler { call, result in
+            switch call.method {
+            case "getAppInfo":
+                result(AutoUpdater.shared.getAppInfo())
+
+            case "installUpdate":
+                guard let args = call.arguments as? [String: Any],
+                      let dmgPath = args["dmgPath"] as? String else {
+                    result(FlutterError(code: "invalid_arguments", message: "dmgPath is required", details: nil))
+                    return
+                }
+
+                AutoUpdater.shared.installUpdate(dmgPath: dmgPath) { updateResult in
+                    switch updateResult {
+                    case .success(let success):
+                        result(["success": success])
+                    case .failure(let error):
+                        result(FlutterError(code: "update_failed", message: error.localizedDescription, details: nil))
+                    }
+                }
+
+            default:
+                result(FlutterMethodNotImplemented)
+            }
+        }
+
         super.awakeFromNib()
     }
 }

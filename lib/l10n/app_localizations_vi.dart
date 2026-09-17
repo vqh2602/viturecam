@@ -689,4 +689,54 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get statResolution => 'Độ phân giải';
+
+  @override
+  String get softwareUpdate => 'Cập nhật ứng dụng';
+
+  @override
+  String get updateCheck => 'Kiểm tra cập nhật';
+
+  @override
+  String get updateChecking => 'Đang kiểm tra...';
+
+  @override
+  String get updateAvailableTitle => 'Đã có phiên bản mới';
+
+  @override
+  String updateAvailableSubtitle(String version) {
+    return 'Phiên bản $version đã sẵn sàng để cài đặt.';
+  }
+
+  @override
+  String updateCurrentVersion(String version) {
+    return 'Phiên bản hiện tại: $version';
+  }
+
+  @override
+  String updateLatest(String version) {
+    return 'Bạn đang dùng phiên bản mới nhất ($version)';
+  }
+
+  @override
+  String get updateReleaseNotes => 'Ghi chú phát hành';
+
+  @override
+  String get updateNow => 'Cập nhật ngay';
+
+  @override
+  String get updateLater => 'Để sau';
+
+  @override
+  String get updateDownloading => 'Đang tải bản cập nhật...';
+
+  @override
+  String get updateInstalling => 'Đang cài đặt và khởi động lại...';
+
+  @override
+  String updateError(String error) {
+    return 'Không thể cập nhật: $error';
+  }
+
+  @override
+  String get updateCancel => 'Hủy';
 }

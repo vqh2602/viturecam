@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/app_localizations.dart';
@@ -10,6 +11,8 @@ import '../makeup/makeup_panel.dart';
 import '../presets/preset_panel.dart';
 import '../reshape/reshape_panel.dart';
 import '../settings/settings_page.dart';
+import '../updater/update_dialog.dart';
+import '../../services/update_provider.dart';
 import 'camera_controller.dart';
 
 class CameraScreen extends ConsumerStatefulWidget {
@@ -22,6 +25,40 @@ class CameraScreen extends ConsumerStatefulWidget {
 class _CameraScreenState extends ConsumerState<CameraScreen> {
   bool _isHoldingRaw = false;
   String _savedCompareModeBeforeHold = 'none';
+  Timer? _autoUpdateTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAutoUpdate();
+    });
+  }
+
+  @override
+  void dispose() {
+    _autoUpdateTimer?.cancel();
+    super.dispose();
+  }
+
+  void _checkAutoUpdate() {
+    _autoUpdateTimer = Timer(const Duration(milliseconds: 2500), () async {
+      if (!mounted) return;
+      final updateService = ref.read(updateServiceProvider);
+      final release = await updateService.checkForUpdate();
+      if (release != null && mounted) {
+        final currentVersion = await updateService.getCurrentVersion();
+        if (mounted) {
+          UpdateDialog.show(
+            context,
+            release: release,
+            currentVersion: currentVersion,
+            updateService: updateService,
+          );
+        }
+      }
+    });
+  }
 
   void _onBeforeAfterDown() {
     if (_isHoldingRaw) return;

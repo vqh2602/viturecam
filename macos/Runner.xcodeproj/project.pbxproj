@@ -52,6 +52,7 @@
 		BC0000012C00000000000032 /* LipSegmenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000032 /* LipSegmenter.swift */; };
 		BC0000012C00000000000033 /* LipParsing.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000033 /* LipParsing.mlmodel */; };
 		BC0000012C00000000000034 /* LipParsing-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000034 /* LipParsing-LICENSE.txt */; };
+		BC0000012C00000000000040 /* AutoUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000040 /* AutoUpdater.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -154,6 +155,7 @@
 		BC0000022C00000000000032 /* LipSegmenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceTracking/LipSegmenter.swift; sourceTree = "<group>"; };
 		BC0000022C00000000000033 /* LipParsing.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = FaceTracking/LipParsing.mlmodel; sourceTree = "<group>"; };
 		BC0000022C00000000000034 /* LipParsing-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "FaceTracking/LipParsing-LICENSE.txt"; sourceTree = "<group>"; };
+		BC0000022C00000000000040 /* AutoUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoUpdater/AutoUpdater.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -272,6 +274,7 @@
 				BC0000022C00000000000013 /* FaceMesh.mlmodelc */,
 				BC0000022C00000000000020 /* SkinSegmenter.swift */,
 				BC0000022C00000000000021 /* SelfieSegmenter.mlmodelc */,
+				BC0000022C00000000000040 /* AutoUpdater.swift */,
 				33E51913231747F40026EE4D /* DebugProfile.entitlements */,
 				33E51914231749380026EE4D /* Release.entitlements */,
 				33CC11242044D66E0003C045 /* Resources */,
@@ -603,6 +606,7 @@
 				BC0000012C00000000000011 /* FaceMeshRenderer.swift in Sources */,
 				BC0000012C00000000000012 /* FaceMeshShaders.swift in Sources */,
 				BC0000012C00000000000020 /* SkinSegmenter.swift in Sources */,
+				BC0000012C00000000000040 /* AutoUpdater.swift in Sources */,
 				33CC10F12044A3C60003C045 /* AppDelegate.swift in Sources */,
 				335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */,
 			);
