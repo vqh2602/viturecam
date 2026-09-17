@@ -1,3 +1,4 @@
+import AVFoundation
 import CoreImage
 import CoreMedia
 import CoreMediaIO
@@ -20,6 +21,7 @@ public final class VirtualCameraManager: NSObject, OSSystemExtensionRequestDeleg
     private var pool: CVPixelBufferPool?
     private var format: CMVideoFormatDescription?
     private var lastFrameTime: Double = 0
+    private var isSendingFrame = false
     private var activationRequest: OSSystemExtensionRequest?
     private var connectionTimer: Timer?
     private var connectionAttempts = 0
@@ -31,6 +33,17 @@ public final class VirtualCameraManager: NSObject, OSSystemExtensionRequestDeleg
 
     override private init() { super.init() }
 
+    public func pokeDeviceDiscovery() {
+        var deviceTypes: [AVCaptureDevice.DeviceType] = [.builtInWideAngleCamera]
+        if #available(macOS 14.0, *) {
+            deviceTypes.append(.external)
+            deviceTypes.append(.continuityCamera)
+        } else {
+            deviceTypes.append(.externalUnknown)
+        }
+        _ = AVCaptureDevice.DiscoverySession(deviceTypes: deviceTypes, mediaType: .video, position: .unspecified).devices
+    }
+
     // Called on the main thread by Flutter; activation is asynchronous and may require user approval.
     public func start() -> [String: Any] {
         guard #available(macOS 12.3, *) else {
@@ -38,6 +51,16 @@ public final class VirtualCameraManager: NSObject, OSSystemExtensionRequestDeleg
             return status
         }
         guard activationRequest == nil, connectionTimer == nil, !isActive else { return status }
+
+        // 1. Wake up CoreMediaIO DAL and discover external camera extensions
+        pokeDeviceDiscovery()
+
+        // 2. Direct fast-path: If the camera extension is already active and registered in the system, connect immediately!
+        if queue.sync(execute: { self.connectSink() }) {
+            return status
+        }
+
+        // 3. Verify app bundle is in /Applications
         guard Bundle.main.bundleURL.path.hasPrefix("/Applications/") else {
             setState("error", "Move Beauty Camera to Applications and reopen it to install Virtual Camera.")
             return status
@@ -47,12 +70,37 @@ public final class VirtualCameraManager: NSObject, OSSystemExtensionRequestDeleg
             setState("error", "This build does not include Virtual Camera. Install a build with the camera extension.")
             return status
         }
+
+        // 4. Quick retry connection loop: After reboot, extension process may take 1-2 seconds to wake up
+        setState("connecting", "Connecting to Beauty Camera…")
+        connectionAttempts = 0
+        connectionTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] timer in
+            guard let self = self else { timer.invalidate(); return }
+            self.connectionAttempts += 1
+            if self.connectionAttempts % 2 == 0 {
+                self.pokeDeviceDiscovery()
+            }
+            if self.queue.sync(execute: { self.connectSink() }) {
+                timer.invalidate()
+                self.connectionTimer = nil
+                return
+            }
+            if self.connectionAttempts >= 6 {
+                // Not responding yet, request activation from macOS
+                timer.invalidate()
+                self.connectionTimer = nil
+                self.submitActivationRequest()
+            }
+        }
+        return status
+    }
+
+    private func submitActivationRequest() {
         setState("installing", "Setting up Beauty Camera for Google Meet…")
         let request = OSSystemExtensionRequest.activationRequest(forExtensionWithIdentifier: extensionID, queue: .main)
         activationRequest = request
         request.delegate = self
         OSSystemExtensionManager.shared.submitRequest(request)
-        return status
     }
 
     public func stop() {
@@ -73,6 +121,7 @@ public final class VirtualCameraManager: NSObject, OSSystemExtensionRequestDeleg
             device = 0
             stream = 0
             lastFrameTime = 0
+            isSendingFrame = false
             state = "off"
             message = ""
         }
@@ -104,9 +153,13 @@ public final class VirtualCameraManager: NSObject, OSSystemExtensionRequestDeleg
         }
         setState("connecting", "Waiting for macOS to register Beauty Camera…")
         connectionAttempts = 0
+        pokeDeviceDiscovery()
         connectionTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] timer in
             guard let self = self else { timer.invalidate(); return }
             self.connectionAttempts += 1
+            if self.connectionAttempts % 2 == 0 {
+                self.pokeDeviceDiscovery()
+            }
             if self.queue.sync(execute: { self.connectSink() }) {
                 timer.invalidate()
                 self.connectionTimer = nil
@@ -173,12 +226,19 @@ public final class VirtualCameraManager: NSObject, OSSystemExtensionRequestDeleg
     }
 
     public func sendFrame(pixelBuffer: CVPixelBuffer) {
-        // Synchronous on the capture queue: no unbounded backlog of retained camera frames.
-        queue.sync {
-            guard state == "active", let buffers = buffers, let pool = pool, let format = format else { return }
-            let now = CMClockGetTime(CMClockGetHostTimeClock())
-            guard now.seconds - lastFrameTime >= 1.0 / 30.0,
-                  CMSimpleQueueGetCount(buffers) < CMSimpleQueueGetCapacity(buffers) else { return }
+        guard state == "active" else { return }
+        let now = CMClockGetTime(CMClockGetHostTimeClock())
+        guard now.seconds - lastFrameTime >= 1.0 / 30.0 else { return }
+
+        // Non-blocking asynchronous dispatch so capture queue is never stalled by virtual camera encoding
+        queue.async { [weak self] in
+            guard let self = self else { return }
+            guard self.state == "active", let buffers = self.buffers, let pool = self.pool, let format = self.format else { return }
+            guard CMSimpleQueueGetCount(buffers) < CMSimpleQueueGetCapacity(buffers) else { return }
+            guard !self.isSendingFrame else { return }
+            self.isSendingFrame = true
+            defer { self.isSendingFrame = false }
+
             var target: CVPixelBuffer?
             guard CVPixelBufferPoolCreatePixelBufferWithAuxAttributes(kCFAllocatorDefault, pool,
                                                                       [kCVPixelBufferPoolAllocationThresholdKey: 6] as CFDictionary, &target) == kCVReturnSuccess,
@@ -189,8 +249,8 @@ public final class VirtualCameraManager: NSObject, OSSystemExtensionRequestDeleg
                 .transformed(by: CGAffineTransform(translationX: (1280 - image.extent.width * scale) / 2,
                                                    y: (720 - image.extent.height * scale) / 2))
             let extent = CGRect(x: 0, y: 0, width: 1280, height: 720)
-            context.render(fitted.composited(over: CIImage(color: .black).cropped(to: extent)),
-                           to: target, bounds: extent, colorSpace: CGColorSpaceCreateDeviceRGB())
+            self.context.render(fitted.composited(over: CIImage(color: .black).cropped(to: extent)),
+                                to: target, bounds: extent, colorSpace: CGColorSpaceCreateDeviceRGB())
             var timing = CMSampleTimingInfo(duration: CMTime(value: 1, timescale: 30),
                                             presentationTimeStamp: now, decodeTimeStamp: .invalid)
             var sample: CMSampleBuffer?
@@ -199,7 +259,7 @@ public final class VirtualCameraManager: NSObject, OSSystemExtensionRequestDeleg
                                                      sampleBufferOut: &sample) == noErr, let sample = sample else { return }
             let retained = Unmanaged.passRetained(sample)
             if CMSimpleQueueEnqueue(buffers, element: retained.toOpaque()) != noErr { retained.release() }
-            else { lastFrameTime = now.seconds }
+            else { self.lastFrameTime = now.seconds }
         }
     }
 }

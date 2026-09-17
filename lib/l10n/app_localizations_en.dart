@@ -136,6 +136,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get beautyEyeBag => 'Eye Bag';
 
   @override
+  String get beautyGlassSkin => 'Glass Skin';
+
+  @override
   String get sliderSkinSmoothing => 'Skin Smoothing';
 
   @override
@@ -158,6 +161,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sliderEyeBagReduction => 'Eye Bag Reduction';
+
+  @override
+  String get sliderGlassSkin => 'Glass Skin Glow';
 
   @override
   String get sliderTeethWhitening => 'Teeth Whitening';
@@ -247,6 +253,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reshapeTemple => 'Temple';
 
   @override
+  String get reshapeDoubleChin => 'Double Chin';
+
+  @override
+  String get reshapeJawline => 'Jawline';
+
+  @override
   String get reshapeNoseWid => 'Nose Wid';
 
   @override
@@ -278,6 +290,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get reshapeEyeSparkle => 'Sparkle';
+
+  @override
+  String get reshapeAegyoSal => 'Smile Eye Bags';
 
   @override
   String get reshapeEyebrowHeight => 'Height';
@@ -427,6 +442,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get makeupEyeshadow => 'Eyeshadow';
 
   @override
+  String get makeupContour => 'Contour';
+
+  @override
   String makeupIntensity(String name) {
     return '$name Intensity';
   }
@@ -498,6 +516,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get styleDouyin => 'Douyin';
+
+  @override
+  String get styleVShape => 'V-Line';
+
+  @override
+  String get styleSculpted => '3D Sculpted';
+
+  @override
+  String get styleNoseContour => 'Slim Nose';
+
+  @override
+  String get styleSoftContour => 'Soft Depth';
 
   @override
   String get resetColorTooltip => 'Reset Color';
@@ -660,4 +690,54 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get statResolution => 'Resolution';
+
+  @override
+  String get softwareUpdate => 'Software Update';
+
+  @override
+  String get updateCheck => 'Check for Updates';
+
+  @override
+  String get updateChecking => 'Checking for updates...';
+
+  @override
+  String get updateAvailableTitle => 'New Version Available';
+
+  @override
+  String updateAvailableSubtitle(String version) {
+    return 'Version $version is ready to install.';
+  }
+
+  @override
+  String updateCurrentVersion(String version) {
+    return 'Current version: $version';
+  }
+
+  @override
+  String updateLatest(String version) {
+    return 'You are on the latest version ($version)';
+  }
+
+  @override
+  String get updateReleaseNotes => 'Release Notes';
+
+  @override
+  String get updateNow => 'Update Now';
+
+  @override
+  String get updateLater => 'Later';
+
+  @override
+  String get updateDownloading => 'Downloading update...';
+
+  @override
+  String get updateInstalling => 'Installing and restarting...';
+
+  @override
+  String updateError(String error) {
+    return 'Update failed: $error';
+  }
+
+  @override
+  String get updateCancel => 'Cancel';
 }

@@ -22,6 +22,8 @@ class ReshapePanel extends ConsumerWidget {
       {'id': 'smallFace', 'label': l10n.reshapeSmallFace, 'icon': Icons.compress},
       {'id': 'vFace', 'label': l10n.reshapeVFace, 'icon': Icons.arrow_downward},
       {'id': 'jawWidth', 'label': l10n.reshapeJaw, 'icon': Icons.swap_horiz},
+      {'id': 'jawline', 'label': l10n.reshapeJawline, 'icon': Icons.linear_scale},
+      {'id': 'doubleChin', 'label': l10n.reshapeDoubleChin, 'icon': Icons.expand_more},
       {'id': 'cheekWidth', 'label': l10n.reshapeCheek, 'icon': Icons.aspect_ratio},
       {'id': 'chinLength', 'label': l10n.reshapeChinLen, 'icon': Icons.height},
       {'id': 'chinWidth', 'label': l10n.reshapeChinWid, 'icon': Icons.straighten},
@@ -40,6 +42,7 @@ class ReshapePanel extends ConsumerWidget {
 
     final eyeTools = [
       {'id': 'eyeSize', 'label': l10n.reshapeEyeSize, 'icon': Icons.remove_red_eye},
+      {'id': 'aegyoSal', 'label': l10n.reshapeAegyoSal, 'icon': Icons.sentiment_satisfied},
       {'id': 'eyeDistance', 'label': l10n.reshapeEyeDist, 'icon': Icons.space_bar},
       {'id': 'eyeHeight', 'label': l10n.reshapeEyeHeight, 'icon': Icons.height},
       {'id': 'eyeAngle', 'label': l10n.reshapeEyeAngle, 'icon': Icons.rotate_right},
@@ -111,12 +114,12 @@ class ReshapePanel extends ConsumerWidget {
         case 'nose':
           return f.noseWidth != 0 || f.noseBridge != 0 || f.noseTip != 0 || f.noseLength != 0 || f.nostrilWidth != 0;
         case 'eyes':
-          return f.eyeSize != 0 || f.eyeDistance != 0 || f.eyeHeight != 0 || f.eyeAngle != 0 || f.eyeBrightness != 0 || f.eyeSparkle != 0 || f.eyeSparkleStyle != 'starlight';
+          return f.eyeSize != 0 || f.aegyoSal != 0 || f.eyeDistance != 0 || f.eyeHeight != 0 || f.eyeAngle != 0 || f.eyeBrightness != 0 || f.eyeSparkle != 0 || f.eyeSparkleStyle != 'starlight';
         case 'mouth':
           return f.smile != 0 || f.smileCorners != 0 || f.mShapeLips != 0 || f.mouthWidth != 0 || f.mouthSize != 0 || f.lipThickness != 0 || f.mouthPosition != 0 || b.teethWhitening > 0;
         case 'face':
         default:
-          return f.slimFace != 0 || f.smallFace != 0 || f.vFace != 0 || f.jawWidth != 0 || f.cheekWidth != 0 || f.chinLength != 0 || f.chinWidth != 0 || f.forehead != 0 || f.hairline != 0 || f.templeWidth != 0;
+          return f.slimFace != 0 || f.smallFace != 0 || f.vFace != 0 || f.jawWidth != 0 || f.jawline != 0 || f.doubleChin != 0 || f.cheekWidth != 0 || f.chinLength != 0 || f.chinWidth != 0 || f.forehead != 0 || f.hairline != 0 || f.templeWidth != 0;
       }
     }
 
@@ -172,6 +175,20 @@ class ReshapePanel extends ConsumerWidget {
             max: 50,
             defaultValue: 0,
             onChanged: (v) => controller.updateFace(f.copyWith(jawWidth: v)),
+          );
+        case 'jawline':
+          return BeautySlider(
+            label: l10n.reshapeJawline,
+            value: f.jawline,
+            defaultValue: 0,
+            onChanged: (v) => controller.updateFace(f.copyWith(jawline: v)),
+          );
+        case 'doubleChin':
+          return BeautySlider(
+            label: l10n.reshapeDoubleChin,
+            value: f.doubleChin,
+            defaultValue: 0,
+            onChanged: (v) => controller.updateFace(f.copyWith(doubleChin: v)),
           );
         case 'cheekWidth':
           return BeautySlider(
@@ -282,6 +299,13 @@ class ReshapePanel extends ConsumerWidget {
             value: f.eyeSize,
             defaultValue: 0,
             onChanged: (v) => controller.updateFace(f.copyWith(eyeSize: v)),
+          );
+        case 'aegyoSal':
+          return BeautySlider(
+            label: l10n.reshapeAegyoSal,
+            value: f.aegyoSal,
+            defaultValue: 0,
+            onChanged: (v) => controller.updateFace(f.copyWith(aegyoSal: v)),
           );
         case 'eyeDistance':
           return BeautySlider(

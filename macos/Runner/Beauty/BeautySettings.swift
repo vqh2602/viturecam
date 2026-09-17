@@ -11,6 +11,7 @@ public struct BeautySettings {
     public var darkCircle: Double = 0.0      // 0.0 .. 1.0
     public var eyeBag: Double = 0.0          // 0.0 .. 1.0
     public var teethWhitening: Double = 0.0  // 0.0 .. 1.0
+    public var glassSkin: Double = 0.0       // 0.0 .. 1.0
 
     public init(from dict: [String: Any]? = nil) {
         guard let dict = dict else { return }
@@ -24,6 +25,7 @@ public struct BeautySettings {
         if let v = dict["darkCircle"] as? Double { darkCircle = v }
         if let v = dict["eyeBag"] as? Double { eyeBag = v }
         if let v = dict["teethWhitening"] as? Double { teethWhitening = v }
+        if let v = dict["glassSkin"] as? Double { glassSkin = v }
     }
 }
 
@@ -38,6 +40,8 @@ public struct FaceSettings {
     public var forehead: Double = 0.0        // -1.0 .. 1.0
     public var templeWidth: Double = 0.0     // -1.0 .. 1.0
     public var hairline: Double = 0.0        // -1.0 .. 1.0
+    public var doubleChin: Double = 0.0      // 0.0 .. 1.0
+    public var jawline: Double = 0.0         // 0.0 .. 1.0
 
     public var eyeSize: Double = 0.0         // 0.0 .. 1.0
     public var eyeWidth: Double = 0.0        // -1.0 .. 1.0
@@ -47,6 +51,7 @@ public struct FaceSettings {
     public var eyeBrightness: Double = 0.0   // 0.0 .. 1.0
     public var eyeSparkle: Double = 0.0      // 0.0 .. 1.0
     public var eyeSparkleStyle: String = "starlight" // "natural", "starlight", "ring", "crystal"
+    public var aegyoSal: Double = 0.0        // 0.0 .. 1.0
 
     public var eyebrowHeight: Double = 0.0   // -1.0 .. 1.0 (0 = default)
     public var eyebrowArch: Double = 0.0     // -1.0 .. 1.0 (0 = default)
@@ -78,6 +83,8 @@ public struct FaceSettings {
         if let v = dict["forehead"] as? Double { forehead = v }
         if let v = dict["templeWidth"] as? Double { templeWidth = v }
         if let v = dict["hairline"] as? Double { hairline = v }
+        if let v = dict["doubleChin"] as? Double { doubleChin = v }
+        if let v = dict["jawline"] as? Double { jawline = v }
 
         if let v = dict["eyeSize"] as? Double { eyeSize = v }
         if let v = dict["eyeWidth"] as? Double { eyeWidth = v }
@@ -87,6 +94,7 @@ public struct FaceSettings {
         if let v = dict["eyeBrightness"] as? Double { eyeBrightness = v }
         if let v = dict["eyeSparkle"] as? Double { eyeSparkle = v }
         if let v = dict["eyeSparkleStyle"] as? String { eyeSparkleStyle = v }
+        if let v = dict["aegyoSal"] as? Double { aegyoSal = v }
 
         if let v = dict["eyebrowHeight"] as? Double { eyebrowHeight = v }
         if let v = dict["eyebrowArch"] as? Double { eyebrowArch = v }
@@ -128,6 +136,8 @@ public struct MakeupSettings {
     public var eyelashesOpacity: Double = 0.0
     public var contactLensPreset: String = "none"
     public var contourPreset: String = "none"
+    public var contourOpacity: Double = 0.0
+    public var contourStyle: String = "vShape" // "vShape", "natural", "sculpted", "nose", "soft"
 
     public init(from dict: [String: Any]? = nil) {
         guard let dict = dict else { return }
@@ -150,6 +160,8 @@ public struct MakeupSettings {
         if let v = dict["eyelashesOpacity"] as? Double { eyelashesOpacity = v }
         if let v = dict["contactLensPreset"] as? String { contactLensPreset = v }
         if let v = dict["contourPreset"] as? String { contourPreset = v }
+        if let v = dict["contourOpacity"] as? Double { contourOpacity = v }
+        if let v = dict["contourStyle"] as? String { contourStyle = v }
     }
 }
 

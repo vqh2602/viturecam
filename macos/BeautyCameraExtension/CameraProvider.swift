@@ -77,7 +77,6 @@ final class CameraDevice: NSObject, CMIOExtensionDeviceSource {
     func setDeviceProperties(_ properties: CMIOExtensionDeviceProperties) throws {}
 
     func authorizeWriter(_ client: CMIOExtensionClient) -> Bool {
-        guard writer == nil || writer?.clientID == client.clientID else { return false }
         writer = client
         return true
     }

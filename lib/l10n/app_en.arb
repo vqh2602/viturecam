@@ -50,6 +50,7 @@
   "beautyRedness": "Redness",
   "beautyDarkCircle": "Dark Circle",
   "beautyEyeBag": "Eye Bag",
+  "beautyGlassSkin": "Glass Skin",
 
   "sliderSkinSmoothing": "Skin Smoothing",
   "sliderTexturePreservation": "Texture Preservation",
@@ -59,6 +60,7 @@
   "sliderRednessReduction": "Redness Reduction",
   "sliderDarkCircleReduction": "Dark Circle Reduction",
   "sliderEyeBagReduction": "Eye Bag Reduction",
+  "sliderGlassSkin": "Glass Skin Glow",
   "sliderTeethWhitening": "Teeth Whitening",
 
   "toneNatural": "Natural",
@@ -91,6 +93,8 @@
   "reshapeForehead": "Forehead",
   "reshapeHairline": "Hairline",
   "reshapeTemple": "Temple",
+  "reshapeDoubleChin": "Double Chin",
+  "reshapeJawline": "Jawline",
 
   "reshapeNoseWid": "Nose Wid",
   "reshapeNoseBridge": "Nose Bridge",
@@ -104,6 +108,7 @@
   "reshapeEyeAngle": "Eye Angle",
   "reshapeEyeBrighten": "Brighten",
   "reshapeEyeSparkle": "Sparkle",
+  "reshapeAegyoSal": "Smile Eye Bags",
 
   "reshapeEyebrowHeight": "Height",
   "reshapeEyebrowArch": "Arch",
@@ -158,6 +163,7 @@
   "makeupEyebrow": "Eyebrow",
   "makeupEyeliner": "Eyeliner",
   "makeupEyeshadow": "Eyeshadow",
+  "makeupContour": "Contour",
   "makeupIntensity": "{name} Intensity",
   "@makeupIntensity": {
     "placeholders": {
@@ -192,6 +198,10 @@
   "styleCutCrease": "Cut Crease",
   "styleOuterV": "Outer V",
   "styleDouyin": "Douyin",
+  "styleVShape": "V-Line",
+  "styleSculpted": "3D Sculpted",
+  "styleNoseContour": "Slim Nose",
+  "styleSoftContour": "Soft Depth",
 
   "resetColorTooltip": "Reset Color",
   "colorExposure": "Exposure",
@@ -258,5 +268,40 @@
   "statProcessing": "Processing",
   "statTracking": "Tracking",
   "statDropped": "Dropped",
-  "statResolution": "Resolution"
+  "statResolution": "Resolution",
+
+  "softwareUpdate": "Software Update",
+  "updateCheck": "Check for Updates",
+  "updateChecking": "Checking for updates...",
+  "updateAvailableTitle": "New Version Available",
+  "updateAvailableSubtitle": "Version {version} is ready to install.",
+  "@updateAvailableSubtitle": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  },
+  "updateCurrentVersion": "Current version: {version}",
+  "@updateCurrentVersion": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  },
+  "updateLatest": "You are on the latest version ({version})",
+  "@updateLatest": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  },
+  "updateReleaseNotes": "Release Notes",
+  "updateNow": "Update Now",
+  "updateLater": "Later",
+  "updateDownloading": "Downloading update...",
+  "updateInstalling": "Installing and restarting...",
+  "updateError": "Update failed: {error}",
+  "@updateError": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "updateCancel": "Cancel"
 }

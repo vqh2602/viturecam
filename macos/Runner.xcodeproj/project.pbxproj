@@ -49,6 +49,10 @@
 		BC0000012C00000000000020 /* SkinSegmenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000020 /* SkinSegmenter.swift */; };
 		BC0000012C00000000000021 /* SelfieSegmenter.mlmodelc in Resources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000021 /* SelfieSegmenter.mlmodelc */; };
 		F292EF164D47EA6A8C4A152B /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 45063C308804A57C28039AEF /* Pods_Runner.framework */; };
+		BC0000012C00000000000032 /* LipSegmenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000032 /* LipSegmenter.swift */; };
+		BC0000012C00000000000033 /* LipParsing.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000033 /* LipParsing.mlmodel */; };
+		BC0000012C00000000000034 /* LipParsing-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000034 /* LipParsing-LICENSE.txt */; };
+		BC0000012C00000000000040 /* AutoUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000040 /* AutoUpdater.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -148,6 +152,10 @@
 		DBA683547BB21E6891AFCBDB /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
 		E71D364EEE73765DB040D2E9 /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		FD8FC03039B04279BA02460C /* BeautyCameraExtension.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = BeautyCameraExtension.entitlements; sourceTree = "<group>"; };
+		BC0000022C00000000000032 /* LipSegmenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceTracking/LipSegmenter.swift; sourceTree = "<group>"; };
+		BC0000022C00000000000033 /* LipParsing.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = FaceTracking/LipParsing.mlmodel; sourceTree = "<group>"; };
+		BC0000022C00000000000034 /* LipParsing-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "FaceTracking/LipParsing-LICENSE.txt"; sourceTree = "<group>"; };
+		BC0000022C00000000000040 /* AutoUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoUpdater/AutoUpdater.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -258,11 +266,15 @@
 				BC0000022C00000000000009 /* FaceMeshTracker.swift */,
 				BC0000022C00000000000010 /* FaceMeshGeometry.swift */,
 				BC0000022C00000000000031 /* LipContourRefiner.swift */,
+				BC0000022C00000000000034 /* LipParsing-LICENSE.txt */,
+				BC0000022C00000000000033 /* LipParsing.mlmodel */,
+				BC0000022C00000000000032 /* LipSegmenter.swift */,
 				BC0000022C00000000000011 /* FaceMeshRenderer.swift */,
 				BC0000022C00000000000012 /* FaceMeshShaders.swift */,
 				BC0000022C00000000000013 /* FaceMesh.mlmodelc */,
 				BC0000022C00000000000020 /* SkinSegmenter.swift */,
 				BC0000022C00000000000021 /* SelfieSegmenter.mlmodelc */,
+				BC0000022C00000000000040 /* AutoUpdater.swift */,
 				33E51913231747F40026EE4D /* DebugProfile.entitlements */,
 				33E51914231749380026EE4D /* Release.entitlements */,
 				33CC11242044D66E0003C045 /* Resources */,
@@ -448,6 +460,7 @@
 				33CC10F32044A3C60003C045 /* Assets.xcassets in Resources */,
 				33CC10F62044A3C60003C045 /* MainMenu.xib in Resources */,
 				BC0000012C00000000000013 /* FaceMesh.mlmodelc in Resources */,
+				BC0000012C00000000000034 /* LipParsing-LICENSE.txt in Resources */,
 				BC0000012C00000000000021 /* SelfieSegmenter.mlmodelc in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -588,9 +601,12 @@
 				BC0000012C00000000000009 /* FaceMeshTracker.swift in Sources */,
 				BC0000012C00000000000010 /* FaceMeshGeometry.swift in Sources */,
 				BC0000012C00000000000031 /* LipContourRefiner.swift in Sources */,
+				BC0000012C00000000000033 /* LipParsing.mlmodel in Sources */,
+				BC0000012C00000000000032 /* LipSegmenter.swift in Sources */,
 				BC0000012C00000000000011 /* FaceMeshRenderer.swift in Sources */,
 				BC0000012C00000000000012 /* FaceMeshShaders.swift in Sources */,
 				BC0000012C00000000000020 /* SkinSegmenter.swift in Sources */,
+				BC0000012C00000000000040 /* AutoUpdater.swift in Sources */,
 				33CC10F12044A3C60003C045 /* AppDelegate.swift in Sources */,
 				335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */,
 			);
@@ -751,7 +767,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.15;
+				MACOSX_DEPLOYMENT_TARGET = 12.3;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
@@ -846,7 +862,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.15;
+				MACOSX_DEPLOYMENT_TARGET = 12.3;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
@@ -897,7 +913,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.15;
+				MACOSX_DEPLOYMENT_TARGET = 12.3;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;

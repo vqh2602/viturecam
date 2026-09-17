@@ -350,6 +350,12 @@ abstract class AppLocalizations {
   /// **'Eye Bag'**
   String get beautyEyeBag;
 
+  /// No description provided for @beautyGlassSkin.
+  ///
+  /// In en, this message translates to:
+  /// **'Glass Skin'**
+  String get beautyGlassSkin;
+
   /// No description provided for @sliderSkinSmoothing.
   ///
   /// In en, this message translates to:
@@ -397,6 +403,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Eye Bag Reduction'**
   String get sliderEyeBagReduction;
+
+  /// No description provided for @sliderGlassSkin.
+  ///
+  /// In en, this message translates to:
+  /// **'Glass Skin Glow'**
+  String get sliderGlassSkin;
 
   /// No description provided for @sliderTeethWhitening.
   ///
@@ -572,6 +584,18 @@ abstract class AppLocalizations {
   /// **'Temple'**
   String get reshapeTemple;
 
+  /// No description provided for @reshapeDoubleChin.
+  ///
+  /// In en, this message translates to:
+  /// **'Double Chin'**
+  String get reshapeDoubleChin;
+
+  /// No description provided for @reshapeJawline.
+  ///
+  /// In en, this message translates to:
+  /// **'Jawline'**
+  String get reshapeJawline;
+
   /// No description provided for @reshapeNoseWid.
   ///
   /// In en, this message translates to:
@@ -637,6 +661,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sparkle'**
   String get reshapeEyeSparkle;
+
+  /// No description provided for @reshapeAegyoSal.
+  ///
+  /// In en, this message translates to:
+  /// **'Smile Eye Bags'**
+  String get reshapeAegyoSal;
 
   /// No description provided for @reshapeEyebrowHeight.
   ///
@@ -932,6 +962,12 @@ abstract class AppLocalizations {
   /// **'Eyeshadow'**
   String get makeupEyeshadow;
 
+  /// No description provided for @makeupContour.
+  ///
+  /// In en, this message translates to:
+  /// **'Contour'**
+  String get makeupContour;
+
   /// No description provided for @makeupIntensity.
   ///
   /// In en, this message translates to:
@@ -1069,6 +1105,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Douyin'**
   String get styleDouyin;
+
+  /// No description provided for @styleVShape.
+  ///
+  /// In en, this message translates to:
+  /// **'V-Line'**
+  String get styleVShape;
+
+  /// No description provided for @styleSculpted.
+  ///
+  /// In en, this message translates to:
+  /// **'3D Sculpted'**
+  String get styleSculpted;
+
+  /// No description provided for @styleNoseContour.
+  ///
+  /// In en, this message translates to:
+  /// **'Slim Nose'**
+  String get styleNoseContour;
+
+  /// No description provided for @styleSoftContour.
+  ///
+  /// In en, this message translates to:
+  /// **'Soft Depth'**
+  String get styleSoftContour;
 
   /// No description provided for @resetColorTooltip.
   ///
@@ -1381,6 +1441,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Resolution'**
   String get statResolution;
+
+  /// No description provided for @softwareUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Software Update'**
+  String get softwareUpdate;
+
+  /// No description provided for @updateCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Check for Updates'**
+  String get updateCheck;
+
+  /// No description provided for @updateChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking for updates...'**
+  String get updateChecking;
+
+  /// No description provided for @updateAvailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New Version Available'**
+  String get updateAvailableTitle;
+
+  /// No description provided for @updateAvailableSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Version {version} is ready to install.'**
+  String updateAvailableSubtitle(String version);
+
+  /// No description provided for @updateCurrentVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Current version: {version}'**
+  String updateCurrentVersion(String version);
+
+  /// No description provided for @updateLatest.
+  ///
+  /// In en, this message translates to:
+  /// **'You are on the latest version ({version})'**
+  String updateLatest(String version);
+
+  /// No description provided for @updateReleaseNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Release Notes'**
+  String get updateReleaseNotes;
+
+  /// No description provided for @updateNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Now'**
+  String get updateNow;
+
+  /// No description provided for @updateLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get updateLater;
+
+  /// No description provided for @updateDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading update...'**
+  String get updateDownloading;
+
+  /// No description provided for @updateInstalling.
+  ///
+  /// In en, this message translates to:
+  /// **'Installing and restarting...'**
+  String get updateInstalling;
+
+  /// No description provided for @updateError.
+  ///
+  /// In en, this message translates to:
+  /// **'Update failed: {error}'**
+  String updateError(String error);
+
+  /// No description provided for @updateCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get updateCancel;
 }
 
 class _AppLocalizationsDelegate

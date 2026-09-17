@@ -54,6 +54,14 @@ class MakeupPanel extends ConsumerWidget {
         return l10n.styleOuterV;
       case 'douyin':
         return l10n.styleDouyin;
+      case 'vShape':
+        return l10n.styleVShape;
+      case 'sculpted':
+        return l10n.styleSculpted;
+      case 'nose':
+        return l10n.styleNoseContour;
+      case 'soft':
+        return l10n.styleSoftContour;
       case 'male_natural':
         return l10n.localeName.startsWith('vi') ? 'Tự nhiên' : 'Natural';
       case 'male_sword':
@@ -109,6 +117,11 @@ class MakeupPanel extends ConsumerWidget {
         'sunset': 'Sunset',
         'champagne': 'Champagne',
         'smoky': 'Smoky',
+        'warm': 'Warm Brown',
+        'cool': 'Cool Ash',
+        'bronze': 'Bronze',
+        'deep': 'Deep Contour',
+        'softTaupe': 'Soft Taupe',
       };
       return enColorNames[opt.id] ?? opt.name;
     }
@@ -126,6 +139,7 @@ class MakeupPanel extends ConsumerWidget {
     final categories = [
       {'id': 'lip', 'label': l10n.makeupLipstick, 'icon': Icons.brush},
       {'id': 'blush', 'label': l10n.makeupBlush, 'icon': Icons.bubble_chart},
+      {'id': 'contour', 'label': l10n.makeupContour, 'icon': Icons.tonality},
       {'id': 'eyebrow', 'label': l10n.makeupEyebrow, 'icon': Icons.gesture},
       {'id': 'eyeliner', 'label': l10n.makeupEyeliner, 'icon': Icons.edit},
       {'id': 'eyeshadow', 'label': l10n.makeupEyeshadow, 'icon': Icons.palette},
@@ -144,6 +158,13 @@ class MakeupPanel extends ConsumerWidget {
         activeOpacity = m.blushOpacity;
         onSelectPreset = (id) => controller.updateMakeup(m.copyWith(blushPreset: id));
         onOpacityChanged = (op) => controller.updateMakeup(m.copyWith(blushOpacity: op));
+        break;
+      case 'contour':
+        activeOptions = MakeupPresets.contourOptions;
+        activePreset = m.contourPreset;
+        activeOpacity = m.contourOpacity;
+        onSelectPreset = (id) => controller.updateMakeup(m.copyWith(contourPreset: id));
+        onOpacityChanged = (op) => controller.updateMakeup(m.copyWith(contourOpacity: op));
         break;
       case 'eyebrow':
         activeOptions = MakeupPresets.eyebrowOptions;
@@ -180,6 +201,9 @@ class MakeupPanel extends ConsumerWidget {
     switch (subTool) {
       case 'blush':
         activeCategoryName = l10n.makeupBlush;
+        break;
+      case 'contour':
+        activeCategoryName = l10n.makeupContour;
         break;
       case 'eyebrow':
         activeCategoryName = l10n.makeupEyebrow;
@@ -295,6 +319,14 @@ class MakeupPanel extends ConsumerWidget {
                   options: MakeupPresets.blushStyles,
                   selectedId: m.blushStyle,
                   onSelect: (id) => controller.updateMakeup(m.copyWith(blushStyle: id)),
+                ),
+              ] else if (subTool == 'contour') ...[
+                const VerticalDivider(width: 12, indent: 12, endIndent: 12, color: Colors.white12),
+                _buildStyleSelector(
+                  l10n: l10n,
+                  options: MakeupPresets.contourStyles,
+                  selectedId: m.contourStyle,
+                  onSelect: (id) => controller.updateMakeup(m.copyWith(contourStyle: id)),
                 ),
               ] else if (subTool == 'eyebrow') ...[
                 const VerticalDivider(width: 12, indent: 12, endIndent: 12, color: Colors.white12),

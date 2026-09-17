@@ -9,6 +9,7 @@ public struct FaceMeshLandmarks {
     public var boundingBox: CGRect = .zero // In normalized image coordinates (0,0 top-left)
     public var landmarks: [SIMD3<Float>] = [] // 468 points, x in 0..1, y in 0..1, z depth
     public var confidence: Float = 0.0
+    public var lipPixelMask: CIImage? // Current raw frame, Core Image pixel coordinates
 
     // Convenience Feature Anchors (normalized 0..1)
     public var leftEyeCenter: CGPoint = .zero
@@ -130,7 +131,12 @@ public final class OneEuroFilterBank468 {
             // Speed-adaptive cutoff
             let speed = length(edx)
             let cutoff = minCutoff + beta * speed
-            let a = alpha(rate: rate, cutoff: cutoff)
+            var a = alpha(rate: rate, cutoff: cutoff)
+            // Lip articulation can reverse faster than the smoothed derivative.
+            // Follow substantial current-frame motion without increasing stationary jitter.
+            if FaceMeshGeometry.lipIndices.contains(i), simd_length(x - prev) > 0.003 {
+                a = max(a, 0.90)
+            }
 
             // Filtered position
             let filtered = a * x + (1.0 - a) * prev
@@ -155,6 +161,7 @@ public final class FaceMeshTracker {
     private var frameTimestamp: TimeInterval = 0
     private var imageSize: CGSize = .zero
     private let lock = NSLock()
+    public var needsLipRefinement: Bool = false
 
     public init() {
         setupModel()
@@ -474,8 +481,14 @@ public final class FaceMeshTracker {
         defer { lock.unlock() }
         // Refine against this frame AFTER temporal filtering so a freshly closed
         // mouth is not pulled apart again by the previous frame's lip positions.
-        let smoothedPoints = LipContourRefiner.refine(
-            filterBank.filter(raw: rawPoints, timestamp: frameTimestamp), in: pixelBuffer)
+        // Only run expensive CPU pixel buffer locking if lip makeup is actually enabled.
+        let filtered = filterBank.filter(raw: rawPoints, timestamp: frameTimestamp)
+        let smoothedPoints: [SIMD3<Float>]
+        if needsLipRefinement {
+            smoothedPoints = LipContourRefiner.refine(filtered, in: pixelBuffer)
+        } else {
+            smoothedPoints = filtered
+        }
 
         var res = FaceMeshLandmarks()
         res.hasFace = true

@@ -7,6 +7,7 @@ public final class BeautyEngine: NSObject, CameraEngineDelegate {
     public let cameraEngine = CameraEngine()
     public let faceMeshTracker = FaceMeshTracker()
     public let faceTracker = FaceTracker()
+    private let lipSegmenter = LipSegmenter()
     public let skinSegmenter = SkinSegmenter() // Core 2: MediaPipe Selfie Multiclass Segmentation (Class 3: Face-Skin)
     public var trackingEngine: String = "facemesh" // "facemesh" (MediaPipe CoreML Core 1) or "vision" (Apple Native Vision)
     public let beautyRenderer = BeautyRenderer()
@@ -127,11 +128,19 @@ public final class BeautyEngine: NSObject, CameraEngineDelegate {
         // Core 1: MediaPipe Face Landmarker / Apple Vision Tracker
         // -> eyes / nose / lips / jaw / chin
         // -> used for 3D Reshape, Makeup, Teeth, Eye Bag
-        let landmarks: FaceMeshLandmarks
+        let hasLipMakeup = beautyEnabled && (makeupSettings.lipPreset != "none" && makeupSettings.lipOpacity > 0.01)
+        faceMeshTracker.needsLipRefinement = hasLipMakeup
+
+        var landmarks: FaceMeshLandmarks
         if trackingEngine == "facemesh" {
             landmarks = faceMeshTracker.processFrame(pixelBuffer: sourcePixelBuffer, timestamp: validTimestamp)
         } else {
             landmarks = faceTracker.processFrame(pixelBuffer: sourcePixelBuffer, timestamp: validTimestamp)
+        }
+        // Semantic labels come from this exact raw frame, before beauty/reshape.
+        // Never reuse a previous frame's mouth mask while speaking.
+        if hasLipMakeup && landmarks.hasFace {
+            landmarks.lipPixelMask = lipSegmenter.processFrame(pixelBuffer: sourcePixelBuffer, landmarks: landmarks)
         }
         lastTrackingTimeMs = (CACurrentMediaTime() - processingStart) * 1000
 

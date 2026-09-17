@@ -9,6 +9,7 @@ class BeautySettings {
   final double darkCircle; // 0..100
   final double eyeBag; // 0..100
   final double teethWhitening; // 0..100
+  final double glassSkin; // 0..100
 
   const BeautySettings({
     this.smooth = 0,
@@ -21,6 +22,7 @@ class BeautySettings {
     this.darkCircle = 0,
     this.eyeBag = 0,
     this.teethWhitening = 0,
+    this.glassSkin = 0,
   });
 
   bool get isModified =>
@@ -33,7 +35,8 @@ class BeautySettings {
       redness > 0 ||
       darkCircle > 0 ||
       eyeBag > 0 ||
-      teethWhitening > 0;
+      teethWhitening > 0 ||
+      glassSkin > 0;
 
   bool isKeyActive(String key) {
     switch (key) {
@@ -55,6 +58,8 @@ class BeautySettings {
         return eyeBag > 0;
       case 'teethWhitening':
         return teethWhitening > 0;
+      case 'glassSkin':
+        return glassSkin > 0;
       default:
         return false;
     }
@@ -71,6 +76,7 @@ class BeautySettings {
     double? darkCircle,
     double? eyeBag,
     double? teethWhitening,
+    double? glassSkin,
   }) {
     return BeautySettings(
       smooth: smooth ?? this.smooth,
@@ -83,6 +89,7 @@ class BeautySettings {
       darkCircle: darkCircle ?? this.darkCircle,
       eyeBag: eyeBag ?? this.eyeBag,
       teethWhitening: teethWhitening ?? this.teethWhitening,
+      glassSkin: glassSkin ?? this.glassSkin,
     );
   }
 
@@ -98,6 +105,7 @@ class BeautySettings {
       'darkCircle': darkCircle / 100.0,
       'eyeBag': eyeBag / 100.0,
       'teethWhitening': teethWhitening / 100.0,
+      'glassSkin': glassSkin / 100.0,
     };
   }
 
@@ -113,6 +121,7 @@ class BeautySettings {
       darkCircle: (json['darkCircle'] as num?)?.toDouble() ?? 0,
       eyeBag: (json['eyeBag'] as num?)?.toDouble() ?? 0,
       teethWhitening: (json['teethWhitening'] as num?)?.toDouble() ?? 0,
+      glassSkin: (json['glassSkin'] as num?)?.toDouble() ?? 0,
     );
   }
 
@@ -128,6 +137,7 @@ class BeautySettings {
       'darkCircle': darkCircle,
       'eyeBag': eyeBag,
       'teethWhitening': teethWhitening,
+      'glassSkin': glassSkin,
     };
   }
 }

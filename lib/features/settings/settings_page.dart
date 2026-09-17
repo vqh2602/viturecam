@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/locale_provider.dart';
 import '../../l10n/app_localizations.dart';
+import '../../services/update_provider.dart';
 import '../camera/camera_controller.dart';
+import '../updater/update_dialog.dart';
 
 class SettingsDialog extends ConsumerWidget {
   const SettingsDialog({super.key});
@@ -175,6 +177,10 @@ class SettingsDialog extends ConsumerWidget {
                 _StatCard(title: l10n.statResolution, value: '${state.stats.width}x${state.stats.height}'),
               ],
             ),
+            const SizedBox(height: 20),
+
+            // Software Update Section
+            const _UpdateSection(),
           ],
         ),
       ),
@@ -209,3 +215,151 @@ class _StatCard extends StatelessWidget {
     );
   }
 }
+
+class _UpdateSection extends ConsumerStatefulWidget {
+  const _UpdateSection();
+
+  @override
+  ConsumerState<_UpdateSection> createState() => _UpdateSectionState();
+}
+
+class _UpdateSectionState extends ConsumerState<_UpdateSection> {
+  bool _isChecking = false;
+  String _currentVersion = '1.0.3';
+  String? _statusMessage;
+  bool _isLatest = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentVersion();
+  }
+
+  void _loadCurrentVersion() async {
+    final version = await ref.read(updateServiceProvider).getCurrentVersion();
+    if (mounted) {
+      setState(() {
+        _currentVersion = version;
+      });
+    }
+  }
+
+  void _checkUpdate() async {
+    if (_isChecking) return;
+    setState(() {
+      _isChecking = true;
+      _statusMessage = null;
+      _isLatest = false;
+    });
+
+    final updateService = ref.read(updateServiceProvider);
+    final l10n = AppLocalizations.of(context)!;
+
+    try {
+      final release = await updateService.checkForUpdate();
+      if (!mounted) return;
+
+      if (release != null) {
+        setState(() {
+          _isChecking = false;
+        });
+        UpdateDialog.show(
+          context,
+          release: release,
+          currentVersion: _currentVersion,
+          updateService: updateService,
+        );
+      } else {
+        setState(() {
+          _isChecking = false;
+          _isLatest = true;
+          _statusMessage = l10n.updateLatest(_currentVersion);
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isChecking = false;
+        _isLatest = false;
+        _statusMessage = l10n.updateError(e.toString());
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.softwareUpdate,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white70),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF26262B),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.white10),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.system_update_rounded, color: Color(0xFFFF7597), size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.updateCurrentVersion(_currentVersion),
+                      style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, color: Colors.white),
+                    ),
+                    if (_statusMessage != null) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        _statusMessage!,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: _isLatest ? const Color(0xFF4CAF50) : const Color(0xFFFF8DA1),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              ElevatedButton(
+                onPressed: _isChecking ? null : _checkUpdate,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF323238),
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: const Color(0xFF28282D),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: const BorderSide(color: Colors.white12),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                ),
+                child: _isChecking
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white70)),
+                      )
+                    : Text(
+                        l10n.updateCheck,
+                        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
