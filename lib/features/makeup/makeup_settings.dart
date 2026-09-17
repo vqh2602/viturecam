@@ -187,6 +187,54 @@ class MakeupPresets {
     MakeupOption(id: 'midnight', name: 'Nâu đen góc cạnh', color: Color(0xFF24140E)),
     MakeupOption(id: 'softTaupe', name: 'Nâu khói nhạt', color: Color(0xFF8C7A6B)),
   ];
+  static const List<MakeupStyleOption> lensStyles = [
+    MakeupStyleOption(id: 'natural', name: 'Tự nhiên', icon: Icons.auto_awesome),
+    MakeupStyleOption(id: 'limbalRing', name: 'Giãn tròng', icon: Icons.lens),
+    MakeupStyleOption(id: 'galaxy', name: 'Ngân hà', icon: Icons.grain),
+    MakeupStyleOption(id: 'starburst', name: 'Tia sáng', icon: Icons.flare),
+  ];
+
+  static const List<MakeupOption> lensOptions = [
+    MakeupOption(id: 'none', name: 'None', color: Colors.transparent),
+    MakeupOption(id: 'hazel', name: 'Hổ phách', color: Color(0xFF8B5A2B)),
+    MakeupOption(id: 'honey', name: 'Mật ong', color: Color(0xFFC68642)),
+    MakeupOption(id: 'choc', name: 'Sô-cô-la', color: Color(0xFF4A2E18)),
+    MakeupOption(id: 'gray', name: 'Xám khói', color: Color(0xFF8E8E93)),
+    MakeupOption(id: 'blue', name: 'Xanh biển', color: Color(0xFF2C5E8A)),
+    MakeupOption(id: 'aqua', name: 'Ngọc bích', color: Color(0xFF2E8B8B)),
+    MakeupOption(id: 'green', name: 'Lục bảo', color: Color(0xFF2E7D32)),
+    MakeupOption(id: 'violet', name: 'Thạch anh', color: Color(0xFF6A3D8A)),
+    MakeupOption(id: 'pink', name: 'Hồng đào', color: Color(0xFFD87093)),
+    MakeupOption(id: 'amber', name: 'Vàng nâu', color: Color(0xFFD48817)),
+    MakeupOption(id: 'black', name: 'Đen tuyền', color: Color(0xFF1C1C1E)),
+  ];
+
+  static const List<MakeupStyleOption> sparkleStyles = [
+    MakeupStyleOption(id: 'starlight', name: 'Ánh sao', icon: Icons.star_border),
+    MakeupStyleOption(id: 'natural', name: 'Tự nhiên', icon: Icons.wb_sunny_outlined),
+    MakeupStyleOption(id: 'ring', name: 'Vòng sáng', icon: Icons.panorama_fish_eye),
+    MakeupStyleOption(id: 'crystal', name: 'Pha lê', icon: Icons.diamond_outlined),
+    MakeupStyleOption(id: 'heart', name: 'Trái tim', icon: Icons.favorite_border),
+    MakeupStyleOption(id: 'crescent', name: 'Trăng khuyết', icon: Icons.nightlight_round),
+    MakeupStyleOption(id: 'starburst', name: 'Tia chớp', icon: Icons.flare),
+    MakeupStyleOption(id: 'galaxy', name: 'Ngân hà', icon: Icons.grain),
+    MakeupStyleOption(id: 'pearl', name: 'Ngọc trai', icon: Icons.blur_circular),
+    MakeupStyleOption(id: 'butterfly', name: 'Cánh bướm', icon: Icons.filter_vintage_outlined),
+  ];
+
+  static const List<MakeupOption> sparkleOptions = [
+    MakeupOption(id: 'none', name: 'None', color: Colors.transparent),
+    MakeupOption(id: 'starlight', name: 'Ánh sao', color: Color(0xFFFFF9E6)),
+    MakeupOption(id: 'natural', name: 'Tự nhiên', color: Color(0xFFFFFDF8)),
+    MakeupOption(id: 'ring', name: 'Vòng sáng', color: Color(0xFFE8F4FD)),
+    MakeupOption(id: 'crystal', name: 'Pha lê', color: Color(0xFFE0F7FA)),
+    MakeupOption(id: 'heart', name: 'Trái tim', color: Color(0xFFFFE4E6)),
+    MakeupOption(id: 'crescent', name: 'Trăng khuyết', color: Color(0xFFFFFDE7)),
+    MakeupOption(id: 'starburst', name: 'Tia chớp', color: Color(0xFFFFF8E1)),
+    MakeupOption(id: 'galaxy', name: 'Ngân hà', color: Color(0xFFEDE7F6)),
+    MakeupOption(id: 'pearl', name: 'Ngọc trai', color: Color(0xFFF3E5F5)),
+    MakeupOption(id: 'butterfly', name: 'Cánh bướm', color: Color(0xFFFCE4EC)),
+  ];
 }
 
 class MakeupSettings {
@@ -214,6 +262,14 @@ class MakeupSettings {
   final double contourOpacity; // 0..100
   final String contourStyle;   // 'vShape', 'natural', 'sculpted', 'nose', 'soft'
 
+  final String contactLensPreset;
+  final double contactLensOpacity; // 0..100
+  final String contactLensStyle;   // 'natural', 'limbalRing', 'galaxy', 'starburst'
+
+  final String sparklePreset;
+  final double sparkleOpacity; // 0..100
+  final String sparkleStyle;   // 10 styles
+
   const MakeupSettings({
     this.lipPreset = 'none',
     this.lipOpacity = 60,
@@ -233,6 +289,12 @@ class MakeupSettings {
     this.contourPreset = 'none',
     this.contourOpacity = 50,
     this.contourStyle = 'vShape',
+    this.contactLensPreset = 'none',
+    this.contactLensOpacity = 70,
+    this.contactLensStyle = 'natural',
+    this.sparklePreset = 'none',
+    this.sparkleOpacity = 60,
+    this.sparkleStyle = 'starlight',
   });
 
   bool get isModified =>
@@ -241,11 +303,15 @@ class MakeupSettings {
       (eyebrowPreset != 'none' && eyebrowOpacity > 0) ||
       (eyelinerPreset != 'none' && eyelinerOpacity > 0) ||
       (eyeshadowPreset != 'none' && eyeshadowOpacity > 0) ||
-      (contourPreset != 'none' && contourOpacity > 0);
+      (contourPreset != 'none' && contourOpacity > 0) ||
+      (contactLensPreset != 'none' && contactLensOpacity > 0) ||
+      (sparklePreset != 'none' && sparkleOpacity > 0);
 
   bool get hasLip => lipPreset != 'none' && lipOpacity > 0;
   bool get hasBlush => blushPreset != 'none' && blushOpacity > 0;
   bool get hasContour => contourPreset != 'none' && contourOpacity > 0;
+  bool get hasContactLens => contactLensPreset != 'none' && contactLensOpacity > 0;
+  bool get hasSparkle => sparklePreset != 'none' && sparkleOpacity > 0;
 
   bool isKeyActive(String key) {
     switch (key) {
@@ -261,6 +327,10 @@ class MakeupSettings {
         return eyeshadowPreset != 'none' && eyeshadowOpacity > 0;
       case 'contour':
         return contourPreset != 'none' && contourOpacity > 0;
+      case 'lens':
+        return contactLensPreset != 'none' && contactLensOpacity > 0;
+      case 'sparkle':
+        return sparklePreset != 'none' && sparkleOpacity > 0;
       default:
         return false;
     }
@@ -285,6 +355,12 @@ class MakeupSettings {
     String? contourPreset,
     double? contourOpacity,
     String? contourStyle,
+    String? contactLensPreset,
+    double? contactLensOpacity,
+    String? contactLensStyle,
+    String? sparklePreset,
+    double? sparkleOpacity,
+    String? sparkleStyle,
   }) {
     return MakeupSettings(
       lipPreset: lipPreset ?? this.lipPreset,
@@ -305,6 +381,12 @@ class MakeupSettings {
       contourPreset: contourPreset ?? this.contourPreset,
       contourOpacity: contourOpacity ?? this.contourOpacity,
       contourStyle: contourStyle ?? this.contourStyle,
+      contactLensPreset: contactLensPreset ?? this.contactLensPreset,
+      contactLensOpacity: contactLensOpacity ?? this.contactLensOpacity,
+      contactLensStyle: contactLensStyle ?? this.contactLensStyle,
+      sparklePreset: sparklePreset ?? this.sparklePreset,
+      sparkleOpacity: sparkleOpacity ?? this.sparkleOpacity,
+      sparkleStyle: sparkleStyle ?? this.sparkleStyle,
     );
   }
 
@@ -328,6 +410,12 @@ class MakeupSettings {
       'contourPreset': contourPreset,
       'contourOpacity': contourOpacity / 100.0,
       'contourStyle': contourStyle,
+      'contactLensPreset': contactLensPreset,
+      'contactLensOpacity': contactLensOpacity / 100.0,
+      'contactLensStyle': contactLensStyle,
+      'sparklePreset': sparklePreset,
+      'sparkleOpacity': sparkleOpacity / 100.0,
+      'sparkleStyle': sparkleStyle,
     };
   }
 
@@ -351,6 +439,12 @@ class MakeupSettings {
       contourPreset: json['contourPreset'] as String? ?? 'none',
       contourOpacity: (json['contourOpacity'] as num?)?.toDouble() ?? 50,
       contourStyle: json['contourStyle'] as String? ?? 'vShape',
+      contactLensPreset: json['contactLensPreset'] as String? ?? 'none',
+      contactLensOpacity: (json['contactLensOpacity'] as num?)?.toDouble() ?? 70,
+      contactLensStyle: json['contactLensStyle'] as String? ?? 'natural',
+      sparklePreset: json['sparklePreset'] as String? ?? 'none',
+      sparkleOpacity: (json['sparkleOpacity'] as num?)?.toDouble() ?? 60,
+      sparkleStyle: json['sparkleStyle'] as String? ?? 'starlight',
     );
   }
 
@@ -374,6 +468,12 @@ class MakeupSettings {
       'contourPreset': contourPreset,
       'contourOpacity': contourOpacity,
       'contourStyle': contourStyle,
+      'contactLensPreset': contactLensPreset,
+      'contactLensOpacity': contactLensOpacity,
+      'contactLensStyle': contactLensStyle,
+      'sparklePreset': sparklePreset,
+      'sparkleOpacity': sparkleOpacity,
+      'sparkleStyle': sparkleStyle,
     };
   }
 }

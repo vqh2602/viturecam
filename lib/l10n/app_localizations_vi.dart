@@ -424,6 +424,24 @@ class AppLocalizationsVi extends AppLocalizations {
   String get sparkleCrystal => 'Pha lê';
 
   @override
+  String get sparkleHeart => 'Trái tim';
+
+  @override
+  String get sparkleCrescent => 'Trăng khuyết';
+
+  @override
+  String get sparkleStarburst => 'Tia chớp';
+
+  @override
+  String get sparkleGalaxy => 'Ngân hà';
+
+  @override
+  String get sparklePearl => 'Ngọc trai';
+
+  @override
+  String get sparkleButterfly => 'Cánh bướm';
+
+  @override
   String get resetMakeupTooltip => 'Đặt lại trang điểm';
 
   @override
@@ -443,6 +461,24 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get makeupContour => 'Tạo khối';
+
+  @override
+  String get makeupContactLens => 'Tròng mắt';
+
+  @override
+  String get makeupEyeSparkle => 'Long lanh';
+
+  @override
+  String get lensNatural => 'Tự nhiên';
+
+  @override
+  String get lensLimbalRing => 'Giãn tròng';
+
+  @override
+  String get lensGalaxy => 'Ngân hà';
+
+  @override
+  String get lensStarburst => 'Tia sáng';
 
   @override
   String makeupIntensity(String name) {

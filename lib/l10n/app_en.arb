@@ -156,6 +156,12 @@
   "sparkleStarlight": "Starlight",
   "sparkleRing": "Ring",
   "sparkleCrystal": "Crystal",
+  "sparkleHeart": "Heart",
+  "sparkleCrescent": "Crescent",
+  "sparkleStarburst": "Starburst",
+  "sparkleGalaxy": "Galaxy",
+  "sparklePearl": "Pearl",
+  "sparkleButterfly": "Butterfly",
 
   "resetMakeupTooltip": "Reset Makeup",
   "makeupLipstick": "Lipstick",
@@ -164,6 +170,12 @@
   "makeupEyeliner": "Eyeliner",
   "makeupEyeshadow": "Eyeshadow",
   "makeupContour": "Contour",
+  "makeupContactLens": "Contact Lens",
+  "makeupEyeSparkle": "Eye Sparkle",
+  "lensNatural": "Natural",
+  "lensLimbalRing": "Limbal Ring",
+  "lensGalaxy": "Galaxy",
+  "lensStarburst": "Starburst",
   "makeupIntensity": "{name} Intensity",
   "@makeupIntensity": {
     "placeholders": {

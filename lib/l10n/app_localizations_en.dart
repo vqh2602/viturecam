@@ -424,6 +424,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sparkleCrystal => 'Crystal';
 
   @override
+  String get sparkleHeart => 'Heart';
+
+  @override
+  String get sparkleCrescent => 'Crescent';
+
+  @override
+  String get sparkleStarburst => 'Starburst';
+
+  @override
+  String get sparkleGalaxy => 'Galaxy';
+
+  @override
+  String get sparklePearl => 'Pearl';
+
+  @override
+  String get sparkleButterfly => 'Butterfly';
+
+  @override
   String get resetMakeupTooltip => 'Reset Makeup';
 
   @override
@@ -443,6 +461,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get makeupContour => 'Contour';
+
+  @override
+  String get makeupContactLens => 'Contact Lens';
+
+  @override
+  String get makeupEyeSparkle => 'Eye Sparkle';
+
+  @override
+  String get lensNatural => 'Natural';
+
+  @override
+  String get lensLimbalRing => 'Limbal Ring';
+
+  @override
+  String get lensGalaxy => 'Galaxy';
+
+  @override
+  String get lensStarburst => 'Starburst';
 
   @override
   String makeupIntensity(String name) {

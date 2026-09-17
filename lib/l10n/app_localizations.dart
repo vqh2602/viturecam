@@ -926,6 +926,42 @@ abstract class AppLocalizations {
   /// **'Crystal'**
   String get sparkleCrystal;
 
+  /// No description provided for @sparkleHeart.
+  ///
+  /// In en, this message translates to:
+  /// **'Heart'**
+  String get sparkleHeart;
+
+  /// No description provided for @sparkleCrescent.
+  ///
+  /// In en, this message translates to:
+  /// **'Crescent'**
+  String get sparkleCrescent;
+
+  /// No description provided for @sparkleStarburst.
+  ///
+  /// In en, this message translates to:
+  /// **'Starburst'**
+  String get sparkleStarburst;
+
+  /// No description provided for @sparkleGalaxy.
+  ///
+  /// In en, this message translates to:
+  /// **'Galaxy'**
+  String get sparkleGalaxy;
+
+  /// No description provided for @sparklePearl.
+  ///
+  /// In en, this message translates to:
+  /// **'Pearl'**
+  String get sparklePearl;
+
+  /// No description provided for @sparkleButterfly.
+  ///
+  /// In en, this message translates to:
+  /// **'Butterfly'**
+  String get sparkleButterfly;
+
   /// No description provided for @resetMakeupTooltip.
   ///
   /// In en, this message translates to:
@@ -967,6 +1003,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Contour'**
   String get makeupContour;
+
+  /// No description provided for @makeupContactLens.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact Lens'**
+  String get makeupContactLens;
+
+  /// No description provided for @makeupEyeSparkle.
+  ///
+  /// In en, this message translates to:
+  /// **'Eye Sparkle'**
+  String get makeupEyeSparkle;
+
+  /// No description provided for @lensNatural.
+  ///
+  /// In en, this message translates to:
+  /// **'Natural'**
+  String get lensNatural;
+
+  /// No description provided for @lensLimbalRing.
+  ///
+  /// In en, this message translates to:
+  /// **'Limbal Ring'**
+  String get lensLimbalRing;
+
+  /// No description provided for @lensGalaxy.
+  ///
+  /// In en, this message translates to:
+  /// **'Galaxy'**
+  String get lensGalaxy;
+
+  /// No description provided for @lensStarburst.
+  ///
+  /// In en, this message translates to:
+  /// **'Starburst'**
+  String get lensStarburst;
 
   /// No description provided for @makeupIntensity.
   ///
