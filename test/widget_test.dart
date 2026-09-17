@@ -3,6 +3,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:viturecam/app/app.dart';
 import 'package:viturecam/app/locale_provider.dart';
+import 'package:viturecam/features/patreon/patreon_models.dart';
+import 'package:viturecam/features/patreon/patreon_provider.dart';
+import 'package:viturecam/features/patreon/patreon_service.dart';
+
+class VipPatreonNotifier extends PatreonNotifier {
+  VipPatreonNotifier() : super() {
+    state = PatreonState(account: PatreonService.createTestAccount(isPatron: true));
+  }
+}
+
+class LockedPatreonNotifier extends PatreonNotifier {
+  LockedPatreonNotifier() : super() {
+    state = const PatreonState(isLoading: false);
+  }
+}
 
 void main() {
   testWidgets('BeautyCameraApp renders and operates in English locale', (tester) async {
@@ -15,6 +30,7 @@ void main() {
       ProviderScope(
         overrides: [
           appLocaleProvider.overrideWith((ref) => const Locale('en')),
+          patreonProvider.overrideWith((ref) => VipPatreonNotifier()),
         ],
         child: const BeautyCameraApp(),
       ),
@@ -128,6 +144,7 @@ void main() {
       ProviderScope(
         overrides: [
           appLocaleProvider.overrideWith((ref) => const Locale('vi')),
+          patreonProvider.overrideWith((ref) => VipPatreonNotifier()),
         ],
         child: const BeautyCameraApp(),
       ),
@@ -290,5 +307,32 @@ void main() {
     // Verify dialog content switched to Vietnamese
     expect(find.text('Cài đặt Beauty Camera'), findsOneWidget);
     expect(find.text('Định dạng & Khung hình'), findsOneWidget);
+  });
+
+  testWidgets('Makeup tab displays Patreon lock paywall when user is not patron supporter', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appLocaleProvider.overrideWith((ref) => const Locale('en')),
+          patreonProvider.overrideWith((ref) => LockedPatreonNotifier()),
+        ],
+        child: const BeautyCameraApp(),
+      ),
+    );
+    await tester.pump();
+
+    // Tap on Makeup category
+    await tester.tap(find.text('Makeup'));
+    await tester.pump();
+
+    // Verify Patreon paywall is displayed
+    expect(find.text('Makeup — Patreon Supporter Exclusive'), findsOneWidget);
+    expect(find.text('Login with Patreon'), findsOneWidget);
+    expect(find.text('LOCK'), findsWidgets);
   });
 }

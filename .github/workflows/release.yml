@@ -193,6 +193,19 @@ jobs:
             --build-name="${{ steps.next.outputs.semver }}" \
             --build-number="${{ steps.next.outputs.build }}"
 
+      - name: Verify camera extension release version
+        run: |
+          APP_CONTENTS="build/macos/Build/Products/Release/Beauty Camera.app/Contents"
+          EXT_PLIST="$APP_CONTENTS/Library/SystemExtensions/com.beautycamera.vqhapp.CameraExtension.systemextension/Contents/Info.plist"
+          for KEY in CFBundleShortVersionString CFBundleVersion; do
+            APP_VALUE=$(/usr/libexec/PlistBuddy -c "Print :$KEY" "$APP_CONTENTS/Info.plist")
+            EXT_VALUE=$(/usr/libexec/PlistBuddy -c "Print :$KEY" "$EXT_PLIST")
+            if [ "$APP_VALUE" != "$EXT_VALUE" ]; then
+              echo "Camera extension $KEY ($EXT_VALUE) does not match app ($APP_VALUE)"
+              exit 1
+            fi
+          done
+
       - name: Package into DMG
         id: dmg
         run: |

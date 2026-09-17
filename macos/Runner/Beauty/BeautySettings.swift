@@ -135,6 +135,11 @@ public struct MakeupSettings {
     public var eyelashesPreset: String = "none"
     public var eyelashesOpacity: Double = 0.0
     public var contactLensPreset: String = "none"
+    public var contactLensOpacity: Double = 0.70
+    public var contactLensStyle: String = "natural" // "natural", "limbalRing", "galaxy", "starburst"
+    public var sparklePreset: String = "none"
+    public var sparkleOpacity: Double = 0.60
+    public var sparkleStyle: String = "starlight" // 10 styles
     public var contourPreset: String = "none"
     public var contourOpacity: Double = 0.0
     public var contourStyle: String = "vShape" // "vShape", "natural", "sculpted", "nose", "soft"
@@ -159,6 +164,11 @@ public struct MakeupSettings {
         if let v = dict["eyelashesPreset"] as? String { eyelashesPreset = v }
         if let v = dict["eyelashesOpacity"] as? Double { eyelashesOpacity = v }
         if let v = dict["contactLensPreset"] as? String { contactLensPreset = v }
+        if let v = dict["contactLensOpacity"] as? Double { contactLensOpacity = v }
+        if let v = dict["contactLensStyle"] as? String { contactLensStyle = v }
+        if let v = dict["sparklePreset"] as? String { sparklePreset = v }
+        if let v = dict["sparkleOpacity"] as? Double { sparkleOpacity = v }
+        if let v = dict["sparkleStyle"] as? String { sparkleStyle = v }
         if let v = dict["contourPreset"] as? String { contourPreset = v }
         if let v = dict["contourOpacity"] as? Double { contourOpacity = v }
         if let v = dict["contourStyle"] as? String { contourStyle = v }

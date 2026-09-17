@@ -424,6 +424,24 @@ class AppLocalizationsVi extends AppLocalizations {
   String get sparkleCrystal => 'Pha lê';
 
   @override
+  String get sparkleHeart => 'Trái tim';
+
+  @override
+  String get sparkleCrescent => 'Trăng khuyết';
+
+  @override
+  String get sparkleStarburst => 'Tia chớp';
+
+  @override
+  String get sparkleGalaxy => 'Ngân hà';
+
+  @override
+  String get sparklePearl => 'Ngọc trai';
+
+  @override
+  String get sparkleButterfly => 'Cánh bướm';
+
+  @override
   String get resetMakeupTooltip => 'Đặt lại trang điểm';
 
   @override
@@ -443,6 +461,24 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get makeupContour => 'Tạo khối';
+
+  @override
+  String get makeupContactLens => 'Tròng mắt';
+
+  @override
+  String get makeupEyeSparkle => 'Long lanh';
+
+  @override
+  String get lensNatural => 'Tự nhiên';
+
+  @override
+  String get lensLimbalRing => 'Giãn tròng';
+
+  @override
+  String get lensGalaxy => 'Ngân hà';
+
+  @override
+  String get lensStarburst => 'Tia sáng';
 
   @override
   String makeupIntensity(String name) {
@@ -739,4 +775,77 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get updateCancel => 'Hủy';
+
+  @override
+  String get patreonTitle => 'Hội viên Patreon';
+
+  @override
+  String get patreonLogin => 'Đăng nhập Patreon';
+
+  @override
+  String get patreonLogout => 'Đăng xuất';
+
+  @override
+  String get patreonCheck => 'Kiểm tra donate';
+
+  @override
+  String get patreonChecking => 'Đang kiểm tra...';
+
+  @override
+  String get patreonActive => 'Hội viên tích cực';
+
+  @override
+  String get patreonInactive => 'Chưa có gói hội viên';
+
+  @override
+  String get patreonNotConnected => 'Chưa liên kết tài khoản';
+
+  @override
+  String get patreonSupportProject => 'Đăng ký ủng hộ trên Patreon';
+
+  @override
+  String get patreonConfig => 'Cấu hình OAuth';
+
+  @override
+  String get patreonTestMode => 'Chế độ dùng thử (VIP)';
+
+  @override
+  String get patreonTestModeActive => 'Đang bật chế độ dùng thử VIP';
+
+  @override
+  String patreonLoggedAs(String name) {
+    return 'Đã đăng nhập: $name';
+  }
+
+  @override
+  String patreonPledgedAmount(String amount) {
+    return 'Ủng hộ: $amount/tháng';
+  }
+
+  @override
+  String patreonRecheckSuccess(String status) {
+    return 'Đã cập nhật: $status';
+  }
+
+  @override
+  String get makeupLockedTitle => 'Trang điểm — Dành riêng cho Patreon';
+
+  @override
+  String get makeupLockedSubtitle =>
+      'Ủng hộ dự án trên Patreon để mở khóa toàn bộ tính năng Son môi, Má hồng, Chân mày, Eyeliner, Phấn mắt và Tạo khối!';
+
+  @override
+  String get makeupVipBadge => 'Patreon VIP';
+
+  @override
+  String get patreonOpenBrowserPrompt =>
+      'Trình duyệt đang mở để bạn đăng nhập Patreon. Vui lòng cấp quyền và quay lại ứng dụng.';
+
+  @override
+  String get patreonLoginSuccess => 'Đăng nhập Patreon thành công!';
+
+  @override
+  String patreonLoginFailed(String error) {
+    return 'Đăng nhập Patreon thất bại: $error';
+  }
 }

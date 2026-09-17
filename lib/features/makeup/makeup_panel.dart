@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/app_localizations.dart';
 import '../../widgets/beauty_slider.dart';
 import '../camera/camera_controller.dart';
+import '../patreon/patreon_paywall_view.dart';
+import '../patreon/patreon_provider.dart';
 import 'makeup_settings.dart';
 
 class MakeupPanel extends ConsumerWidget {
@@ -70,6 +72,26 @@ class MakeupPanel extends ConsumerWidget {
         return l10n.localeName.startsWith('vi') ? 'Ngang rậm' : 'Bold';
       case 'male_feathered':
         return l10n.localeName.startsWith('vi') ? 'Phẩy sợi' : 'Feathered';
+      case 'limbalRing':
+        return l10n.lensLimbalRing;
+      case 'starburst':
+        return l10n.sparkleStarburst;
+      case 'galaxy':
+        return l10n.sparkleGalaxy;
+      case 'starlight':
+        return l10n.sparkleStarlight;
+      case 'crystal':
+        return l10n.sparkleCrystal;
+      case 'ring':
+        return l10n.sparkleRing;
+      case 'heart':
+        return l10n.sparkleHeart;
+      case 'crescent':
+        return l10n.sparkleCrescent;
+      case 'pearl':
+        return l10n.sparklePearl;
+      case 'butterfly':
+        return l10n.sparkleButterfly;
       default:
         return fallback;
     }
@@ -122,6 +144,26 @@ class MakeupPanel extends ConsumerWidget {
         'bronze': 'Bronze',
         'deep': 'Deep Contour',
         'softTaupe': 'Soft Taupe',
+        // Contact lenses
+        'hazel': 'Hazel',
+        'honey': 'Honey',
+        'choc': 'Chocolate',
+        'gray': 'Smoky Gray',
+        'blue': 'Ocean Blue',
+        'aqua': 'Aqua',
+        'green': 'Emerald Green',
+        'violet': 'Amethyst',
+        'amber': 'Amber',
+        // Sparkle options
+        'starlight': 'Starlight',
+        'crystal': 'Crystal',
+        'ring': 'Ring',
+        'heart': 'Heart',
+        'crescent': 'Crescent',
+        'starburst': 'Starburst',
+        'galaxy': 'Galaxy',
+        'pearl': 'Pearl',
+        'butterfly': 'Butterfly',
       };
       return enColorNames[opt.id] ?? opt.name;
     }
@@ -130,6 +172,11 @@ class MakeupPanel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final patreon = ref.watch(patreonProvider);
+    if (!patreon.isPatron) {
+      return const PatreonPaywallView();
+    }
+
     final l10n = AppLocalizations.of(context)!;
     final state = ref.watch(cameraControllerProvider);
     final controller = ref.read(cameraControllerProvider.notifier);
@@ -143,6 +190,8 @@ class MakeupPanel extends ConsumerWidget {
       {'id': 'eyebrow', 'label': l10n.makeupEyebrow, 'icon': Icons.gesture},
       {'id': 'eyeliner', 'label': l10n.makeupEyeliner, 'icon': Icons.edit},
       {'id': 'eyeshadow', 'label': l10n.makeupEyeshadow, 'icon': Icons.palette},
+      {'id': 'lens', 'label': l10n.makeupContactLens, 'icon': Icons.remove_red_eye},
+      {'id': 'sparkle', 'label': l10n.makeupEyeSparkle, 'icon': Icons.auto_awesome},
     ];
 
     List<MakeupOption> activeOptions;
@@ -187,6 +236,23 @@ class MakeupPanel extends ConsumerWidget {
         onSelectPreset = (id) => controller.updateMakeup(m.copyWith(eyeshadowPreset: id));
         onOpacityChanged = (op) => controller.updateMakeup(m.copyWith(eyeshadowOpacity: op));
         break;
+      case 'lens':
+        activeOptions = MakeupPresets.lensOptions;
+        activePreset = m.contactLensPreset;
+        activeOpacity = m.contactLensOpacity;
+        onSelectPreset = (id) => controller.updateMakeup(m.copyWith(contactLensPreset: id));
+        onOpacityChanged = (op) => controller.updateMakeup(m.copyWith(contactLensOpacity: op));
+        break;
+      case 'sparkle':
+        activeOptions = MakeupPresets.sparkleOptions;
+        activePreset = m.sparklePreset;
+        activeOpacity = m.sparkleOpacity;
+        onSelectPreset = (id) => controller.updateMakeup(m.copyWith(
+          sparklePreset: id,
+          sparkleStyle: id == 'none' ? m.sparkleStyle : id,
+        ));
+        onOpacityChanged = (op) => controller.updateMakeup(m.copyWith(sparkleOpacity: op));
+        break;
       case 'lip':
       default:
         activeOptions = MakeupPresets.lipOptions;
@@ -214,6 +280,12 @@ class MakeupPanel extends ConsumerWidget {
       case 'eyeshadow':
         activeCategoryName = l10n.makeupEyeshadow;
         break;
+      case 'lens':
+        activeCategoryName = l10n.makeupContactLens;
+        break;
+      case 'sparkle':
+        activeCategoryName = l10n.makeupEyeSparkle;
+        break;
       case 'lip':
       default:
         activeCategoryName = l10n.makeupLipstick;
@@ -237,35 +309,38 @@ class MakeupPanel extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: Colors.white10),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (final cat in categories)
-                      GestureDetector(
-                        onTap: () => controller.selectSubTool(cat['id'] as String),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: subTool == cat['id']
-                                ? const Color(0xFFFF7597)
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            cat['label'] as String,
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: subTool == cat['id']
-                                  ? FontWeight.w600
-                                  : FontWeight.w400,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final cat in categories)
+                        GestureDetector(
+                          onTap: () => controller.selectSubTool(cat['id'] as String),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
                               color: subTool == cat['id']
-                                  ? Colors.white
-                                  : Colors.white60,
+                                  ? const Color(0xFFFF7597)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              cat['label'] as String,
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: subTool == cat['id']
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                                color: subTool == cat['id']
+                                    ? Colors.white
+                                    : Colors.white60,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -351,6 +426,26 @@ class MakeupPanel extends ConsumerWidget {
                   selectedId: m.eyeshadowStyle,
                   onSelect: (id) => controller.updateMakeup(m.copyWith(eyeshadowStyle: id)),
                 ),
+              ] else if (subTool == 'lens') ...[
+                const VerticalDivider(width: 12, indent: 12, endIndent: 12, color: Colors.white12),
+                _buildStyleSelector(
+                  l10n: l10n,
+                  options: MakeupPresets.lensStyles,
+                  selectedId: m.contactLensStyle,
+                  onSelect: (id) => controller.updateMakeup(m.copyWith(contactLensStyle: id)),
+                ),
+              ] else if (subTool == 'sparkle') ...[
+                const VerticalDivider(width: 12, indent: 12, endIndent: 12, color: Colors.white12),
+                _buildStyleSelector(
+                  l10n: l10n,
+                  options: MakeupPresets.sparkleStyles,
+                  selectedId: m.sparkleStyle,
+                  onSelect: (id) => controller.updateMakeup(m.copyWith(
+                    sparkleStyle: id,
+                    sparklePreset: id,
+                    sparkleOpacity: m.sparkleOpacity == 0 ? 60 : m.sparkleOpacity,
+                  )),
+                ),
               ],
 
               const VerticalDivider(width: 12, indent: 12, endIndent: 12, color: Colors.white12),
@@ -432,40 +527,43 @@ class MakeupPanel extends ConsumerWidget {
         borderRadius: BorderRadius.circular(9),
         border: Border.all(color: Colors.white10),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final opt in options)
-            GestureDetector(
-              onTap: () => onSelect(opt.id),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
-                decoration: BoxDecoration(
-                  color: selectedId == opt.id ? const Color(0xFFFF7597) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(7),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      opt.icon,
-                      size: 13,
-                      color: selectedId == opt.id ? Colors.white : Colors.white70,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      getStyleName(l10n, opt.id, opt.name),
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: selectedId == opt.id ? FontWeight.w600 : FontWeight.w400,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final opt in options)
+              GestureDetector(
+                onTap: () => onSelect(opt.id),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: selectedId == opt.id ? const Color(0xFFFF7597) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(7),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        opt.icon,
+                        size: 13,
                         color: selectedId == opt.id ? Colors.white : Colors.white70,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 4),
+                      Text(
+                        getStyleName(l10n, opt.id, opt.name),
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: selectedId == opt.id ? FontWeight.w600 : FontWeight.w400,
+                          color: selectedId == opt.id ? Colors.white : Colors.white70,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

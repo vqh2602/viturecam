@@ -343,10 +343,16 @@ class ReshapePanel extends ConsumerWidget {
           );
         case 'eyeSparkle':
           final sparkleStyles = [
-            {'id': 'natural', 'label': l10n.sparkleNatural, 'icon': Icons.wb_sunny_outlined},
             {'id': 'starlight', 'label': l10n.sparkleStarlight, 'icon': Icons.star_border},
+            {'id': 'natural', 'label': l10n.sparkleNatural, 'icon': Icons.wb_sunny_outlined},
             {'id': 'ring', 'label': l10n.sparkleRing, 'icon': Icons.panorama_fish_eye},
             {'id': 'crystal', 'label': l10n.sparkleCrystal, 'icon': Icons.diamond_outlined},
+            {'id': 'heart', 'label': l10n.sparkleHeart, 'icon': Icons.favorite_border},
+            {'id': 'crescent', 'label': l10n.sparkleCrescent, 'icon': Icons.nightlight_round},
+            {'id': 'starburst', 'label': l10n.sparkleStarburst, 'icon': Icons.flare},
+            {'id': 'galaxy', 'label': l10n.sparkleGalaxy, 'icon': Icons.grain},
+            {'id': 'pearl', 'label': l10n.sparklePearl, 'icon': Icons.blur_circular},
+            {'id': 'butterfly', 'label': l10n.sparkleButterfly, 'icon': Icons.filter_vintage_outlined},
           ];
           return Row(
             children: [
@@ -366,43 +372,46 @@ class ReshapePanel extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(9),
                   border: Border.all(color: Colors.white10),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (final style in sparkleStyles)
-                      GestureDetector(
-                        onTap: () => controller.updateFace(f.copyWith(
-                          eyeSparkleStyle: style['id'] as String,
-                          eyeSparkle: f.eyeSparkle == 0 ? 50 : f.eyeSparkle,
-                        )),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: f.eyeSparkleStyle == style['id'] ? const Color(0xFF6C5CE7) : Colors.transparent,
-                            borderRadius: BorderRadius.circular(7),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                style['icon'] as IconData,
-                                size: 13,
-                                color: f.eyeSparkleStyle == style['id'] ? Colors.white : Colors.white70,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                style['label'] as String,
-                                style: TextStyle(
-                                  fontSize: 10.5,
-                                  fontWeight: f.eyeSparkleStyle == style['id'] ? FontWeight.w600 : FontWeight.w400,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final style in sparkleStyles)
+                        GestureDetector(
+                          onTap: () => controller.updateFace(f.copyWith(
+                            eyeSparkleStyle: style['id'] as String,
+                            eyeSparkle: f.eyeSparkle == 0 ? 50 : f.eyeSparkle,
+                          )),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: f.eyeSparkleStyle == style['id'] ? const Color(0xFF6C5CE7) : Colors.transparent,
+                              borderRadius: BorderRadius.circular(7),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  style['icon'] as IconData,
+                                  size: 13,
                                   color: f.eyeSparkleStyle == style['id'] ? Colors.white : Colors.white70,
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 4),
+                                Text(
+                                  style['label'] as String,
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: f.eyeSparkleStyle == style['id'] ? FontWeight.w600 : FontWeight.w400,
+                                    color: f.eyeSparkleStyle == style['id'] ? Colors.white : Colors.white70,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],

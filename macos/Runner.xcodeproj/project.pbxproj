@@ -156,6 +156,7 @@
 		BC0000022C00000000000033 /* LipParsing.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = FaceTracking/LipParsing.mlmodel; sourceTree = "<group>"; };
 		BC0000022C00000000000034 /* LipParsing-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "FaceTracking/LipParsing-LICENSE.txt"; sourceTree = "<group>"; };
 		BC0000022C00000000000040 /* AutoUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoUpdater/AutoUpdater.swift; sourceTree = "<group>"; };
+		BC0000022C00000000000041 /* CameraExtension.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = BeautyCameraExtension/CameraExtension.xcconfig; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -303,6 +304,7 @@
 				586D8ACE303175DDDB9941FE /* main.swift */,
 				7CB1FF9C4D4B51E43C51C0AA /* Info.plist */,
 				FD8FC03039B04279BA02460C /* BeautyCameraExtension.entitlements */,
+				BC0000022C00000000000041 /* CameraExtension.xcconfig */,
 			);
 			path = BeautyCameraExtension;
 			sourceTree = "<group>";
@@ -657,6 +659,7 @@
 /* Begin XCBuildConfiguration section */
 		1511AAB2C70CD26EF03BC828 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = BC0000022C00000000000041 /* CameraExtension.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = BeautyCameraExtension/BeautyCameraExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
@@ -785,9 +788,9 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_TEAM = 5KS3F42MTD;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
-				ENABLE_OUTGOING_NETWORK_CONNECTIONS = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = YES;
 				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
 				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
@@ -931,9 +934,9 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_TEAM = 5KS3F42MTD;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
-				ENABLE_OUTGOING_NETWORK_CONNECTIONS = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = YES;
 				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
 				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
@@ -991,6 +994,7 @@
 		};
 		43FB51DD1D684229C832FC3D /* Profile */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = BC0000022C00000000000041 /* CameraExtension.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = BeautyCameraExtension/BeautyCameraExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
@@ -1016,6 +1020,7 @@
 		};
 		F9E8DAFFEAB28321510CC3D8 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = BC0000022C00000000000041 /* CameraExtension.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = BeautyCameraExtension/BeautyCameraExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;

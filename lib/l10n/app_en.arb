@@ -156,6 +156,12 @@
   "sparkleStarlight": "Starlight",
   "sparkleRing": "Ring",
   "sparkleCrystal": "Crystal",
+  "sparkleHeart": "Heart",
+  "sparkleCrescent": "Crescent",
+  "sparkleStarburst": "Starburst",
+  "sparkleGalaxy": "Galaxy",
+  "sparklePearl": "Pearl",
+  "sparkleButterfly": "Butterfly",
 
   "resetMakeupTooltip": "Reset Makeup",
   "makeupLipstick": "Lipstick",
@@ -164,6 +170,12 @@
   "makeupEyeliner": "Eyeliner",
   "makeupEyeshadow": "Eyeshadow",
   "makeupContour": "Contour",
+  "makeupContactLens": "Contact Lens",
+  "makeupEyeSparkle": "Eye Sparkle",
+  "lensNatural": "Natural",
+  "lensLimbalRing": "Limbal Ring",
+  "lensGalaxy": "Galaxy",
+  "lensStarburst": "Starburst",
   "makeupIntensity": "{name} Intensity",
   "@makeupIntensity": {
     "placeholders": {
@@ -303,5 +315,47 @@
       "error": { "type": "String" }
     }
   },
-  "updateCancel": "Cancel"
+  "updateCancel": "Cancel",
+
+  "patreonTitle": "Patreon Membership",
+  "patreonLogin": "Login with Patreon",
+  "patreonLogout": "Logout",
+  "patreonCheck": "Check Membership",
+  "patreonChecking": "Checking status...",
+  "patreonActive": "Active Patron",
+  "patreonInactive": "No Active Membership",
+  "patreonNotConnected": "Not Connected",
+  "patreonSupportProject": "Support on Patreon",
+  "patreonConfig": "OAuth Settings",
+  "patreonTestMode": "Test Mode (VIP)",
+  "patreonTestModeActive": "VIP Test Mode Active",
+  "patreonLoggedAs": "Logged in as: {name}",
+  "@patreonLoggedAs": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "patreonPledgedAmount": "Pledge: {amount}/mo",
+  "@patreonPledgedAmount": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
+  "patreonRecheckSuccess": "Status updated: {status}",
+  "@patreonRecheckSuccess": {
+    "placeholders": {
+      "status": { "type": "String" }
+    }
+  },
+  "makeupLockedTitle": "Makeup — Patreon Supporter Exclusive",
+  "makeupLockedSubtitle": "Support us on Patreon to unlock full Lipstick, Blush, Eyebrows, Eyeliner, Eyeshadow, and Contour features!",
+  "makeupVipBadge": "Patreon VIP",
+  "patreonOpenBrowserPrompt": "Opening browser to authorize with Patreon. Please grant access and return to Beauty Camera.",
+  "patreonLoginSuccess": "Patreon login successful!",
+  "patreonLoginFailed": "Patreon login failed: {error}",
+  "@patreonLoginFailed": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  }
 }

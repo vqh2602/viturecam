@@ -234,6 +234,48 @@ void main() {
       final restoredMale = MakeupSettings.fromJson(maleSettings.toJson());
       expect(restoredMale.eyebrowStyle, 'male_sword');
     });
+
+    test('contact lens and eye sparkle options, styles, and serialization', () {
+      final lensStyles = MakeupPresets.lensStyles.map((e) => e.id).toList();
+      expect(lensStyles, containsAll(['natural', 'limbalRing', 'galaxy', 'starburst']));
+
+      final lensOptions = MakeupPresets.lensOptions.map((e) => e.id).toList();
+      expect(lensOptions, containsAll(['hazel', 'honey', 'choc', 'gray', 'blue', 'aqua', 'green', 'violet', 'pink', 'amber', 'black']));
+
+      final sparkleStyles = MakeupPresets.sparkleStyles.map((e) => e.id).toList();
+      expect(sparkleStyles, containsAll(['starlight', 'natural', 'ring', 'crystal', 'heart', 'crescent', 'starburst', 'galaxy', 'pearl', 'butterfly']));
+
+      const settings = MakeupSettings(
+        contactLensPreset: 'aqua',
+        contactLensOpacity: 80,
+        contactLensStyle: 'limbalRing',
+        sparklePreset: 'starburst',
+        sparkleOpacity: 75,
+        sparkleStyle: 'starburst',
+      );
+      expect(settings.isModified, true);
+      expect(settings.isKeyActive('lens'), true);
+      expect(settings.isKeyActive('sparkle'), true);
+      expect(settings.hasContactLens, true);
+      expect(settings.hasSparkle, true);
+
+      final map = settings.toMap();
+      expect(map['contactLensPreset'], 'aqua');
+      expect(map['contactLensOpacity'], 0.8);
+      expect(map['contactLensStyle'], 'limbalRing');
+      expect(map['sparklePreset'], 'starburst');
+      expect(map['sparkleOpacity'], 0.75);
+      expect(map['sparkleStyle'], 'starburst');
+
+      final json = settings.toJson();
+      final restored = MakeupSettings.fromJson(json);
+      expect(restored.contactLensPreset, 'aqua');
+      expect(restored.contactLensOpacity, 80);
+      expect(restored.contactLensStyle, 'limbalRing');
+      expect(restored.sparklePreset, 'starburst');
+      expect(restored.sparkleOpacity, 75);
+      expect(restored.sparkleStyle, 'starburst');
+    });
   });
 
   group('ColorSettings', () {
