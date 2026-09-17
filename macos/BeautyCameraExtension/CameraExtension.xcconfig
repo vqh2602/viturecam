@@ -1,0 +1,2 @@
+// Keep the extension version in sync with Flutter's app release/build overrides.
+#include "../Flutter/ephemeral/Flutter-Generated.xcconfig"
