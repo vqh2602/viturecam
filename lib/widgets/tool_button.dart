@@ -6,6 +6,7 @@ class ToolButton extends StatelessWidget {
   final Widget? customIcon;
   final bool isSelected;
   final bool isActive;
+  final Widget? trailing;
   final VoidCallback onTap;
   final VoidCallback? onDoubleTap;
 
@@ -16,6 +17,7 @@ class ToolButton extends StatelessWidget {
     this.customIcon,
     this.isSelected = false,
     this.isActive = false,
+    this.trailing,
     required this.onTap,
     this.onDoubleTap,
   });
@@ -56,6 +58,7 @@ class ToolButton extends StatelessWidget {
                 color: isSelected ? Colors.white : (isActive ? Colors.white : Colors.white60),
               ),
             ),
+            if (trailing != null) trailing!,
             if (isActive) ...[
               const SizedBox(width: 4),
               Container(

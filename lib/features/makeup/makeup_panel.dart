@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/app_localizations.dart';
 import '../../widgets/beauty_slider.dart';
 import '../camera/camera_controller.dart';
+import '../patreon/patreon_paywall_view.dart';
+import '../patreon/patreon_provider.dart';
 import 'makeup_settings.dart';
 
 class MakeupPanel extends ConsumerWidget {
@@ -130,6 +132,11 @@ class MakeupPanel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final patreon = ref.watch(patreonProvider);
+    if (!patreon.isPatron) {
+      return const PatreonPaywallView();
+    }
+
     final l10n = AppLocalizations.of(context)!;
     final state = ref.watch(cameraControllerProvider);
     final controller = ref.read(cameraControllerProvider.notifier);

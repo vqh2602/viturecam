@@ -11,6 +11,7 @@ import '../makeup/makeup_panel.dart';
 import '../presets/preset_panel.dart';
 import '../reshape/reshape_panel.dart';
 import '../settings/settings_page.dart';
+import '../patreon/patreon_provider.dart';
 import '../updater/update_dialog.dart';
 import '../../services/update_provider.dart';
 import 'camera_controller.dart';
@@ -554,6 +555,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
 
   Widget _buildBottomDock(BuildContext context, CameraState state, CameraController controller) {
     final l10n = AppLocalizations.of(context)!;
+    final patreonState = ref.watch(patreonProvider);
     final activeCat = state.activeCategory;
 
     final categories = [
@@ -624,6 +626,32 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
                           icon: cat['icon'] as IconData,
                           isSelected: activeCat == cat['id'],
                           isActive: cat['isActive'] as bool,
+                          trailing: cat['id'] == 'makeup'
+                              ? Container(
+                                  margin: const EdgeInsets.only(left: 4),
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: patreonState.isPatron
+                                        ? const Color(0xFFFF7597).withValues(alpha: 0.2)
+                                        : const Color(0xFFFF424D).withValues(alpha: 0.25),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                      color: patreonState.isPatron
+                                          ? const Color(0xFFFF7597).withValues(alpha: 0.5)
+                                          : const Color(0xFFFF424D).withValues(alpha: 0.5),
+                                      width: 0.6,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    patreonState.isPatron ? 'VIP' : 'LOCK',
+                                    style: TextStyle(
+                                      color: patreonState.isPatron ? const Color(0xFFFF8DA1) : const Color(0xFFFF8A80),
+                                      fontSize: 8.5,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                )
+                              : null,
                           onTap: () => controller.selectCategory(cat['id'] as String),
                         ),
                     ],

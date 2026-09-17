@@ -740,4 +740,77 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get updateCancel => 'Cancel';
+
+  @override
+  String get patreonTitle => 'Patreon Membership';
+
+  @override
+  String get patreonLogin => 'Login with Patreon';
+
+  @override
+  String get patreonLogout => 'Logout';
+
+  @override
+  String get patreonCheck => 'Check Membership';
+
+  @override
+  String get patreonChecking => 'Checking status...';
+
+  @override
+  String get patreonActive => 'Active Patron';
+
+  @override
+  String get patreonInactive => 'No Active Membership';
+
+  @override
+  String get patreonNotConnected => 'Not Connected';
+
+  @override
+  String get patreonSupportProject => 'Support on Patreon';
+
+  @override
+  String get patreonConfig => 'OAuth Settings';
+
+  @override
+  String get patreonTestMode => 'Test Mode (VIP)';
+
+  @override
+  String get patreonTestModeActive => 'VIP Test Mode Active';
+
+  @override
+  String patreonLoggedAs(String name) {
+    return 'Logged in as: $name';
+  }
+
+  @override
+  String patreonPledgedAmount(String amount) {
+    return 'Pledge: $amount/mo';
+  }
+
+  @override
+  String patreonRecheckSuccess(String status) {
+    return 'Status updated: $status';
+  }
+
+  @override
+  String get makeupLockedTitle => 'Makeup — Patreon Supporter Exclusive';
+
+  @override
+  String get makeupLockedSubtitle =>
+      'Support us on Patreon to unlock full Lipstick, Blush, Eyebrows, Eyeliner, Eyeshadow, and Contour features!';
+
+  @override
+  String get makeupVipBadge => 'Patreon VIP';
+
+  @override
+  String get patreonOpenBrowserPrompt =>
+      'Opening browser to authorize with Patreon. Please grant access and return to Beauty Camera.';
+
+  @override
+  String get patreonLoginSuccess => 'Patreon login successful!';
+
+  @override
+  String patreonLoginFailed(String error) {
+    return 'Patreon login failed: $error';
+  }
 }

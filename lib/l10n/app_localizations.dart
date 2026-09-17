@@ -1525,6 +1525,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cancel'**
   String get updateCancel;
+
+  /// No description provided for @patreonTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Patreon Membership'**
+  String get patreonTitle;
+
+  /// No description provided for @patreonLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Login with Patreon'**
+  String get patreonLogin;
+
+  /// No description provided for @patreonLogout.
+  ///
+  /// In en, this message translates to:
+  /// **'Logout'**
+  String get patreonLogout;
+
+  /// No description provided for @patreonCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Check Membership'**
+  String get patreonCheck;
+
+  /// No description provided for @patreonChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking status...'**
+  String get patreonChecking;
+
+  /// No description provided for @patreonActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active Patron'**
+  String get patreonActive;
+
+  /// No description provided for @patreonInactive.
+  ///
+  /// In en, this message translates to:
+  /// **'No Active Membership'**
+  String get patreonInactive;
+
+  /// No description provided for @patreonNotConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Not Connected'**
+  String get patreonNotConnected;
+
+  /// No description provided for @patreonSupportProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Support on Patreon'**
+  String get patreonSupportProject;
+
+  /// No description provided for @patreonConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'OAuth Settings'**
+  String get patreonConfig;
+
+  /// No description provided for @patreonTestMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Test Mode (VIP)'**
+  String get patreonTestMode;
+
+  /// No description provided for @patreonTestModeActive.
+  ///
+  /// In en, this message translates to:
+  /// **'VIP Test Mode Active'**
+  String get patreonTestModeActive;
+
+  /// No description provided for @patreonLoggedAs.
+  ///
+  /// In en, this message translates to:
+  /// **'Logged in as: {name}'**
+  String patreonLoggedAs(String name);
+
+  /// No description provided for @patreonPledgedAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Pledge: {amount}/mo'**
+  String patreonPledgedAmount(String amount);
+
+  /// No description provided for @patreonRecheckSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Status updated: {status}'**
+  String patreonRecheckSuccess(String status);
+
+  /// No description provided for @makeupLockedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Makeup — Patreon Supporter Exclusive'**
+  String get makeupLockedTitle;
+
+  /// No description provided for @makeupLockedSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Support us on Patreon to unlock full Lipstick, Blush, Eyebrows, Eyeliner, Eyeshadow, and Contour features!'**
+  String get makeupLockedSubtitle;
+
+  /// No description provided for @makeupVipBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Patreon VIP'**
+  String get makeupVipBadge;
+
+  /// No description provided for @patreonOpenBrowserPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening browser to authorize with Patreon. Please grant access and return to Beauty Camera.'**
+  String get patreonOpenBrowserPrompt;
+
+  /// No description provided for @patreonLoginSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Patreon login successful!'**
+  String get patreonLoginSuccess;
+
+  /// No description provided for @patreonLoginFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Patreon login failed: {error}'**
+  String patreonLoginFailed(String error);
 }
 
 class _AppLocalizationsDelegate

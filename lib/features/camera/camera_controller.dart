@@ -5,6 +5,7 @@ import '../background/background_settings.dart';
 import '../beauty/beauty_settings.dart';
 import '../color/color_settings.dart';
 import '../makeup/makeup_settings.dart';
+import '../patreon/patreon_provider.dart';
 import '../presets/preset_model.dart';
 import '../presets/preset_storage.dart';
 import '../reshape/reshape_settings.dart';
@@ -130,9 +131,10 @@ class CameraState {
 
 class CameraController extends StateNotifier<CameraState> {
   final BeautyNativeApi _api;
+  final Ref? _ref;
   Timer? _statsTimer;
 
-  CameraController(this._api) : super(const CameraState()) {
+  CameraController(this._api, [this._ref]) : super(const CameraState()) {
     _init();
   }
 
@@ -144,11 +146,20 @@ class CameraController extends StateNotifier<CameraState> {
   }
 
   Future<void> _init() async {
+    _ref?.listen<PatreonState>(patreonProvider, (prev, next) {
+      if (prev?.isPatron == true && !next.isPatron) {
+        // Hết hạn hoặc đăng xuất Patreon -> reset hiệu ứng makeup
+        updateMakeup(const MakeupSettings());
+      }
+    });
+
     state = state.copyWith(isLoading: true);
     await _api.initialize();
+    if (!mounted) return;
 
     // Request camera permission
     final granted = await _api.requestCameraPermission();
+    if (!mounted) return;
     if (!granted) {
       state = state.copyWith(
         isLoading: false,
@@ -158,10 +169,12 @@ class CameraController extends StateNotifier<CameraState> {
 
     // Load presets
     final customPresets = await PresetStorage.loadCustomPresets();
+    if (!mounted) return;
     final allPresets = [...PresetModel.defaultPresets, ...customPresets];
 
     // Load cameras
     final cameras = await _api.getCameras();
+    if (!mounted) return;
     CameraDevice? defaultCam;
     if (cameras.isNotEmpty) {
       defaultCam = cameras.firstWhere((c) => c.isDefault, orElse: () => cameras.first);
@@ -176,6 +189,7 @@ class CameraController extends StateNotifier<CameraState> {
 
     if (granted && defaultCam != null) {
       await startCamera(defaultCam);
+      if (!mounted) return;
     }
 
     // Start performance metrics polling
@@ -364,14 +378,16 @@ class CameraController extends StateNotifier<CameraState> {
   bool _makeupPending = false;
   MakeupSettings? _nextMakeup;
   Future<void> updateMakeup(MakeupSettings makeup) async {
-    state = state.copyWith(makeup: makeup, activePresetId: null);
+    final isPatron = _ref?.read(patreonProvider).isPatron ?? false;
+    final effectiveMakeup = isPatron ? makeup : const MakeupSettings();
+    state = state.copyWith(makeup: effectiveMakeup, activePresetId: null);
     if (_makeupPending) {
-      _nextMakeup = makeup;
+      _nextMakeup = effectiveMakeup;
       return;
     }
     _makeupPending = true;
     try {
-      await _api.setMakeupSettings(makeup.toMap());
+      await _api.setMakeupSettings(effectiveMakeup.toMap());
     } finally {
       _makeupPending = false;
       if (_nextMakeup != null) {
@@ -468,16 +484,21 @@ class CameraController extends StateNotifier<CameraState> {
       color: const ColorSettings(),
       background: const BackgroundSettings(),
       activePresetId: null,
+      compareMode: 'none',
+      beautyEnabled: true,
     );
     await _syncAllSettings();
   }
 
   // --- Presets ---
   Future<void> applyPreset(PresetModel preset) async {
+    final isPatron = _ref?.read(patreonProvider).isPatron ?? false;
+    final effectiveMakeup = isPatron ? preset.makeup : const MakeupSettings();
+
     state = state.copyWith(
       beauty: preset.beauty,
       face: preset.face,
-      makeup: preset.makeup,
+      makeup: effectiveMakeup,
       filterId: preset.filterId,
       filterIntensity: preset.filterIntensity,
       color: preset.color,
@@ -510,7 +531,7 @@ class CameraController extends StateNotifier<CameraState> {
   }
 
   Future<void> deleteCustomPreset(String id) async {
-    final updatedPresets = state.presets.where((p) => p.id != id || p.isBuiltIn).toList();
+    final updatedPresets = state.presets.where((p) => p.id != id).toList();
     state = state.copyWith(
       presets: updatedPresets,
       activePresetId: state.activePresetId == id ? null : state.activePresetId,
@@ -536,5 +557,5 @@ final beautyNativeApiProvider = Provider<BeautyNativeApi>((ref) => BeautyNativeA
 
 final cameraControllerProvider = StateNotifierProvider<CameraController, CameraState>((ref) {
   final api = ref.watch(beautyNativeApiProvider);
-  return CameraController(api);
+  return CameraController(api, ref);
 });
