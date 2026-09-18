@@ -211,7 +211,17 @@ class BeautyNativeApi {
 
   Future<VirtualCameraStatus> startVirtualCamera() => _virtualCameraCall('startVirtualCamera');
 
+  Future<VirtualCameraStatus> reinstallVirtualCamera() => _virtualCameraCall('reinstallVirtualCamera');
+
   Future<VirtualCameraStatus> getVirtualCameraStatus() => _virtualCameraCall('getVirtualCameraStatus');
+
+  Future<void> openCameraExtensionSettings() async {
+    try {
+      await _channel.invokeMethod('openCameraExtensionSettings');
+    } catch (e) {
+      debugPrint('[BeautyNativeApi] openCameraExtensionSettings error: $e');
+    }
+  }
 
   Future<VirtualCameraStatus> _virtualCameraCall(String method) async {
     try {

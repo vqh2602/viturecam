@@ -1478,6 +1478,24 @@ abstract class AppLocalizations {
   /// **'When enabled, select \"Beauty Camera\" in Zoom, Google Meet, OBS, Discord, Telegram, or Microsoft Teams to use your beautified video stream directly.'**
   String get virtualCamDescription;
 
+  /// No description provided for @reinstallExtension.
+  ///
+  /// In en, this message translates to:
+  /// **'Reinstall Extension'**
+  String get reinstallExtension;
+
+  /// No description provided for @openSystemSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'System Settings'**
+  String get openSystemSettings;
+
+  /// No description provided for @virtualCamReinstallTip.
+  ///
+  /// In en, this message translates to:
+  /// **'If the virtual camera fails or other apps cannot find it after an update, click to reinstall the camera extension.'**
+  String get virtualCamReinstallTip;
+
   /// No description provided for @hardwarePipelineStats.
   ///
   /// In en, this message translates to:

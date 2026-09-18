@@ -709,6 +709,16 @@ class AppLocalizationsVi extends AppLocalizations {
       'Khi bật, chọn \"Beauty Camera\" trong Zoom, Google Meet, OBS, Discord, Telegram hoặc Microsoft Teams để phát trực tiếp hình ảnh đã làm đẹp.';
 
   @override
+  String get reinstallExtension => 'Gỡ & Cài lại Extension';
+
+  @override
+  String get openSystemSettings => 'Cài đặt hệ thống';
+
+  @override
+  String get virtualCamReinstallTip =>
+      'Nếu camera ảo bị lỗi hoặc ứng dụng khác không nhận sau khi cập nhật, bấm để tự động gỡ và cài đặt lại extension.';
+
+  @override
   String get hardwarePipelineStats => 'Thông số phần cứng & Xử lý';
 
   @override

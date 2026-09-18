@@ -710,6 +710,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'When enabled, select \"Beauty Camera\" in Zoom, Google Meet, OBS, Discord, Telegram, or Microsoft Teams to use your beautified video stream directly.';
 
   @override
+  String get reinstallExtension => 'Reinstall Extension';
+
+  @override
+  String get openSystemSettings => 'System Settings';
+
+  @override
+  String get virtualCamReinstallTip =>
+      'If the virtual camera fails or other apps cannot find it after an update, click to reinstall the camera extension.';
+
+  @override
   String get hardwarePipelineStats => 'Hardware & Pipeline Stats';
 
   @override

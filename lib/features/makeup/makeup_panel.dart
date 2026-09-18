@@ -100,6 +100,8 @@ class MakeupPanel extends ConsumerWidget {
   static String getOptionName(AppLocalizations l10n, MakeupOption opt) {
     if (opt.id == 'none') return l10n.none;
     if (l10n.localeName.startsWith('en')) {
+      if (opt.name == 'Hồng anh đào') return 'Sakura Pink';
+      if (opt.name == 'Đen búp bê') return 'Doll Black';
       const enColorNames = {
         'red': 'Pure Red',
         'ruby': 'Ruby Red',
@@ -145,15 +147,21 @@ class MakeupPanel extends ConsumerWidget {
         'deep': 'Deep Contour',
         'softTaupe': 'Soft Taupe',
         // Contact lenses
-        'hazel': 'Hazel',
-        'honey': 'Honey',
-        'choc': 'Chocolate',
-        'gray': 'Smoky Gray',
+        'hazel': 'Hazel Honey',
+        'honey': 'Bright Honey',
+        'choc': 'Choco Brown',
+        'gray': 'Crystal Gray',
         'blue': 'Ocean Blue',
-        'aqua': 'Aqua',
+        'aqua': 'Aqua Turquoise',
         'green': 'Emerald Green',
-        'violet': 'Amethyst',
-        'amber': 'Amber',
+        'violet': 'Amethyst Violet',
+        'amber': 'Golden Amber',
+        'cosmic_galaxy': 'Cosmic Galaxy',
+        'supernova_star': 'Supernova Star',
+        'barbie_brown': 'Barbie Brown',
+        'cat_eye_gold': 'Cat Eye Gold',
+        'midnight_navy': 'Midnight Navy',
+        'platinum_silver': 'Platinum Silver',
         // Sparkle options
         'starlight': 'Starlight',
         'crystal': 'Crystal',
@@ -489,7 +497,17 @@ class MakeupPanel extends ConsumerWidget {
                               ),
                               child: opt.id == 'none'
                                   ? const Icon(Icons.block, size: 12, color: Colors.white54)
-                                  : null,
+                                  : (subTool == 'lens'
+                                      ? ClipOval(
+                                          child: Image.asset(
+                                            'assets/lenses/lens_${opt.id}.png',
+                                            width: 24,
+                                            height: 24,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) => const SizedBox(),
+                                          ),
+                                        )
+                                      : null),
                             ),
                             const SizedBox(height: 2),
                             Text(

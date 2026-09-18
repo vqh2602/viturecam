@@ -296,6 +296,30 @@ class CameraController extends StateNotifier<CameraState> {
     }
   }
 
+  Future<void> reinstallVirtualCamera() async {
+    state = state.copyWith(
+      virtualCamera: const VirtualCameraStatus(
+        state: 'installing',
+        message: 'Đang gỡ và cài đặt lại Camera Extension...',
+      ),
+    );
+    final status = await _api.reinstallVirtualCamera();
+    if (mounted) state = state.copyWith(virtualCamera: status);
+  }
+
+  Future<void> openCameraExtensionSettings() async {
+    await _api.openCameraExtensionSettings();
+  }
+
+  void dismissVirtualCameraMessage() {
+    state = state.copyWith(
+      virtualCamera: VirtualCameraStatus(
+        state: state.virtualCamera.state,
+        message: '',
+      ),
+    );
+  }
+
   Future<void> toggleBeautyEnabled() async {
     final newEnabled = !state.beautyEnabled;
     state = state.copyWith(beautyEnabled: newEnabled);

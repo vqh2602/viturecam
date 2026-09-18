@@ -34,6 +34,7 @@ public final class BeautyRenderer {
     private var lastMakeupKey: Int = 0
     private var lastMakeupStyle: String = ""
     private var lastMakeupResult: CIImage? = nil
+    private var contactLensTextureCache: [String: CIImage] = [:]
     private lazy var personSegmentationRequest: Any? = {
         if #available(macOS 12.0, *) {
             let req = VNGeneratePersonSegmentationRequest()
@@ -6054,7 +6055,137 @@ public final class BeautyRenderer {
         return image
     }
 
-    // MARK: - Contact Lens (Tròng mắt đổi màu / Giãn tròng / Hoa văn)
+    // MARK: - Contact Lens Texture Loader & Cache
+    private func getContactLensTexture(preset: String) -> CIImage? {
+        if let cached = contactLensTextureCache[preset] {
+            return cached
+        }
+
+        let mappedPreset: String
+        switch preset {
+        case "hazel":   mappedPreset = "hazel_honey"
+        case "honey":   mappedPreset = "hazel_honey"
+        case "choc":    mappedPreset = "choco_brown"
+        case "gray":    mappedPreset = "crystal_gray"
+        case "blue":    mappedPreset = "ocean_blue"
+        case "aqua":    mappedPreset = "aqua_turquoise"
+        case "green":   mappedPreset = "emerald_green"
+        case "violet":  mappedPreset = "amethyst_violet"
+        case "pink":    mappedPreset = "sakura_pink"
+        case "amber":   mappedPreset = "golden_amber"
+        case "black":   mappedPreset = "doll_black"
+        default:        mappedPreset = preset
+        }
+
+        var candidateFilenames = ["lens_\(mappedPreset).png"]
+        if mappedPreset != preset {
+            candidateFilenames.append("lens_\(preset).png")
+        }
+
+        var candidateURLs: [URL] = []
+        for filename in candidateFilenames {
+            if let resURL = Bundle.main.resourceURL {
+                candidateURLs.append(resURL.appendingPathComponent("flutter_assets/assets/lenses/\(filename)"))
+                candidateURLs.append(resURL.appendingPathComponent("assets/lenses/\(filename)"))
+            }
+            if let bundleUrl = Bundle.main.url(forResource: filename, withExtension: nil) {
+                candidateURLs.append(bundleUrl)
+            }
+            if let flutterUrl = Bundle.main.url(forResource: "flutter_assets/assets/lenses/\(filename)", withExtension: nil) {
+                candidateURLs.append(flutterUrl)
+            }
+
+            let appFramework = Bundle.main.bundleURL.appendingPathComponent("Contents/Frameworks/App.framework")
+            candidateURLs.append(appFramework.appendingPathComponent("Resources/flutter_assets/assets/lenses/\(filename)"))
+            candidateURLs.append(appFramework.appendingPathComponent("Versions/A/Resources/flutter_assets/assets/lenses/\(filename)"))
+
+            candidateURLs.append(URL(fileURLWithPath: "assets/lenses/\(filename)"))
+        }
+
+        for url in candidateURLs {
+            if FileManager.default.fileExists(atPath: url.path) {
+                if let ci = CIImage(contentsOf: url) {
+                    contactLensTextureCache[preset] = ci
+                    return ci
+                }
+            }
+        }
+
+        // Fallback procedural texture generator so it never fails even without disk assets
+        if let fallback = generateProceduralLensTexture(preset: preset) {
+            contactLensTextureCache[preset] = fallback
+            return fallback
+        }
+
+        return nil
+    }
+
+    private func generateProceduralLensTexture(preset: String) -> CIImage? {
+        let size = 512
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        guard let context = CGContext(
+            data: nil,
+            width: size,
+            height: size,
+            bitsPerComponent: 8,
+            bytesPerRow: size * 4,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return nil }
+
+        var cR: CGFloat = 0.55; var cG: CGFloat = 0.35; var cB: CGFloat = 0.17
+        switch preset {
+        case "hazel", "hazel_honey":   cR = 0.55; cG = 0.35; cB = 0.17
+        case "honey":                  cR = 0.78; cG = 0.52; cB = 0.26
+        case "choc", "choco_brown":    cR = 0.35; cG = 0.20; cB = 0.12
+        case "gray", "crystal_gray":   cR = 0.65; cG = 0.68; cB = 0.72
+        case "blue", "ocean_blue":     cR = 0.20; cG = 0.45; cB = 0.78
+        case "aqua", "aqua_turquoise": cR = 0.18; cG = 0.68; cB = 0.68
+        case "green", "emerald_green": cR = 0.20; cG = 0.58; cB = 0.28
+        case "violet", "amethyst_violet": cR = 0.52; cG = 0.28; cB = 0.70
+        case "pink", "sakura_pink":    cR = 0.85; cG = 0.45; cB = 0.58
+        case "amber", "golden_amber":  cR = 0.85; cG = 0.55; cB = 0.15
+        case "black", "doll_black":    cR = 0.10; cG = 0.10; cB = 0.12
+        case "cosmic_galaxy":          cR = 0.35; cG = 0.25; cB = 0.65
+        case "supernova_star":         cR = 0.60; cG = 0.45; cB = 0.85
+        case "barbie_brown":           cR = 0.55; cG = 0.27; cB = 0.10
+        case "cat_eye_gold":           cR = 0.85; cG = 0.65; cB = 0.15
+        case "midnight_navy":          cR = 0.10; cG = 0.12; cB = 0.40
+        case "platinum_silver":        cR = 0.75; cG = 0.78; cB = 0.82
+        default:                       cR = 0.55; cG = 0.35; cB = 0.17
+        }
+
+        context.clear(CGRect(x: 0, y: 0, width: size, height: size))
+        let center = CGPoint(x: CGFloat(size) / 2.0, y: CGFloat(size) / 2.0)
+        let outerR = CGFloat(size) * 0.48
+        let pupilR = outerR * 0.28
+
+        let locations: [CGFloat] = [0.0, 0.28, 0.45, 0.78, 0.92, 1.0]
+        let colors = [
+            CGColor(red: cR, green: cG, blue: cB, alpha: 0.0),
+            CGColor(red: cR, green: cG, blue: cB, alpha: 0.05),
+            CGColor(red: cR, green: cG, blue: cB, alpha: 0.85),
+            CGColor(red: cR * 0.95, green: cG * 0.95, blue: cB * 0.95, alpha: 0.90),
+            CGColor(red: cR * 0.70, green: cG * 0.70, blue: cB * 0.70, alpha: 0.80),
+            CGColor(red: 0.08, green: 0.08, blue: 0.10, alpha: 0.95)
+        ]
+        if let grad = CGGradient(colorsSpace: colorSpace, colors: colors as CFArray, locations: locations) {
+            context.drawRadialGradient(grad, startCenter: center, startRadius: 0, endCenter: center, endRadius: outerR, options: [])
+        }
+
+        context.setStrokeColor(red: 0.08, green: 0.08, blue: 0.10, alpha: 0.92)
+        context.setLineWidth(outerR * 0.16)
+        let ringR = outerR * 0.92
+        context.strokeEllipse(in: CGRect(x: center.x - ringR, y: center.y - ringR, width: ringR * 2, height: ringR * 2))
+
+        context.setBlendMode(.clear)
+        context.fillEllipse(in: CGRect(x: center.x - pupilR * 0.9, y: center.y - pupilR * 0.9, width: pupilR * 1.8, height: pupilR * 1.8))
+
+        guard let cg = context.makeImage() else { return nil }
+        return CIImage(cgImage: cg)
+    }
+
+    // MARK: - Contact Lens (Tròng mắt ảnh kết cấu / Tự cắt theo lòng đen & mí mắt)
     private func applyContactLens(
         image: CIImage,
         makeup: MakeupSettings,
@@ -6090,134 +6221,57 @@ public final class BeautyRenderer {
 
         guard leftCenter != .zero && rightCenter != .zero else { return image }
 
-        // Contact lens color presets (11 colors)
-        var cR: CGFloat = 0.55; var cG: CGFloat = 0.35; var cB: CGFloat = 0.17
-        switch makeup.contactLensPreset {
-        case "hazel":   cR = 0.55; cG = 0.35; cB = 0.17 // Nâu hổ phách
-        case "honey":   cR = 0.78; cG = 0.52; cB = 0.26 // Nâu mật ong
-        case "choc":    cR = 0.35; cG = 0.20; cB = 0.12 // Nâu sô-cô-la
-        case "gray":    cR = 0.65; cG = 0.68; cB = 0.72 // Xám khói
-        case "blue":    cR = 0.20; cG = 0.45; cB = 0.78 // Xanh lam biển
-        case "aqua":    cR = 0.18; cG = 0.68; cB = 0.68 // Xanh ngọc bích
-        case "green":   cR = 0.20; cG = 0.58; cB = 0.28 // Xanh lục bảo
-        case "violet":  cR = 0.52; cG = 0.28; cB = 0.70 // Tím thạch anh
-        case "pink":    cR = 0.85; cG = 0.45; cB = 0.58 // Hồng đào
-        case "amber":   cR = 0.85; cG = 0.55; cB = 0.15 // Vàng hổ phách
-        case "black":   cR = 0.10; cG = 0.10; cB = 0.12 // Đen tuyền giãn tròng
-        default:        cR = 0.55; cG = 0.35; cB = 0.17
-        }
-
         let eyeDist = max(20.0, hypot(leftCenter.x - rightCenter.x, leftCenter.y - rightCenter.y))
         let isLimbalEnlarged = (makeup.contactLensStyle == "limbalRing")
-        let irisR = max(4.0, eyeDist * (isLimbalEnlarged ? 0.098 : 0.086))
+        let irisR = max(4.0, eyeDist * (isLimbalEnlarged ? 0.106 : 0.092))
 
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
-        guard let context = CGContext(
-            data: nil,
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: width * 4,
-            space: colorSpace,
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else { return image }
+        guard let lensTex = getContactLensTexture(preset: makeup.contactLensPreset) else { return image }
 
-        context.clear(CGRect(x: 0, y: 0, width: width, height: height))
+        let texBounds = lensTex.extent
+        let texW = texBounds.width > 0 ? texBounds.width : 512.0
+        let texH = texBounds.height > 0 ? texBounds.height : 512.0
+        let scaleX = (irisR * 2.0) / texW
+        let scaleY = (irisR * 2.0) / texH
+        let rollAngle = atan2(rightCenter.y - leftCenter.y, rightCenter.x - leftCenter.x)
 
-        func drawLens(center: CGPoint) {
-            let pupilR = irisR * 0.32
-            let limbalInnerR = irisR * (isLimbalEnlarged ? 0.80 : 0.86)
-            let limbalOuterR = irisR * (isLimbalEnlarged ? 1.05 : 1.00)
+        let leftTransform = CGAffineTransform(translationX: leftCenter.x, y: leftCenter.y)
+            .rotated(by: rollAngle)
+            .scaledBy(x: scaleX, y: scaleY)
+            .translatedBy(x: -texBounds.midX, y: -texBounds.midY)
 
-            // 1. Radial gradient color band
-            let locations: [CGFloat] = [0.0, 0.32, 0.48, 0.78, 0.90, 1.0]
-            let colors = [
-                CGColor(red: cR, green: cG, blue: cB, alpha: 0.0), // clear pupil
-                CGColor(red: cR, green: cG, blue: cB, alpha: 0.05), // pupil border
-                CGColor(red: cR, green: cG, blue: cB, alpha: 0.82), // inner iris
-                CGColor(red: cR * 0.92, green: cG * 0.92, blue: cB * 0.92, alpha: 0.88), // mid iris
-                CGColor(red: cR * 0.70, green: cG * 0.70, blue: cB * 0.70, alpha: 0.75), // outer iris
-                CGColor(red: 0.08, green: 0.08, blue: 0.10, alpha: 0.90) // limbal rim
-            ]
+        let rightTransform = CGAffineTransform(translationX: rightCenter.x, y: rightCenter.y)
+            .rotated(by: rollAngle)
+            .scaledBy(x: scaleX, y: scaleY)
+            .translatedBy(x: -texBounds.midX, y: -texBounds.midY)
 
-            if let gradient = CGGradient(colorsSpace: colorSpace, colors: colors as CFArray, locations: locations) {
-                context.drawRadialGradient(
-                    gradient,
-                    startCenter: center,
-                    startRadius: 0,
-                    endCenter: center,
-                    endRadius: limbalOuterR,
-                    options: []
-                )
-            }
+        let leftLensCI = lensTex.transformed(by: leftTransform)
+        let rightLensCI = lensTex.transformed(by: rightTransform)
+        let bothLenses = leftLensCI.composited(over: rightLensCI).cropped(to: extent)
 
-            // 2. Limbal Ring (viền ngoài)
-            let rimAlpha: CGFloat = isLimbalEnlarged ? 0.92 : 0.70
-            let rimWidth = max(1.5, irisR * (isLimbalEnlarged ? 0.22 : 0.15))
-            context.setStrokeColor(red: 0.08, green: 0.08, blue: 0.10, alpha: rimAlpha)
-            context.setLineWidth(rimWidth)
-            let ringR = (limbalInnerR + limbalOuterR) * 0.5
-            context.strokeEllipse(in: CGRect(x: center.x - ringR, y: center.y - ringR, width: ringR * 2, height: ringR * 2))
-
-            // 3. Patterns per style
-            if makeup.contactLensStyle == "starburst" {
-                let spokeCount = 16
-                for s in 0..<spokeCount {
-                    let angle = (CGFloat(s) / CGFloat(spokeCount)) * CGFloat.pi * 2.0
-                    let cosA = cos(angle)
-                    let sinA = sin(angle)
-                    let rStart = pupilR * 1.05
-                    let rEnd = irisR * (s % 2 == 0 ? 0.85 : 0.70)
-                    let pStart = CGPoint(x: center.x + cosA * rStart, y: center.y + sinA * rStart)
-                    let pEnd = CGPoint(x: center.x + cosA * rEnd, y: center.y + sinA * rEnd)
-
-                    context.setStrokeColor(red: min(1.0, cR * 1.3), green: min(1.0, cG * 1.3), blue: min(1.0, cB * 1.3), alpha: 0.65)
-                    context.setLineWidth(max(1.0, irisR * 0.05))
-                    context.move(to: pStart)
-                    context.addLine(to: pEnd)
-                    context.strokePath()
-                }
-            } else if makeup.contactLensStyle == "galaxy" {
-                let dotCount = 12
-                for d in 0..<dotCount {
-                    let angle = (CGFloat(d) / CGFloat(dotCount)) * CGFloat.pi * 2.0 + 0.2
-                    let rDist = pupilR + (irisR * 0.80 - pupilR) * ((CGFloat(d * 7 % 10) / 10.0) * 0.8 + 0.1)
-                    let dotPt = CGPoint(x: center.x + cos(angle) * rDist, y: center.y + sin(angle) * rDist)
-                    let dotR = max(0.8, irisR * 0.04)
-
-                    context.setFillColor(red: 1.0, green: 0.98, blue: 0.95, alpha: 0.80)
-                    context.fillEllipse(in: CGRect(x: dotPt.x - dotR, y: dotPt.y - dotR, width: dotR * 2, height: dotR * 2))
-                }
-            }
-
-            // 4. Clear central pupil punch-out
-            context.setBlendMode(.clear)
-            let clearPupilR = pupilR * 0.85
-            context.fillEllipse(in: CGRect(x: center.x - clearPupilR, y: center.y - clearPupilR, width: clearPupilR * 2, height: clearPupilR * 2))
-            context.setBlendMode(.normal)
-        }
-
-        drawLens(center: leftCenter)
-        drawLens(center: rightCenter)
-
-        guard let cgLens = context.makeImage() else { return image }
-        let lensCI = CIImage(cgImage: cgLens)
-
-        var blurredLens = lensCI
+        var smoothedLenses = bothLenses
         if let blur = CIFilter(name: "CIGaussianBlur") {
-            blur.setValue(lensCI, forKey: kCIInputImageKey)
-            blur.setValue(1.0, forKey: kCIInputRadiusKey)
+            blur.setValue(bothLenses, forKey: kCIInputImageKey)
+            blur.setValue(0.7, forKey: kCIInputRadiusKey)
             if let out = blur.outputImage?.cropped(to: extent) {
-                blurredLens = out
+                smoothedLenses = out
             }
         }
 
         var tintedEye = image
         if let overlay = CIFilter(name: "CIOverlayBlendMode") {
-            overlay.setValue(blurredLens, forKey: kCIInputImageKey)
+            overlay.setValue(smoothedLenses, forKey: kCIInputImageKey)
             overlay.setValue(image, forKey: kCIInputBackgroundImageKey)
             if let out = overlay.outputImage {
                 tintedEye = out
+            }
+        }
+
+        // Composite direct pattern highlights so vivid lenses shine through
+        if let comp = CIFilter(name: "CISourceOverCompositing") {
+            comp.setValue(smoothedLenses, forKey: kCIInputImageKey)
+            comp.setValue(tintedEye, forKey: kCIInputBackgroundImageKey)
+            if let directOut = comp.outputImage {
+                tintedEye = directOut
             }
         }
 
@@ -6240,7 +6294,7 @@ public final class BeautyRenderer {
             blend.setValue(tintedEye, forKey: kCIInputImageKey)
             blend.setValue(image, forKey: kCIInputBackgroundImageKey)
             if let mult = CIFilter(name: "CIMultiplyCompositing") {
-                mult.setValue(blurredLens, forKey: kCIInputImageKey)
+                mult.setValue(smoothedLenses, forKey: kCIInputImageKey)
                 mult.setValue(effMask, forKey: kCIInputBackgroundImageKey)
                 if let combinedMask = mult.outputImage?.cropped(to: extent) {
                     blend.setValue(combinedMask, forKey: kCIInputMaskImageKey)

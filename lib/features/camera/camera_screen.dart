@@ -95,10 +95,83 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
               Container(
                 width: double.infinity,
                 color: state.virtualCamera.state == 'error'
-                    ? const Color(0xFF4A2929) : const Color(0xFF25342C),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                child: Text(state.virtualCamera.message,
-                    style: const TextStyle(color: Colors.white, fontSize: 12)),
+                    ? const Color(0xFF381C1C)
+                    : (state.virtualCamera.state == 'approval'
+                        ? const Color(0xFF332912)
+                        : const Color(0xFF1B2E22)),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    Icon(
+                      state.virtualCamera.state == 'error'
+                          ? Icons.error_outline
+                          : (state.virtualCamera.state == 'approval'
+                              ? Icons.admin_panel_settings_outlined
+                              : Icons.info_outline),
+                      size: 18,
+                      color: state.virtualCamera.state == 'error'
+                          ? const Color(0xFFFF6B6B)
+                          : (state.virtualCamera.state == 'approval'
+                              ? const Color(0xFFFFD166)
+                              : const Color(0xFF7FE68D)),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        state.virtualCamera.message,
+                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (state.virtualCamera.state == 'error' || state.virtualCamera.state == 'approval') ...[
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                          backgroundColor: const Color(0xFFFF7597).withValues(alpha: 0.18),
+                          foregroundColor: const Color(0xFFFF8DA1),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                            side: const BorderSide(color: Color(0xFFFF7597), width: 0.8),
+                          ),
+                        ),
+                        icon: const Icon(Icons.build_circle_outlined, size: 14),
+                        label: Text(
+                          l10n.reinstallExtension,
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                        ),
+                        onPressed: state.virtualCamera.pending
+                            ? null
+                            : () => controller.reinstallVirtualCamera(),
+                      ),
+                      const SizedBox(width: 6),
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                          backgroundColor: Colors.white.withValues(alpha: 0.08),
+                          foregroundColor: Colors.white70,
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                            side: const BorderSide(color: Colors.white24, width: 0.8),
+                          ),
+                        ),
+                        icon: const Icon(Icons.open_in_new, size: 13),
+                        label: Text(
+                          l10n.openSystemSettings,
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                        onPressed: () => controller.openCameraExtensionSettings(),
+                      ),
+                      const SizedBox(width: 4),
+                    ],
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 16, color: Colors.white54),
+                      tooltip: l10n.none,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                      onPressed: () => controller.dismissVirtualCameraMessage(),
+                    ),
+                  ],
+                ),
               ),
 
             // Live Camera Viewport
