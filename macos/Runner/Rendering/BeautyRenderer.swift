@@ -1,7 +1,9 @@
+import CoreGraphics
 import CoreImage
 import CoreImage.CIFilterBuiltins
 import CoreVideo
 import Foundation
+import ImageIO
 import Metal
 import Vision
 
@@ -4617,8 +4619,12 @@ public final class BeautyRenderer {
         return image
     }
 
-    // MARK: - Aesthetic Filters
+    // MARK: - Aesthetic Filters (Powered by 3D LUT Color Engine)
     private func applyFilter(image: CIImage, baseImage: CIImage, filterId: String, intensity: Double) -> CIImage {
+        return LUTColorEngine.shared.applyLUT(to: image, filterId: filterId, intensity: intensity)
+    }
+
+    private func legacyBasicFilter(image: CIImage, baseImage: CIImage, filterId: String, intensity: Double) -> CIImage {
         var filtered = image
 
         switch filterId {

@@ -6,6 +6,7 @@ class FilterPreset {
   final String category;
   final List<Color> gradient;
   final double defaultIntensity;
+  final bool isLut;
 
   const FilterPreset({
     required this.id,
@@ -13,7 +14,11 @@ class FilterPreset {
     required this.category,
     required this.gradient,
     this.defaultIntensity = 80,
+    this.isLut = true,
   });
+
+  String get lutCubePath => id == 'original' ? '' : 'assets/luts/$id.cube';
+  String get lutPngPath => id == 'original' ? '' : 'assets/luts/$id.png';
 }
 
 class FilterCatalog {
@@ -25,6 +30,7 @@ class FilterCatalog {
       category: 'Natural',
       gradient: [Color(0xFF555555), Color(0xFF777777)],
       defaultIntensity: 0,
+      isLut: false,
     ),
     FilterPreset(
       id: 'clear',

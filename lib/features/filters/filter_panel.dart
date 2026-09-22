@@ -104,11 +104,48 @@ class _FilterPanelState extends ConsumerState<FilterPanel> {
               // Slider or placeholder
               Expanded(
                 child: activeId != 'original'
-                    ? BeautySlider(
-                        label: l10n.filterIntensity(getFilterDisplayName(activeItem)),
-                        value: intensity,
-                        defaultValue: 80,
-                        onChanged: (v) => controller.updateFilter(activeId, v),
+                    ? Row(
+                        children: [
+                          Expanded(
+                            child: BeautySlider(
+                              label: l10n.filterIntensity(getFilterDisplayName(activeItem)),
+                              value: intensity,
+                              defaultValue: 80,
+                              onChanged: (v) => controller.updateFilter(activeId, v),
+                            ),
+                          ),
+                          if (activeItem.isLut) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                              margin: const EdgeInsets.only(right: 12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF6366F1).withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: const Color(0xFF818CF8).withValues(alpha: 0.5),
+                                  width: 0.8,
+                                ),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.palette_outlined, size: 11, color: Color(0xFFA5B4FC)),
+                                  SizedBox(width: 3),
+                                  Text(
+                                    '3D LUT',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFFA5B4FC),
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
                       )
                     : Center(
                         child: Text(
