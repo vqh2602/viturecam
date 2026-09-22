@@ -2123,6 +2123,27 @@ public final class BeautyRenderer {
                             }
                         }
 
+                        // For "liner" (viền môi):
+                        // Outer vermilion contour needs rich, defined pigment depth so the sculpted outline pops.
+                        if lipStyle == "liner",
+                           let multiply = CIFilter(name: "CIMultiplyBlendMode") {
+                            let deepR = max(0.0, lipR * 0.85)
+                            let deepG = max(0.0, lipG * 0.55)
+                            let deepB = max(0.0, lipB * 0.55)
+                            let deepColor = CIImage(color: CIColor(red: deepR, green: deepG, blue: deepB, alpha: 1.0)).cropped(to: extent)
+                            multiply.setValue(deepColor, forKey: kCIInputImageKey)
+                            multiply.setValue(result, forKey: kCIInputBackgroundImageKey)
+                            if let multLips = multiply.outputImage {
+                                if let stainBlend = CIFilter(name: "CISoftLightBlendMode") {
+                                    stainBlend.setValue(multLips, forKey: kCIInputImageKey)
+                                    stainBlend.setValue(softLightLips, forKey: kCIInputBackgroundImageKey)
+                                    if let rich = stainBlend.outputImage {
+                                        tintedLips = rich
+                                    }
+                                }
+                            }
+                        }
+
                         var effMask = lipMask
                         let opacity = CGFloat(min(1.0, makeup.lipOpacity * 0.90))
                         if let matrix = CIFilter(name: "CIColorMatrix") {
@@ -2525,6 +2546,57 @@ public final class BeautyRenderer {
             let black = CIImage(color: .black).cropped(to: extent)
             let coverage = pixels.composited(over: black).cropped(to: extent)
             if style == "full" || style == "gloss" { return coverage }
+
+            if style == "liner" {
+                // Focus viền môi (Lip Liner): extract exact vermilion border contour from pixel segmentation
+                let box = landmarks.boundingBox
+                let faceW = max(50.0, box.width * extent.width)
+                let linerRadius = max(2.0, min(5.5, faceW * 0.015))
+
+                let eroded = coverage.applyingFilter("CIMorphologyMinimum", parameters: [kCIInputRadiusKey: linerRadius])
+
+                var rim = coverage
+                if let diff = CIFilter(name: "CIDifferenceBlendMode") {
+                    diff.setValue(coverage, forKey: kCIInputImageKey)
+                    diff.setValue(eroded, forKey: kCIInputBackgroundImageKey)
+                    if let out = diff.outputImage { rim = out }
+                }
+
+                let featheredRim: CIImage
+                if let blur = CIFilter(name: "CIGaussianBlur") {
+                    blur.setValue(rim, forKey: kCIInputImageKey)
+                    blur.setValue(1.0, forKey: kCIInputRadiusKey)
+                    featheredRim = blur.outputImage?.cropped(to: extent) ?? rim
+                } else {
+                    featheredRim = rim
+                }
+
+                var linerResult = featheredRim
+                if let matrix = CIFilter(name: "CIColorMatrix") {
+                    matrix.setValue(eroded, forKey: kCIInputImageKey)
+                    matrix.setValue(CIVector(x: 0.025, y: 0, z: 0, w: 0), forKey: "inputRVector")
+                    matrix.setValue(CIVector(x: 0, y: 0.025, z: 0, w: 0), forKey: "inputGVector")
+                    matrix.setValue(CIVector(x: 0, y: 0, z: 0.025, w: 0), forKey: "inputBVector")
+                    matrix.setValue(CIVector(x: 0, y: 0, z: 0, w: 1.0), forKey: "inputAVector")
+                    if let innerSheer = matrix.outputImage {
+                        if let add = CIFilter(name: "CIAdditionCompositing") {
+                            add.setValue(featheredRim, forKey: kCIInputImageKey)
+                            add.setValue(innerSheer, forKey: kCIInputBackgroundImageKey)
+                            if let combined = add.outputImage { linerResult = combined }
+                        }
+                    }
+                }
+
+                if let mul = CIFilter(name: "CIMultiplyCompositing") {
+                    mul.setValue(linerResult, forKey: kCIInputImageKey)
+                    mul.setValue(coverage, forKey: kCIInputBackgroundImageKey)
+                    if let out = mul.outputImage?.cropped(to: extent) {
+                        return out
+                    }
+                }
+                return linerResult.cropped(to: extent)
+            }
+
             // Style intensity remains independent from detected coverage. Every style
             // (including gloss highlights) is clipped by the same current-frame pixels.
             var geometric = landmarks
@@ -2775,7 +2847,8 @@ public final class BeautyRenderer {
             gradContext.addPath(lowerRibbon)
             gradContext.clip()
 
-            gradContext.setFillColor(gray: 0.02, alpha: 1.0)
+            // Subtle sheer base wash on outer lips (18%) so it fades smoothly without harsh cutoffs
+            gradContext.setFillColor(gray: 0.18, alpha: 1.0)
             gradContext.fill(bounds)
 
             let contactPath = CGMutablePath()
@@ -2791,12 +2864,12 @@ public final class BeautyRenderer {
             gradContext.setLineJoin(.round)
             gradContext.setLineCap(.round)
 
-            gradContext.setStrokeColor(gray: 0.40, alpha: 1.0)
+            gradContext.setStrokeColor(gray: 0.45, alpha: 1.0)
             gradContext.setLineWidth(max(6.0, lipHeight * 0.85))
             gradContext.addPath(contactPath)
             gradContext.strokePath()
 
-            gradContext.setStrokeColor(gray: 0.70, alpha: 1.0)
+            gradContext.setStrokeColor(gray: 0.75, alpha: 1.0)
             gradContext.setLineWidth(max(4.0, lipHeight * 0.55))
             gradContext.addPath(contactPath)
             gradContext.strokePath()
@@ -2811,16 +2884,16 @@ public final class BeautyRenderer {
             gradContext.addPath(contactPath)
             gradContext.strokePath()
 
-            // Central pout blossom
+            // Central pout blossom concentrated in the middle 50% of the lips
             let midX = (minX + maxX) * 0.5
             let midY = (minY + maxY) * 0.5
             let poutRect = CGRect(
                 x: midX - lipWidth * 0.25,
-                y: midY - lipHeight * 0.30,
+                y: midY - lipHeight * 0.35,
                 width: lipWidth * 0.50,
-                height: lipHeight * 0.60
+                height: lipHeight * 0.70
             )
-            gradContext.setFillColor(gray: 0.98, alpha: 1.0)
+            gradContext.setFillColor(gray: 1.0, alpha: 1.0)
             gradContext.fillEllipse(in: poutRect)
 
             guard let gradBitmap = gradContext.makeImage() else { return nil }
@@ -2840,7 +2913,7 @@ public final class BeautyRenderer {
             }
             return blurred.cropped(to: extent)
         } else if style == "liner" {
-            // Viền môi (Lip Liner)
+            // Viền môi (Lip Liner) Geometric Fallback
             guard let context = CGContext(
                 data: nil, width: w, height: h,
                 bitsPerComponent: 8, bytesPerRow: w,
@@ -2848,10 +2921,14 @@ public final class BeautyRenderer {
             ) else { return nil }
             context.translateBy(x: -bounds.minX, y: -bounds.minY)
 
+            // Clip strictly inside the lips so the liner stroke never bleeds outward onto facial skin
             context.addPath(upperRibbon)
             context.addPath(lowerRibbon)
-            context.setFillColor(gray: 0.45, alpha: 1)
-            context.fillPath()
+            context.clip()
+
+            // Soft sheer wash on the lip interior (10%)
+            context.setFillColor(gray: 0.10, alpha: 1.0)
+            context.fill(bounds)
 
             let outerPath = CGMutablePath()
             if let first = upperOuter.first {
@@ -2862,8 +2939,9 @@ public final class BeautyRenderer {
                 outerPath.move(to: first)
                 addSmoothCurves(to: outerPath, points: lowerOuter)
             }
-            context.setStrokeColor(gray: 1.0, alpha: 1)
-            context.setLineWidth(max(2.5, lipWidth * 0.035))
+            context.setStrokeColor(gray: 1.0, alpha: 1.0)
+            let linerStrokeW = max(3.5, lipHeight * 0.40)
+            context.setLineWidth(linerStrokeW)
             context.setLineJoin(.round)
             context.setLineCap(.round)
             context.addPath(outerPath)
