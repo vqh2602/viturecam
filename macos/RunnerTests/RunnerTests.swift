@@ -752,5 +752,37 @@ final class RunnerTests: XCTestCase {
         // Because 10 frames were sent in a burst, intermediate frames must have been discarded
         XCTAssertGreaterThan(dropped, 0, "Intermediate frames should be dropped when camera captures faster than worker")
     }
+
+    func testBlushDoesNotProduceRectangularArtifacts() throws {
+        let renderer = BeautyRenderer()
+        let source = try buffer()
+        let solidSkin = CIImage(color: CIColor(red: 0.8, green: 0.7, blue: 0.6, alpha: 1)).cropped(to: extent)
+        context.render(solidSkin, to: source, bounds: extent, colorSpace: nil)
+
+        let m = mesh()
+        let base = try render(renderer, source: source, makeup: MakeupSettings(), landmarks: m)
+        let blush = try render(renderer, source: source,
+                               makeup: MakeupSettings(from: ["blushPreset": "rosy", "blushOpacity": 0.8, "blushStyle": "sunkissed"]),
+                               landmarks: m)
+
+        // 1. Cheek should be flushed (red channel higher or shifted)
+        let cheekBase = pixel(base, x: Int(m.leftCheekCenter.x * 256), y: Int((1.0 - m.leftCheekCenter.y) * 256))
+        let cheekBlush = pixel(blush, x: Int(m.leftCheekCenter.x * 256), y: Int((1.0 - m.leftCheekCenter.y) * 256))
+        let diffCheek = abs(Int(cheekBlush[0]) - Int(cheekBase[0])) + abs(Int(cheekBlush[1]) - Int(cheekBase[1]))
+        XCTAssertGreaterThan(diffCheek, 10, "Blush must flush the cheek center")
+
+        // 2. Far corners (background, forehead top, chin bottom) must NOT be tinted
+        let bgBase = pixel(base, x: 5, y: 5)
+        let bgBlush = pixel(blush, x: 5, y: 5)
+        XCTAssertEqual(bgBase, bgBlush, "Blush must not affect background or distant pixels")
+
+        let foreheadBase = pixel(base, x: 128, y: 240)
+        let foreheadBlush = pixel(blush, x: 128, y: 240)
+        XCTAssertEqual(foreheadBase, foreheadBlush, "Blush must not bleed onto forehead")
+
+        let chinBase = pixel(base, x: 128, y: 20)
+        let chinBlush = pixel(blush, x: 128, y: 20)
+        XCTAssertEqual(chinBase, chinBlush, "Blush must not bleed onto chin")
+    }
 }
 

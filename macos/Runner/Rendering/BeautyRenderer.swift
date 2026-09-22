@@ -103,6 +103,26 @@ public final class BeautyRenderer {
         }
         """)
 
+    private let blushOvalKernel = CIColorKernel(source: """
+        kernel vec4 blushOval(vec2 center, vec2 radii, float angle, float coreRatio) {
+            vec2 p = destCoord() - center;
+            if (abs(angle) > 0.001) {
+                float c = cos(-angle);
+                float s = sin(-angle);
+                p = vec2(p.x * c - p.y * s, p.x * s + p.y * c);
+            }
+            vec2 norm = p / max(radii, vec2(1.0, 1.0));
+            float dist = length(norm);
+            if (dist >= 1.0) {
+                return vec4(0.0);
+            }
+            // Smooth cosine falloff from core to outer edge
+            float t = clamp((dist - coreRatio) / max(0.001, 1.0 - coreRatio), 0.0, 1.0);
+            float a = 0.5 + 0.5 * cos(t * 3.1415926535);
+            return vec4(a, a, a, a);
+        }
+        """)
+
     public init() {
         guard let device = MTLCreateSystemDefaultDevice() else {
             fatalError("Metal is not supported on this Mac")
@@ -2249,7 +2269,7 @@ public final class BeautyRenderer {
                     matrix.setValue(CIVector(x: opacity, y: 0, z: 0, w: 0), forKey: "inputRVector")
                     matrix.setValue(CIVector(x: 0, y: opacity, z: 0, w: 0), forKey: "inputGVector")
                     matrix.setValue(CIVector(x: 0, y: 0, z: opacity, w: 0), forKey: "inputBVector")
-                    matrix.setValue(CIVector(x: 0, y: opacity, z: 0, w: 0), forKey: "inputAVector")
+                    matrix.setValue(CIVector(x: 0, y: 0, z: 0, w: opacity), forKey: "inputAVector")
                     if let out = matrix.outputImage { effMask = out }
                 }
 
@@ -4210,23 +4230,29 @@ public final class BeautyRenderer {
         angle: CGFloat = 0.0,
         extent: CGRect
     ) -> CIImage? {
-        guard let grad = CIFilter(name: "CIRadialGradient") else { return nil }
-        let white = CIColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0)
-        let clear = CIColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 0.0)
-        grad.setValue(CIVector(x: 0, y: 0), forKey: "inputCenter")
-        grad.setValue(0.12, forKey: "inputRadius0") // Lõi tròn 12% giữ màu má đậm đà, không bị mờ nhạt
-        grad.setValue(1.0, forKey: "inputRadius1")
-        grad.setValue(white, forKey: "inputColor0")
-        grad.setValue(clear, forKey: "inputColor1")
+        guard let kernel = blushOvalKernel else { return nil }
+        return kernel.apply(
+            extent: extent,
+            arguments: [
+                CIVector(cgPoint: center),
+                CIVector(x: max(1.0, rx), y: max(1.0, ry)),
+                Float(angle),
+                Float(0.12)
+            ]
+        )
+    }
 
-        guard let base = grad.outputImage else { return nil }
-        var transform = CGAffineTransform.identity
-        transform = transform.translatedBy(x: center.x, y: center.y)
-        if abs(angle) > 0.001 {
-            transform = transform.rotated(by: angle)
+    private func combineBlushMasks(_ masks: [CIImage?]) -> CIImage? {
+        let valid = masks.compactMap { $0 }
+        guard let first = valid.first else { return nil }
+        return valid.dropFirst().reduce(first) { acc, next in
+            if let filter = CIFilter(name: "CILightenBlendMode") {
+                filter.setValue(next, forKey: kCIInputImageKey)
+                filter.setValue(acc, forKey: kCIInputBackgroundImageKey)
+                return filter.outputImage ?? acc
+            }
+            return acc
         }
-        transform = transform.scaledBy(x: rx, y: ry)
-        return base.transformed(by: transform).cropped(to: extent)
     }
 
     private func createStyledBlushMask(
@@ -4241,15 +4267,15 @@ public final class BeautyRenderer {
             return CGPoint(x: p.x * extent.width, y: (1.0 - p.y) * extent.height)
         }
 
-        let rightApple = ciPt(landmarks.rightCheekApple) // landmark 50 (camera left)
-        let leftApple = ciPt(landmarks.leftCheekApple)   // landmark 280 (camera right)
-        let noseBridge = ciPt(landmarks.noseBridge)      // landmark 168 (midline)
-        let rightTemple = ciPt(landmarks.rightTemple)
-        let leftTemple = ciPt(landmarks.leftTemple)
+        let rightApple = ciPt(landmarks.rightCheekApple != .zero ? landmarks.rightCheekApple : landmarks.rightCheekCenter)
+        let leftApple = ciPt(landmarks.leftCheekApple != .zero ? landmarks.leftCheekApple : landmarks.leftCheekCenter)
+        let noseBridge = ciPt(landmarks.noseBridge != .zero ? landmarks.noseBridge : landmarks.noseTip)
+        let rightTemple = ciPt(landmarks.rightTemple != .zero ? landmarks.rightTemple : landmarks.rightCheekCenter)
+        let leftTemple = ciPt(landmarks.leftTemple != .zero ? landmarks.leftTemple : landmarks.leftCheekCenter)
         let rightEye = ciPt(landmarks.rightEyeCenter)
         let leftEye = ciPt(landmarks.leftEyeCenter)
-        let rightJaw = ciPt(landmarks.rightMidJaw)
-        let leftJaw = ciPt(landmarks.leftMidJaw)
+        let rightJaw = ciPt(landmarks.rightMidJaw != .zero ? landmarks.rightMidJaw : landmarks.chinTip)
+        let leftJaw = ciPt(landmarks.leftMidJaw != .zero ? landmarks.leftMidJaw : landmarks.chinTip)
 
         var combinedMask: CIImage?
 
@@ -4259,11 +4285,7 @@ public final class BeautyRenderer {
             let lCheek = makeBlushOvalMask(center: leftApple, rx: faceW * 0.22, ry: faceW * 0.13, extent: extent)
             let rCheek = makeBlushOvalMask(center: rightApple, rx: faceW * 0.22, ry: faceW * 0.13, extent: extent)
             let bridge = makeBlushOvalMask(center: noseBridge, rx: faceW * 0.16, ry: faceW * 0.09, extent: extent)
-
-            var res = lCheek
-            if let r = rCheek { res = res?.composited(over: r) ?? r }
-            if let b = bridge { res = res?.composited(over: b) ?? b }
-            combinedMask = res
+            combinedMask = combineBlushMasks([lCheek, rCheek, bridge])
 
         case "lifted":
             // Kéo thái dương / Nâng cơ: extends diagonally towards temples
@@ -4274,9 +4296,7 @@ public final class BeautyRenderer {
             let lCenter = CGPoint(x: leftApple.x * 0.60 + leftTemple.x * 0.40, y: leftApple.y * 0.60 + leftTemple.y * 0.40)
             let lAngle = atan2(leftTemple.y - leftApple.y, leftTemple.x - leftApple.x)
             let lGrad = makeBlushOvalMask(center: lCenter, rx: faceW * 0.24, ry: faceW * 0.11, angle: lAngle, extent: extent)
-
-            if let l = lGrad, let r = rGrad { combinedMask = l.composited(over: r) }
-            else { combinedMask = lGrad ?? rGrad }
+            combinedMask = combineBlushMasks([lGrad, rGrad])
 
         case "undereye":
             // Dưới mắt / Douyin: directly beneath lower eyelids
@@ -4285,9 +4305,7 @@ public final class BeautyRenderer {
 
             let lCenter = CGPoint(x: leftEye.x * 0.65 + leftApple.x * 0.35, y: leftEye.y * 0.65 + leftApple.y * 0.35)
             let lGrad = makeBlushOvalMask(center: lCenter, rx: faceW * 0.18, ry: faceW * 0.11, extent: extent)
-
-            if let l = lGrad, let r = rGrad { combinedMask = l.composited(over: r) }
-            else { combinedMask = lGrad ?? rGrad }
+            combinedMask = combineBlushMasks([lGrad, rGrad])
 
         case "contour":
             // Tạo khối hõm má: angled from cheek hollow down towards jaw
@@ -4298,9 +4316,7 @@ public final class BeautyRenderer {
             let lCenter = CGPoint(x: leftApple.x * 0.55 + leftJaw.x * 0.45, y: leftApple.y * 0.55 + leftJaw.y * 0.45)
             let lAngle = atan2(leftJaw.y - leftApple.y, leftJaw.x - leftApple.x)
             let lGrad = makeBlushOvalMask(center: lCenter, rx: faceW * 0.21, ry: faceW * 0.11, angle: lAngle, extent: extent)
-
-            if let l = lGrad, let r = rGrad { combinedMask = l.composited(over: r) }
-            else { combinedMask = lGrad ?? rGrad }
+            combinedMask = combineBlushMasks([lGrad, rGrad])
 
         case "apple":
             fallthrough
@@ -4308,8 +4324,23 @@ public final class BeautyRenderer {
             // Gò má tròn: classic round apples
             let rGrad = makeBlushOvalMask(center: rightApple, rx: faceW * 0.19, ry: faceW * 0.18, extent: extent)
             let lGrad = makeBlushOvalMask(center: leftApple, rx: faceW * 0.19, ry: faceW * 0.18, extent: extent)
-            if let l = lGrad, let r = rGrad { combinedMask = l.composited(over: r) }
-            else { combinedMask = lGrad ?? rGrad }
+            combinedMask = combineBlushMasks([lGrad, rGrad])
+        }
+
+        // Eyeball protection: protect eyes from blush tint
+        if let eyeMask = createEyeballMask(landmarks: landmarks, extent: extent),
+           let mask = combinedMask {
+            if let invert = CIFilter(name: "CIColorInvert") {
+                invert.setValue(eyeMask, forKey: kCIInputImageKey)
+                if let invEye = invert.outputImage?.cropped(to: extent),
+                   let mult = CIFilter(name: "CIMultiplyCompositing") {
+                    mult.setValue(invEye, forKey: kCIInputImageKey)
+                    mult.setValue(mask, forKey: kCIInputBackgroundImageKey)
+                    if let protected = mult.outputImage?.cropped(to: extent) {
+                        combinedMask = protected
+                    }
+                }
+            }
         }
 
         // Soft feathering blur for seamless edge gradient on skin
@@ -4336,30 +4367,31 @@ public final class BeautyRenderer {
         colorG: CGFloat = 0.35,
         colorB: CGFloat = 0.45
     ) -> CIImage? {
-        guard let lGrad = CIFilter(name: "CIRadialGradient"), let rGrad = CIFilter(name: "CIRadialGradient") else { return nil }
-        let blushColor = CIColor(red: colorR, green: colorG, blue: colorB, alpha: CGFloat(intensity))
-        let clearColor = CIColor(red: colorR, green: colorG, blue: colorB, alpha: 0.0)
+        guard let lMask = makeBlushOvalMask(center: leftCheek, rx: radius, ry: radius, extent: extent),
+              let rMask = makeBlushOvalMask(center: rightCheek, rx: radius, ry: radius, extent: extent) else { return nil }
+        guard let combined = combineBlushMasks([lMask, rMask]) else { return nil }
 
-        lGrad.setValue(CIVector(cgPoint: leftCheek), forKey: "inputCenter")
-        lGrad.setValue(0.0, forKey: "inputRadius0")
-        lGrad.setValue(radius, forKey: "inputRadius1")
-        lGrad.setValue(blushColor, forKey: "inputColor0")
-        lGrad.setValue(clearColor, forKey: "inputColor1")
-        guard let lImg = lGrad.outputImage?.cropped(to: extent) else { return nil }
+        let blushColor = CIColor(red: colorR, green: colorG, blue: colorB, alpha: 1.0)
+        let colorImg = CIImage(color: blushColor).cropped(to: extent)
+        let op = CGFloat(intensity)
 
-        rGrad.setValue(CIVector(cgPoint: rightCheek), forKey: "inputCenter")
-        rGrad.setValue(0.0, forKey: "inputRadius0")
-        rGrad.setValue(radius, forKey: "inputRadius1")
-        rGrad.setValue(blushColor, forKey: "inputColor0")
-        rGrad.setValue(clearColor, forKey: "inputColor1")
-        guard let rImg = rGrad.outputImage?.cropped(to: extent) else { return nil }
-
-        if let add = CIFilter(name: "CISourceOverCompositing") {
-            add.setValue(rImg, forKey: kCIInputImageKey)
-            add.setValue(lImg, forKey: kCIInputBackgroundImageKey)
-            return add.outputImage?.cropped(to: extent)
+        var effMask = combined
+        if let matrix = CIFilter(name: "CIColorMatrix") {
+            matrix.setValue(combined, forKey: kCIInputImageKey)
+            matrix.setValue(CIVector(x: op, y: 0, z: 0, w: 0), forKey: "inputRVector")
+            matrix.setValue(CIVector(x: 0, y: op, z: 0, w: 0), forKey: "inputGVector")
+            matrix.setValue(CIVector(x: 0, y: 0, z: op, w: 0), forKey: "inputBVector")
+            matrix.setValue(CIVector(x: 0, y: 0, z: 0, w: op), forKey: "inputAVector")
+            if let out = matrix.outputImage { effMask = out }
         }
-        return lImg
+
+        if let blend = CIFilter(name: "CIBlendWithMask") {
+            blend.setValue(colorImg, forKey: kCIInputImageKey)
+            blend.setValue(CIImage.empty(), forKey: kCIInputBackgroundImageKey)
+            blend.setValue(effMask, forKey: kCIInputMaskImageKey)
+            return blend.outputImage?.cropped(to: extent)
+        }
+        return nil
     }
 
     private func createUnderEyeMask(
