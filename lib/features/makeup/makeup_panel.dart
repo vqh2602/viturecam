@@ -103,6 +103,32 @@ class MakeupPanel extends ConsumerWidget {
     }
   }
 
+  static IconData getSparkleIcon(String id) {
+    switch (id) {
+      case 'natural':
+        return Icons.wb_sunny_outlined;
+      case 'ring':
+        return Icons.panorama_fish_eye;
+      case 'crystal':
+        return Icons.diamond_outlined;
+      case 'heart':
+        return Icons.favorite_border;
+      case 'crescent':
+        return Icons.nightlight_round;
+      case 'starburst':
+        return Icons.flare;
+      case 'galaxy':
+        return Icons.grain;
+      case 'pearl':
+        return Icons.blur_circular;
+      case 'butterfly':
+        return Icons.filter_vintage_outlined;
+      case 'starlight':
+      default:
+        return Icons.star_border;
+    }
+  }
+
   static String getOptionName(AppLocalizations l10n, MakeupOption opt) {
     if (opt.id == 'none') return l10n.none;
     if (l10n.localeName.startsWith('en')) {
@@ -264,6 +290,7 @@ class MakeupPanel extends ConsumerWidget {
         onSelectPreset = (id) => controller.updateMakeup(m.copyWith(
           sparklePreset: id,
           sparkleStyle: id == 'none' ? m.sparkleStyle : id,
+          sparkleOpacity: (id != 'none' && m.sparkleOpacity == 0) ? 60 : m.sparkleOpacity,
         ));
         onOpacityChanged = (op) => controller.updateMakeup(m.copyWith(sparkleOpacity: op));
         break;
@@ -448,18 +475,6 @@ class MakeupPanel extends ConsumerWidget {
                   selectedId: m.contactLensStyle,
                   onSelect: (id) => controller.updateMakeup(m.copyWith(contactLensStyle: id)),
                 ),
-              ] else if (subTool == 'sparkle') ...[
-                const VerticalDivider(width: 12, indent: 12, endIndent: 12, color: Colors.white12),
-                _buildStyleSelector(
-                  l10n: l10n,
-                  options: MakeupPresets.sparkleStyles,
-                  selectedId: m.sparkleStyle,
-                  onSelect: (id) => controller.updateMakeup(m.copyWith(
-                    sparkleStyle: id,
-                    sparklePreset: id,
-                    sparkleOpacity: m.sparkleOpacity == 0 ? 60 : m.sparkleOpacity,
-                  )),
-                ),
               ],
 
               const VerticalDivider(width: 12, indent: 12, endIndent: 12, color: Colors.white12),
@@ -487,7 +502,11 @@ class MakeupPanel extends ConsumerWidget {
                               height: 24,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: opt.id == 'none' ? const Color(0xFF26262B) : opt.color,
+                                color: opt.id == 'none'
+                                    ? const Color(0xFF26262B)
+                                    : (subTool == 'sparkle'
+                                        ? (isSel ? const Color(0xFFFF7597) : const Color(0xFF26262B))
+                                        : opt.color),
                                 border: Border.all(
                                   color: isSel ? Colors.white : Colors.white24,
                                   width: isSel ? 2 : 1,
@@ -495,7 +514,10 @@ class MakeupPanel extends ConsumerWidget {
                                 boxShadow: isSel
                                     ? [
                                         BoxShadow(
-                                          color: (opt.id == 'none' ? Colors.white : opt.color).withValues(alpha: 0.5),
+                                          color: (opt.id == 'none'
+                                                  ? Colors.white
+                                                  : (subTool == 'sparkle' ? const Color(0xFFFF7597) : opt.color))
+                                              .withValues(alpha: 0.5),
                                           blurRadius: 6,
                                         )
                                       ]
@@ -510,10 +532,16 @@ class MakeupPanel extends ConsumerWidget {
                                             width: 24,
                                             height: 24,
                                             fit: BoxFit.cover,
-                                            errorBuilder: (_, __, ___) => const SizedBox(),
+                                            errorBuilder: (context, error, stackTrace) => const SizedBox(),
                                           ),
                                         )
-                                      : null),
+                                      : (subTool == 'sparkle'
+                                          ? Icon(
+                                              getSparkleIcon(opt.id),
+                                              size: 13,
+                                              color: isSel ? Colors.white : Colors.white70,
+                                            )
+                                          : null)),
                             ),
                             const SizedBox(height: 2),
                             Text(
