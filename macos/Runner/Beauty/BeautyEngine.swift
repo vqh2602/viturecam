@@ -39,12 +39,18 @@ public final class BeautyEngine: NSObject, CameraEngineDelegate {
     private var latestFrame: CapturedFrame?
     private var isWorkerRunning: Bool = false
 
-    // Lip Segmentation background async worker (8-10 FPS rate-limited, decoupled from camera render loop)
-    private let lipQueue = DispatchQueue(label: "viturecam.lip", qos: .userInitiated)
+    // Lip Inference package: stores the segmentation mask along with face anchor geometry at inference time
+    private struct LipInferenceResult {
+        let mask: CIImage
+        let sourceLandmarks: FaceMeshLandmarks
+        let timestamp: CFTimeInterval
+    }
+
+    // Lip Segmentation background async worker (15-20 FPS, decoupled from camera render loop)
+    private let lipQueue = DispatchQueue(label: "viturecam.lip.inference", qos: .userInitiated)
     private let lipLock = NSLock()
-    private var isLipProcessing: Bool = false
-    private var lastLipTime: CFTimeInterval = 0
-    private var latestLipMask: CIImage?
+    private var lipInferenceRunning: Bool = false
+    private var latestLipResult: LipInferenceResult?
 
     // Performance tracking
     private var frameCount: Int = 0
@@ -121,7 +127,8 @@ public final class BeautyEngine: NSObject, CameraEngineDelegate {
                 self.faceTracker.reset()
                 self.skinSegmenter.reset()
                 self.lipLock.lock()
-                self.latestLipMask = nil
+                self.latestLipResult = nil
+                self.lipInferenceRunning = false
                 self.lipSegmenter.reset()
                 self.lipLock.unlock()
                 completion?()
@@ -235,46 +242,30 @@ public final class BeautyEngine: NSObject, CameraEngineDelegate {
         } else {
             landmarks = faceTracker.processFrame(pixelBuffer: sourcePixelBuffer, timestamp: validTimestamp)
         }
-        // Semantic lip segmentation (decoupled async background inference):
-        // Camera and rendering run at full 24 FPS reusing latestLipMask without blocking.
-        // LipSegmenter runs on background queue (viturecam.lip) rate-limited to ~8–10 FPS.
+        // Semantic lip segmentation (decoupled async background inference + 24 FPS FaceMesh warp):
+        // Camera and rendering run at full 24 FPS without blocking.
+        // LipSegmenter runs on dedicated background queue (viturecam.lip.inference) at 15–20 FPS.
+        // On intermediate frames, the latest AI mask is warped according to current 24 FPS FaceMesh landmarks.
         if hasLipMakeup && landmarks.hasFace {
             lipLock.lock()
-            landmarks.lipPixelMask = latestLipMask
+            let cachedResult = latestLipResult
+            lipLock.unlock()
 
-            let now = CACurrentMediaTime()
-            if !isLipProcessing && (now - lastLipTime >= 0.1) {
-                lastLipTime = now
-                isLipProcessing = true
-                lipLock.unlock()
-
-                let buffer = sourcePixelBuffer
-                let lipLandmarks = landmarks
-
-                lipQueue.async { [weak self] in
-                    guard let self = self else { return }
-
-                    let mask = self.lipSegmenter.processFrame(
-                        pixelBuffer: buffer,
-                        landmarks: lipLandmarks
-                    )
-
-                    self.lipLock.lock()
-                    let stillEnabled = self.beautyEnabled && (self.makeupSettings.lipPreset != "none" && self.makeupSettings.lipOpacity > 0.01)
-                    if stillEnabled {
-                        self.latestLipMask = mask
-                    } else {
-                        self.latestLipMask = nil
-                    }
-                    self.isLipProcessing = false
-                    self.lipLock.unlock()
-                }
+            if let cached = cachedResult {
+                landmarks.lipPixelMask = warpLipMask(
+                    result: cached,
+                    current: landmarks,
+                    frameWidth: CGFloat(width),
+                    frameHeight: CGFloat(height)
+                )
             } else {
-                lipLock.unlock()
+                landmarks.lipPixelMask = nil
             }
+
+            submitLipInferenceIfNeeded(pixelBuffer: sourcePixelBuffer, landmarks: landmarks)
         } else {
             lipLock.lock()
-            latestLipMask = nil
+            latestLipResult = nil
             lipLock.unlock()
         }
         lastTrackingTimeMs = (CACurrentMediaTime() - processingStart) * 1000
@@ -334,5 +325,129 @@ public final class BeautyEngine: NSObject, CameraEngineDelegate {
             frameCount = 0
             lastFpsUpdateTime = now
         }
+    }
+
+    // MARK: - Lip Inference & 24 FPS FaceMesh Warp Engine
+
+    private func submitLipInferenceIfNeeded(
+        pixelBuffer: CVPixelBuffer,
+        landmarks: FaceMeshLandmarks
+    ) {
+        lipLock.lock()
+        guard !lipInferenceRunning else {
+            lipLock.unlock()
+            return
+        }
+        lipInferenceRunning = true
+        lipLock.unlock()
+
+        let capturedLandmarks = landmarks
+        let buffer = pixelBuffer
+
+        lipQueue.async { [weak self] in
+            guard let self = self else { return }
+
+            autoreleasepool {
+                let mask = self.lipSegmenter.processFrame(
+                    pixelBuffer: buffer,
+                    landmarks: capturedLandmarks
+                )
+
+                let now = CACurrentMediaTime()
+                self.lipLock.lock()
+                let stillEnabled = self.beautyEnabled &&
+                    (self.makeupSettings.lipPreset != "none" && self.makeupSettings.lipOpacity > 0.01)
+
+                if stillEnabled, let mask = mask {
+                    self.latestLipResult = LipInferenceResult(
+                        mask: mask,
+                        sourceLandmarks: capturedLandmarks,
+                        timestamp: now
+                    )
+                } else if !stillEnabled {
+                    self.latestLipResult = nil
+                }
+                self.lipInferenceRunning = false
+                self.lipLock.unlock()
+            }
+        }
+    }
+
+    private func warpLipMask(
+        result: LipInferenceResult,
+        current: FaceMeshLandmarks,
+        frameWidth: CGFloat,
+        frameHeight: CGFloat
+    ) -> CIImage? {
+        guard current.hasFace, result.sourceLandmarks.hasFace else {
+            return nil
+        }
+
+        // Mask expires after 0.8s to avoid ghosting if face is occluded or lost
+        if CACurrentMediaTime() - result.timestamp > 0.8 {
+            return nil
+        }
+
+        func ciPoint(_ p: CGPoint) -> CGPoint {
+            return CGPoint(x: p.x * frameWidth, y: (1.0 - p.y) * frameHeight)
+        }
+
+        let srcCenter = ciPoint(result.sourceLandmarks.mouthCenter)
+        let dstCenter = ciPoint(current.mouthCenter)
+
+        let srcLeft = ciPoint(result.sourceLandmarks.leftMouthCorner)
+        let srcRight = ciPoint(result.sourceLandmarks.rightMouthCorner)
+        let srcVec = CGPoint(x: srcRight.x - srcLeft.x, y: srcRight.y - srcLeft.y)
+        let srcDist = hypot(srcVec.x, srcVec.y)
+        let srcAngle = atan2(srcVec.y, srcVec.x)
+
+        let dstLeft = ciPoint(current.leftMouthCorner)
+        let dstRight = ciPoint(current.rightMouthCorner)
+        let dstVec = CGPoint(x: dstRight.x - dstLeft.x, y: dstRight.y - dstLeft.y)
+        let dstDist = hypot(dstVec.x, dstVec.y)
+        let dstAngle = atan2(dstVec.y, dstVec.x)
+
+        guard srcDist > 10, dstDist > 10 else {
+            return result.mask
+        }
+
+        // Horizontal scale follows mouth width
+        let rawScaleX = dstDist / srcDist
+        let scaleX = max(0.7, min(1.4, rawScaleX))
+
+        // Vertical scale follows face height (nose bridge to chin tip) to keep lips natural when talking
+        let srcFaceH = hypot(
+            ciPoint(result.sourceLandmarks.chinTip).x - ciPoint(result.sourceLandmarks.noseBridge).x,
+            ciPoint(result.sourceLandmarks.chinTip).y - ciPoint(result.sourceLandmarks.noseBridge).y
+        )
+        let dstFaceH = hypot(
+            ciPoint(current.chinTip).x - ciPoint(current.noseBridge).x,
+            ciPoint(current.chinTip).y - ciPoint(current.noseBridge).y
+        )
+        let scaleY: CGFloat
+        if srcFaceH > 10 && dstFaceH > 10 {
+            let rawScaleY = dstFaceH / srcFaceH
+            scaleY = max(0.7, min(1.4, rawScaleY))
+        } else {
+            scaleY = scaleX
+        }
+
+        // Relative roll angle with wrap-around protection [-pi, pi]
+        var deltaAngle = dstAngle - srcAngle
+        while deltaAngle > .pi { deltaAngle -= 2 * .pi }
+        while deltaAngle < -.pi { deltaAngle += 2 * .pi }
+
+        let deltaDist = hypot(dstCenter.x - srcCenter.x, dstCenter.y - srcCenter.y)
+        if deltaDist < 0.5 && abs(deltaAngle) < 0.005 && abs(scaleX - 1.0) < 0.01 && abs(scaleY - 1.0) < 0.01 {
+            return result.mask
+        }
+
+        var transform = CGAffineTransform(translationX: -srcCenter.x, y: -srcCenter.y)
+        transform = transform.concatenating(CGAffineTransform(rotationAngle: deltaAngle))
+        transform = transform.concatenating(CGAffineTransform(scaleX: scaleX, y: scaleY))
+        transform = transform.concatenating(CGAffineTransform(translationX: dstCenter.x, y: dstCenter.y))
+
+        let extent = CGRect(x: 0, y: 0, width: frameWidth, height: frameHeight)
+        return result.mask.transformed(by: transform).cropped(to: extent)
     }
 }

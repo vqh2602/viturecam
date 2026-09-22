@@ -77,9 +77,21 @@ final class LipSegmenter {
         }
         do {
             let config = MLModelConfiguration()
-            config.computeUnits = .all
+            if #available(macOS 13.0, *) {
+                config.computeUnits = .cpuAndNeuralEngine
+            } else {
+                config.computeUnits = .all
+            }
             let compiled = url.pathExtension == "mlmodelc" ? url : try MLModel.compileModel(at: url)
-            model = try MLModel(contentsOf: compiled, configuration: config)
+            do {
+                model = try MLModel(contentsOf: compiled, configuration: config)
+                NSLog("[LipSegmenter] Loaded LipParsing model successfully")
+            } catch {
+                NSLog("[LipSegmenter] Failed with preferred compute units (%@), falling back to .all", error.localizedDescription)
+                let fallbackConfig = MLModelConfiguration()
+                fallbackConfig.computeUnits = .all
+                model = try MLModel(contentsOf: compiled, configuration: fallbackConfig)
+            }
             CVPixelBufferCreate(kCFAllocatorDefault, 512, 512, kCVPixelFormatType_32BGRA,
                 [kCVPixelBufferIOSurfacePropertiesKey: [:], kCVPixelBufferMetalCompatibilityKey: true] as CFDictionary,
                 &inputBuffer)
@@ -106,11 +118,6 @@ final class LipSegmenter {
             return nil
         }
         let now = CACurrentMediaTime()
-        // Rate-limit heavy 512x512 neural network inference to ~22 FPS (every ~45ms).
-        // Reusing previousMask on intermediate frames eliminates 65% of CoreML latency while maintaining 60 FPS output.
-        if let prev = previousMask, now - lastProcessTime < 0.045 {
-            return prev
-        }
 
         let width = CGFloat(CVPixelBufferGetWidth(pixelBuffer))
         let height = CGFloat(CVPixelBufferGetHeight(pixelBuffer))
@@ -146,7 +153,7 @@ final class LipSegmenter {
             let output = try model.prediction(from: input)
             guard let labels = output.featureValue(for: "argmax_out")?.multiArrayValue,
                   let rawMask = Self.makeMask(labels: labels) else {
-                return recycleOrNil(fullExtent: fullExtent)
+                return nil
             }
 
             // Subtle morphological dilation (~1.2px in 512-px crop space) captures
@@ -162,16 +169,13 @@ final class LipSegmenter {
                 .transformed(by: transform.inverted())
                 .cropped(to: fullExtent)
 
-            // Temporal EMA blend: mix current frame with previous mask.
-            let blended = emaBlend(new: newMask, previous: previousMask, alpha: emaAlpha, extent: fullExtent)
-            previousMask = blended
             lastProcessTime = now
             failStreak = 0
-            return blended
+            return newMask
 
         } catch {
             NSLog("[LipSegmenter] Inference failed: %@", error.localizedDescription)
-            return recycleOrNil(fullExtent: fullExtent)
+            return nil
         }
     }
 
