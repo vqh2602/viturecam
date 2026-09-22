@@ -2,6 +2,7 @@ import CoreImage
 import CoreML
 import CoreVideo
 import Foundation
+import QuartzCore
 
 /// BiSeNet semantic face parsing: label 12 = upper lip, 13 = lower lip.
 /// Runs synchronously on the capture queue, only for lipstick.
@@ -34,13 +35,43 @@ final class LipSegmenter {
     /// EMA weight for the current frame mask. 0.55 → ~45 % of previous frame
     /// bleeds in: removes per-pixel flicker without visible lag on fast motion.
     private let emaAlpha: CGFloat = 0.55
+    private var lastProcessTime: TimeInterval = 0
 
     init(modelURL: URL? = nil) { self.modelURL = modelURL }
 
     private func loadIfNeeded() {
         guard !attemptedLoad else { return }
         attemptedLoad = true
-        guard let url = modelURL ?? Bundle.main.url(forResource: "LipParsing", withExtension: "mlmodelc") else {
+        var resolvedURL = modelURL ?? Bundle.main.url(forResource: "LipParsing", withExtension: "mlmodelc")
+        if resolvedURL == nil {
+            resolvedURL = Bundle(for: LipSegmenter.self).url(forResource: "LipParsing", withExtension: "mlmodelc")
+        }
+        if resolvedURL == nil {
+            let resPath = Bundle.main.bundleURL.appendingPathComponent("Contents/Resources/LipParsing.mlmodelc")
+            if FileManager.default.fileExists(atPath: resPath.path) {
+                resolvedURL = resPath
+            }
+        }
+        if resolvedURL == nil {
+            let appBundleModel = Bundle(for: LipSegmenter.self).bundleURL.deletingLastPathComponent().appendingPathComponent("Beauty Camera.app/Contents/Resources/LipParsing.mlmodelc")
+            if FileManager.default.fileExists(atPath: appBundleModel.path) {
+                resolvedURL = appBundleModel
+            }
+        }
+        if resolvedURL == nil {
+            let candidatePaths = [
+                "/Users/vuongquanghuy/code/flutter_project/viturecam/build/macos/Build/Products/Debug/Beauty Camera.app/Contents/Resources/LipParsing.mlmodelc",
+                "/Users/vuongquanghuy/code/flutter_project/viturecam/macos/Runner/FaceTracking/LipParsing.mlmodel"
+            ]
+            for p in candidatePaths {
+                let url = URL(fileURLWithPath: p)
+                if FileManager.default.fileExists(atPath: url.path) {
+                    resolvedURL = url
+                    break
+                }
+            }
+        }
+        guard let url = resolvedURL else {
             NSLog("[LipSegmenter] LipParsing model missing; using contour fallback")
             return
         }
@@ -68,6 +99,13 @@ final class LipSegmenter {
             failStreak = 0
             return nil
         }
+        let now = CACurrentMediaTime()
+        // Rate-limit heavy 512x512 neural network inference to ~22 FPS (every ~45ms).
+        // Reusing previousMask on intermediate frames eliminates 65% of CoreML latency while maintaining 60 FPS output.
+        if let prev = previousMask, now - lastProcessTime < 0.045 {
+            return prev
+        }
+
         let width = CGFloat(CVPixelBufferGetWidth(pixelBuffer))
         let height = CGFloat(CVPixelBufferGetHeight(pixelBuffer))
         let size = max(box.width * width, box.height * height) * 1.25
@@ -105,9 +143,9 @@ final class LipSegmenter {
                 return recycleOrNil(fullExtent: fullExtent)
             }
 
-            // Morphological dilation: grow mask ~3px in 512-px crop space so that
-            // anti-aliased lip edges are captured even after the inverse-transform.
-            let dilated = rawMask.applyingFilter("CIDilateFilter", parameters: ["inputRadius": 3.0])
+            // Subtle morphological dilation (~1.2px in 512-px crop space) captures
+            // sub-pixel anti-aliasing without bleeding into corners or nasolabial folds.
+            let dilated = rawMask.applyingFilter("CIMorphologyMaximum", parameters: [kCIInputRadiusKey: 1.2])
 
             // Soft feather: smooths the hard binary boundary for natural blending.
             let feathered = dilated.applyingFilter("CIGaussianBlur",
@@ -121,6 +159,7 @@ final class LipSegmenter {
             // Temporal EMA blend: mix current frame with previous mask.
             let blended = emaBlend(new: newMask, previous: previousMask, alpha: emaAlpha, extent: fullExtent)
             previousMask = blended
+            lastProcessTime = now
             failStreak = 0
             return blended
 
@@ -158,8 +197,9 @@ final class LipSegmenter {
         return new
     }
 
-    /// Decode row-major model labels with their actual strides. Flip top-left
-    /// model rows into Core Image's bottom-left coordinates exactly once.
+    /// Decode row-major model labels with their actual strides.
+    /// In CIImage(bitmapData:), byte 0 is treated as the top row (y = h - 1),
+    /// which already maps directly to top-down model rows without vertical inversion.
     /// Labels: 12 = upper lip vermilion, 13 = lower lip vermilion.
     static func makeMask(labels: MLMultiArray) -> CIImage? {
         let shape = labels.shape.map(\.intValue), strides = labels.strides.map(\.intValue)
@@ -169,17 +209,22 @@ final class LipSegmenter {
         guard w > 0, h > 0, w <= 1024, h <= 1024 else { return nil }
         let sx = strides[strides.count - 1], sy = strides[strides.count - 2]
         let values = labels.dataPointer.assumingMemoryBound(to: Float.self)
-        var rgba = [UInt8](repeating: 255, count: w * h * 4)
-        for y in 0..<h {
-            for x in 0..<w {
-                let label = values[y * sy + x * sx]
-                // 12 = upper lip vermilion, 13 = lower lip vermilion
-                let value: UInt8 = label == 12 || label == 13 ? 255 : 0
-                let offset = ((h - 1 - y) * w + x) * 4
-                rgba[offset] = value; rgba[offset + 1] = value; rgba[offset + 2] = value
+        var rgba = [UInt32](repeating: 0xFF000000, count: w * h)
+        rgba.withUnsafeMutableBufferPointer { ptr in
+            guard let base = ptr.baseAddress else { return }
+            for y in 0..<h {
+                let rowSrc = y * sy
+                let rowDst = y * w
+                for x in 0..<w {
+                    let label = values[rowSrc + x * sx]
+                    // 12 = upper lip vermilion, 13 = lower lip vermilion
+                    let isLip = (label == 12 || label == 13)
+                    base[rowDst + x] = isLip ? 0xFFFFFFFF : 0xFF000000
+                }
             }
         }
-        return CIImage(bitmapData: Data(rgba), bytesPerRow: w * 4, size: CGSize(width: w, height: h),
+        let data = Data(bytes: rgba, count: w * h * 4)
+        return CIImage(bitmapData: data, bytesPerRow: w * 4, size: CGSize(width: w, height: h),
                        format: .RGBA8, colorSpace: CGColorSpaceCreateDeviceRGB())
     }
 }

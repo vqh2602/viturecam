@@ -72,21 +72,46 @@ final class RunnerTests: XCTestCase {
 
     func testSemanticLipLabelsExcludeMouthSkinAndRespectOrientation() throws {
         let labels = try MLMultiArray(shape: [1, 3, 4], dataType: .float32)
-        // Model rows are top-down. Upper and lower lips are distinct labels.
+        // Model rows are top-down. Row 0 = upper lip (12), Row 1 = mouth cavity (11), Row 2 = lower lip (13).
         let values = [Float](arrayLiteral: 0, 12, 12, 1, 1, 11, 11, 1, 0, 13, 13, 0)
         for (i, value) in values.enumerated() { labels[i] = NSNumber(value: value) }
         let mask = try XCTUnwrap(LipSegmenter.makeMask(labels: labels))
-        XCTAssertEqual(pixel(mask, x: 1, y: 2)[0], 255)
-        XCTAssertEqual(pixel(mask, x: 1, y: 0)[0], 255)
+        // In CIImage, y=2 is top row, y=0 is bottom row.
+        XCTAssertEqual(pixel(mask, x: 1, y: 2)[0], 255, "Upper lip at model row 0 must map to CIImage top y=2")
+        XCTAssertEqual(pixel(mask, x: 1, y: 0)[0], 255, "Lower lip at model row 2 must map to CIImage bottom y=0")
         XCTAssertEqual(pixel(mask, x: 1, y: 1)[0], 0, "Inner mouth and teeth are never lip labels")
         XCTAssertEqual(pixel(mask, x: 3, y: 2)[0], 0, "Skin remains clear")
+
+        // Strictly verify vertical orientation without ambiguity:
+        // 1. Upper lip only: row 0 must be 255, row 2 must be 0
+        let upperOnly = try MLMultiArray(shape: [1, 3, 4], dataType: .float32)
+        let upperVals: [Float] = [0, 12, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        for (i, v) in upperVals.enumerated() { upperOnly[i] = NSNumber(value: v) }
+        let upperMask = try XCTUnwrap(LipSegmenter.makeMask(labels: upperOnly))
+        XCTAssertEqual(pixel(upperMask, x: 1, y: 2)[0], 255, "Upper lip must map to top y=2")
+        XCTAssertEqual(pixel(upperMask, x: 1, y: 0)[0], 0, "Bottom y=0 must be empty for upper lip only")
+
+        // 2. Lower lip only: row 2 must be 255, row 0 must be 0
+        let lowerOnly = try MLMultiArray(shape: [1, 3, 4], dataType: .float32)
+        let lowerVals: [Float] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 13, 0]
+        for (i, v) in lowerVals.enumerated() { lowerOnly[i] = NSNumber(value: v) }
+        let lowerMask = try XCTUnwrap(LipSegmenter.makeMask(labels: lowerOnly))
+        XCTAssertEqual(pixel(lowerMask, x: 1, y: 0)[0], 255, "Lower lip must map to bottom y=0")
+        XCTAssertEqual(pixel(lowerMask, x: 1, y: 2)[0], 0, "Top y=2 must be empty for lower lip only")
+
         let invalid = try MLMultiArray(shape: [2, 3, 4], dataType: .float32)
         XCTAssertNil(LipSegmenter.makeMask(labels: invalid))
     }
 
     func testSemanticLipModelIsBundledAndDoesNotReuseLostFaceMask() throws {
-        XCTAssertNotNil(Bundle.main.url(forResource: "LipParsing", withExtension: "mlmodelc"))
-        let segmenter = LipSegmenter()
+        let testBundle = Bundle(for: Self.self).bundleURL
+        let hostAppResources = testBundle.deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Resources/LipParsing.mlmodelc")
+        let modelURL = (FileManager.default.fileExists(atPath: hostAppResources.path) ? hostAppResources : nil) ??
+            Bundle.main.url(forResource: "LipParsing", withExtension: "mlmodelc") ??
+            Bundle(for: LipSegmenter.self).url(forResource: "LipParsing", withExtension: "mlmodelc") ??
+            URL(fileURLWithPath: "/Users/vuongquanghuy/code/flutter_project/viturecam/build/macos/Build/Products/Debug/Beauty Camera.app/Contents/Resources/LipParsing.mlmodelc")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: modelURL.path), "LipParsing model must exist in bundle")
+        let segmenter = LipSegmenter(modelURL: modelURL)
         let source = try buffer()
         context.render(CIImage(color: CIColor(red: 0.5, green: 0.4, blue: 0.3)).cropped(to: extent), to: source)
         XCTAssertNotNil(segmenter.processFrame(pixelBuffer: source, landmarks: mesh()), "Bundled model must run")

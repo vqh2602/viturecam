@@ -82,6 +82,19 @@ enum LipContourRefiner {
                 // A weak/ambiguous edge does not justify moving an anatomical point.
                 if bestScore > max(0.045, baseline + 0.012) { offsets[i] = bestOffset }
             }
+            if isOuter {
+                // Commissures (61 and 291) are anatomical anchors: lock them to the mesh.
+                // Near-corner vermilion points (185, 409, 375, 146) are damped to prevent
+                // flaring/lifting upward into cheek skin or smiling creases.
+                offsets[0] = 0 // 61
+                offsets[10] = 0 // 291
+                for nearCorner in [1, 9, 11, 19] {
+                    offsets[nearCorner] *= 0.25
+                }
+            } else {
+                offsets[0] = 0 // 78
+                offsets[10] = 0 // 308
+            }
             for i in contour.indices where offsets[i] != 0 {
                 // Regularize displacement, not landmark positions: preserve the
                 // individual's Cupid's bow and asymmetric lip shape.
