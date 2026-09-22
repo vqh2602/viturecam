@@ -116,9 +116,10 @@ public final class BeautyRenderer {
             if (dist >= 1.0) {
                 return vec4(0.0, 0.0, 0.0, 0.0);
             }
-            // Smooth cosine falloff from core to outer edge
-            float t = clamp((dist - coreRatio) / max(0.001, 1.0 - coreRatio), 0.0, 1.0);
-            float a = 0.5 + 0.5 * cos(t * 3.1415926535);
+            // Smooth continuous cosine-squared falloff: peaks at center and smoothly vanishes at perimeter
+            // Eliminates artificial flat core disk and visible circular ring
+            float a = cos(dist * 1.57079632679);
+            a = a * a;
             return vec4(1.0, 1.0, 1.0, a);
         }
         """)
@@ -2240,19 +2241,24 @@ public final class BeautyRenderer {
                 let colorImg = CIImage(color: CIColor(red: bR, green: bG, blue: bB, alpha: 1.0)).cropped(to: extent)
                 var tintedCheeks = result
 
-                // Dual-phase blending for Xingtu/Douyin aesthetic:
-                // Phase 1: SoftLight creates the translucent skin-tone bloom that adapts to lighting
+                // True Skin-Conforming Blending (Eliminates flat opaque sticker effect):
+                // Phase 1: SoftLight creates the natural translucent skin-tone flush that respects facial highlights and 3D contours
+                // Phase 2: Multiply enriches the pigment saturation deep in the skin pores without obscuring skin texture
                 if let softLight = CIFilter(name: "CISoftLightBlendMode") {
                     softLight.setValue(colorImg, forKey: kCIInputImageKey)
                     softLight.setValue(result, forKey: kCIInputBackgroundImageKey)
                     if let sl = softLight.outputImage {
-                        // Phase 2: Add delicate powdered pigment layer (35% color composited over SoftLight)
-                        // This gives the signature Xingtu/Douyin fine powder velvet texture
-                        if let pigmentMatrix = CIFilter(name: "CIColorMatrix") {
-                            pigmentMatrix.setValue(colorImg, forKey: kCIInputImageKey)
-                            pigmentMatrix.setValue(CIVector(x: 0, y: 0, z: 0, w: 0.35), forKey: "inputAVector")
-                            if let pigment = pigmentMatrix.outputImage {
-                                tintedCheeks = pigment.composited(over: sl)
+                        if let multiply = CIFilter(name: "CIMultiplyBlendMode") {
+                            multiply.setValue(colorImg, forKey: kCIInputImageKey)
+                            multiply.setValue(result, forKey: kCIInputBackgroundImageKey)
+                            if let mult = multiply.outputImage,
+                               let dualBlend = CIFilter(name: "CIBlendWithMask") {
+                                // 70% SoftLight + 30% Multiply: radiant, rich, 100% skin-conforming color
+                                let mixWeight = CIImage(color: CIColor(red: 0.30, green: 0.30, blue: 0.30, alpha: 1.0)).cropped(to: extent)
+                                dualBlend.setValue(mult, forKey: kCIInputImageKey)
+                                dualBlend.setValue(sl, forKey: kCIInputBackgroundImageKey)
+                                dualBlend.setValue(mixWeight, forKey: kCIInputMaskImageKey)
+                                tintedCheeks = dualBlend.outputImage ?? sl
                             } else {
                                 tintedCheeks = sl
                             }
@@ -4282,17 +4288,33 @@ public final class BeautyRenderer {
         let rightJaw = ciPt(landmarks.rightMidJaw != .zero ? landmarks.rightMidJaw : landmarks.chinTip)
         let leftJaw = ciPt(landmarks.leftMidJaw != .zero ? landmarks.leftMidJaw : landmarks.chinTip)
 
+        // 3D Head Roll Angle (in radians)
+        let rollAngle = atan2(rightEye.y - leftEye.y, rightEye.x - leftEye.x)
+
+        // 3D Yaw & Head Pose Perspective:
+        // Calculate lateral span from nose center to each cheek's outer temple/contour
+        let lDist = max(10.0, hypot(leftTemple.x - noseTip.x, leftTemple.y - noseTip.y))
+        let rDist = max(10.0, hypot(rightTemple.x - noseTip.x, rightTemple.y - noseTip.y))
+        let avgDist = (lDist + rDist) * 0.5
+        // When head is turned (yaw), foreshorten the cheek turned away proportionally in 3D
+        let lYawRatio = max(0.40, min(1.20, lDist / avgDist))
+        let rYawRatio = max(0.40, min(1.20, rDist / avgDist))
+
+        // Natural cheekbone angles: from cheek apple slanting up towards outer temple
+        let lCheekAngle = atan2(leftTemple.y - leftApple.y, leftTemple.x - leftApple.x)
+        let rCheekAngle = atan2(rightTemple.y - rightApple.y, rightTemple.x - rightApple.x)
+
         var combinedMask: CIImage?
 
         switch style {
         case "sunkissed":
             // Say rượu / Ngang sống mũi (Sunkissed / Drunk / Igari):
             // Connects high cheek apples across the bridge of the nose
-            let lCenter = CGPoint(x: leftApple.x, y: leftApple.y * 0.65 + leftEye.y * 0.35)
-            let rCenter = CGPoint(x: rightApple.x, y: rightApple.y * 0.65 + rightEye.y * 0.35)
-            let lCheek = makeBlushOvalMask(center: lCenter, rx: faceW * 0.20, ry: faceW * 0.11, extent: extent)
-            let rCheek = makeBlushOvalMask(center: rCenter, rx: faceW * 0.20, ry: faceW * 0.11, extent: extent)
-            let bridge = makeBlushOvalMask(center: noseBridge, rx: faceW * 0.13, ry: faceW * 0.07, extent: extent)
+            let lCenter = CGPoint(x: leftApple.x, y: leftApple.y * 0.70 + leftEye.y * 0.30)
+            let rCenter = CGPoint(x: rightApple.x, y: rightApple.y * 0.70 + rightEye.y * 0.30)
+            let lCheek = makeBlushOvalMask(center: lCenter, rx: faceW * 0.16 * lYawRatio, ry: faceW * 0.08, angle: rollAngle, extent: extent)
+            let rCheek = makeBlushOvalMask(center: rCenter, rx: faceW * 0.16 * rYawRatio, ry: faceW * 0.08, angle: rollAngle, extent: extent)
+            let bridge = makeBlushOvalMask(center: noseBridge, rx: faceW * 0.10, ry: faceW * 0.05, angle: rollAngle, extent: extent)
             combinedMask = combineBlushMasks([lCheek, rCheek, bridge])
 
         case "lifted":
@@ -4300,30 +4322,30 @@ public final class BeautyRenderer {
             // Angled diagonally along the zygomatic arch up towards the temples
             let rCenter = CGPoint(x: rightApple.x * 0.45 + rightTemple.x * 0.55, y: rightApple.y * 0.45 + rightTemple.y * 0.55)
             let rAngle = atan2(rightTemple.y - rightApple.y, rightTemple.x - rightApple.x)
-            let rGrad = makeBlushOvalMask(center: rCenter, rx: faceW * 0.22, ry: faceW * 0.09, angle: rAngle, extent: extent)
+            let rGrad = makeBlushOvalMask(center: rCenter, rx: faceW * 0.18 * rYawRatio, ry: faceW * 0.07, angle: rAngle, extent: extent)
 
             let lCenter = CGPoint(x: leftApple.x * 0.45 + leftTemple.x * 0.55, y: leftApple.y * 0.45 + leftTemple.y * 0.55)
             let lAngle = atan2(leftTemple.y - leftApple.y, leftTemple.x - leftApple.x)
-            let lGrad = makeBlushOvalMask(center: lCenter, rx: faceW * 0.22, ry: faceW * 0.09, angle: lAngle, extent: extent)
+            let lGrad = makeBlushOvalMask(center: lCenter, rx: faceW * 0.18 * lYawRatio, ry: faceW * 0.07, angle: lAngle, extent: extent)
             combinedMask = combineBlushMasks([lGrad, rGrad])
 
         case "undereye":
             // Dưới mắt Douyin / Búp bê (Undereye / Aegyo-sal):
             // Directly beneath lower eyelids, soft doll-like aesthetic
-            let rCenter = CGPoint(x: rightEye.x, y: rightEye.y - faceW * 0.075)
-            let rGrad = makeBlushOvalMask(center: rCenter, rx: faceW * 0.16, ry: faceW * 0.085, extent: extent)
+            let rCenter = CGPoint(x: rightEye.x, y: rightEye.y - faceW * 0.065)
+            let rGrad = makeBlushOvalMask(center: rCenter, rx: faceW * 0.13 * rYawRatio, ry: faceW * 0.065, angle: rollAngle, extent: extent)
 
-            let lCenter = CGPoint(x: leftEye.x, y: leftEye.y - faceW * 0.075)
-            let lGrad = makeBlushOvalMask(center: lCenter, rx: faceW * 0.16, ry: faceW * 0.085, extent: extent)
+            let lCenter = CGPoint(x: leftEye.x, y: leftEye.y - faceW * 0.065)
+            let lGrad = makeBlushOvalMask(center: lCenter, rx: faceW * 0.13 * lYawRatio, ry: faceW * 0.065, angle: rollAngle, extent: extent)
             combinedMask = combineBlushMasks([lGrad, rGrad])
 
         case "nose_chin":
             // Đầu mũi & Cằm thuần dục (Nose & Chin / Pure Desire / Crying Makeup):
             // Soft apple cheeks + sweet blush on nose tip + chin tip
-            let lCheek = makeBlushOvalMask(center: leftApple, rx: faceW * 0.16, ry: faceW * 0.13, extent: extent)
-            let rCheek = makeBlushOvalMask(center: rightApple, rx: faceW * 0.16, ry: faceW * 0.13, extent: extent)
-            let nTip = makeBlushOvalMask(center: noseTip, rx: faceW * 0.075, ry: faceW * 0.065, extent: extent)
-            let cTip = makeBlushOvalMask(center: chinTip, rx: faceW * 0.09, ry: faceW * 0.07, extent: extent)
+            let lCheek = makeBlushOvalMask(center: leftApple, rx: faceW * 0.13 * lYawRatio, ry: faceW * 0.085, angle: lCheekAngle, extent: extent)
+            let rCheek = makeBlushOvalMask(center: rightApple, rx: faceW * 0.13 * rYawRatio, ry: faceW * 0.085, angle: rCheekAngle, extent: extent)
+            let nTip = makeBlushOvalMask(center: noseTip, rx: faceW * 0.065, ry: faceW * 0.055, angle: rollAngle, extent: extent)
+            let cTip = makeBlushOvalMask(center: chinTip, rx: faceW * 0.075, ry: faceW * 0.055, angle: rollAngle, extent: extent)
             combinedMask = combineBlushMasks([lCheek, rCheek, nTip, cTip])
 
         case "temple_c":
@@ -4331,23 +4353,23 @@ public final class BeautyRenderer {
             // Wraps in a C-curve from the outer eyebrow / temple down into the high cheekbone
             let rTempleUpper = CGPoint(x: rightTemple.x * 0.85 + rightEye.x * 0.15, y: rightTemple.y)
             let rCheekHigh = CGPoint(x: rightApple.x * 0.55 + rightTemple.x * 0.45, y: rightApple.y * 0.70 + rightEye.y * 0.30)
-            let rT = makeBlushOvalMask(center: rTempleUpper, rx: faceW * 0.13, ry: faceW * 0.10, extent: extent)
-            let rC = makeBlushOvalMask(center: rCheekHigh, rx: faceW * 0.15, ry: faceW * 0.09, extent: extent)
+            let rT = makeBlushOvalMask(center: rTempleUpper, rx: faceW * 0.11 * rYawRatio, ry: faceW * 0.08, angle: rollAngle, extent: extent)
+            let rC = makeBlushOvalMask(center: rCheekHigh, rx: faceW * 0.13 * rYawRatio, ry: faceW * 0.075, angle: rCheekAngle, extent: extent)
 
             let lTempleUpper = CGPoint(x: leftTemple.x * 0.85 + leftEye.x * 0.15, y: leftTemple.y)
             let lCheekHigh = CGPoint(x: leftApple.x * 0.55 + leftTemple.x * 0.45, y: leftApple.y * 0.70 + leftEye.y * 0.30)
-            let lT = makeBlushOvalMask(center: lTempleUpper, rx: faceW * 0.13, ry: faceW * 0.10, extent: extent)
-            let lC = makeBlushOvalMask(center: lCheekHigh, rx: faceW * 0.15, ry: faceW * 0.09, extent: extent)
+            let lT = makeBlushOvalMask(center: lTempleUpper, rx: faceW * 0.11 * lYawRatio, ry: faceW * 0.08, angle: rollAngle, extent: extent)
+            let lC = makeBlushOvalMask(center: lCheekHigh, rx: faceW * 0.13 * lYawRatio, ry: faceW * 0.075, angle: lCheekAngle, extent: extent)
             combinedMask = combineBlushMasks([rT, rC, lT, lC])
 
         case "eyecorner":
             // Đuôi mắt thuần dục (Outer Eye Corner / Fox Aesthetic):
             // Concentrated at outer corner of eyes, fanning to upper cheek
             let rCenter = CGPoint(x: rightEyeOuter.x * 0.70 + rightTemple.x * 0.30, y: rightEyeOuter.y * 0.65 + rightApple.y * 0.35)
-            let rGrad = makeBlushOvalMask(center: rCenter, rx: faceW * 0.14, ry: faceW * 0.095, extent: extent)
+            let rGrad = makeBlushOvalMask(center: rCenter, rx: faceW * 0.12 * rYawRatio, ry: faceW * 0.08, angle: rCheekAngle, extent: extent)
 
             let lCenter = CGPoint(x: leftEyeOuter.x * 0.70 + leftTemple.x * 0.30, y: leftEyeOuter.y * 0.65 + leftApple.y * 0.35)
-            let lGrad = makeBlushOvalMask(center: lCenter, rx: faceW * 0.14, ry: faceW * 0.095, extent: extent)
+            let lGrad = makeBlushOvalMask(center: lCenter, rx: faceW * 0.12 * lYawRatio, ry: faceW * 0.08, angle: lCheekAngle, extent: extent)
             combinedMask = combineBlushMasks([lGrad, rGrad])
 
         case "contour":
@@ -4355,20 +4377,33 @@ public final class BeautyRenderer {
             // Angled in the cheek hollow down towards jaw
             let rCenter = CGPoint(x: rightApple.x * 0.50 + rightJaw.x * 0.50, y: rightApple.y * 0.50 + rightJaw.y * 0.50)
             let rAngle = atan2(rightJaw.y - rightApple.y, rightJaw.x - rightApple.x)
-            let rGrad = makeBlushOvalMask(center: rCenter, rx: faceW * 0.20, ry: faceW * 0.10, angle: rAngle, extent: extent)
+            let rGrad = makeBlushOvalMask(center: rCenter, rx: faceW * 0.17 * rYawRatio, ry: faceW * 0.08, angle: rAngle, extent: extent)
 
             let lCenter = CGPoint(x: leftApple.x * 0.50 + leftJaw.x * 0.50, y: leftApple.y * 0.50 + leftJaw.y * 0.50)
             let lAngle = atan2(leftJaw.y - leftApple.y, leftJaw.x - leftApple.x)
-            let lGrad = makeBlushOvalMask(center: lCenter, rx: faceW * 0.20, ry: faceW * 0.10, angle: lAngle, extent: extent)
+            let lGrad = makeBlushOvalMask(center: lCenter, rx: faceW * 0.17 * lYawRatio, ry: faceW * 0.08, angle: lAngle, extent: extent)
             combinedMask = combineBlushMasks([lGrad, rGrad])
 
         case "apple":
             fallthrough
         default:
             // Gò má tròn tự nhiên (Classic Apple):
-            let rGrad = makeBlushOvalMask(center: rightApple, rx: faceW * 0.17, ry: faceW * 0.15, extent: extent)
-            let lGrad = makeBlushOvalMask(center: leftApple, rx: faceW * 0.17, ry: faceW * 0.15, extent: extent)
+            // Aligned along the natural zygomatic cheekbone diagonal, foreshortened in 3D yaw
+            let rGrad = makeBlushOvalMask(center: rightApple, rx: faceW * 0.14 * rYawRatio, ry: faceW * 0.09, angle: rCheekAngle, extent: extent)
+            let lGrad = makeBlushOvalMask(center: leftApple, rx: faceW * 0.14 * lYawRatio, ry: faceW * 0.09, angle: lCheekAngle, extent: extent)
             combinedMask = combineBlushMasks([lGrad, rGrad])
+        }
+
+        // 1. Confine strictly within the real face skin contour (no bleeding into ears, neck, hair, or background)
+        if let faceSkin = createFullFaceSkinMask(landmarks: landmarks, extent: extent),
+           let mask = combinedMask {
+            if let mult = CIFilter(name: "CIMultiplyCompositing") {
+                mult.setValue(mask, forKey: kCIInputImageKey)
+                mult.setValue(faceSkin, forKey: kCIInputBackgroundImageKey)
+                if let confined = mult.outputImage?.cropped(to: extent) {
+                    combinedMask = confined
+                }
+            }
         }
 
         // Eyeball protection: protect eyes from blush tint
