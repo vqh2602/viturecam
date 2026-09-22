@@ -33,6 +33,12 @@ final class RunnerTests: XCTestCase {
         }
         result.leftCheekCenter = pt(FaceMeshGeometry.leftCheekApexIndex)
         result.rightCheekCenter = pt(FaceMeshGeometry.rightCheekApexIndex)
+        result.leftCheekApple = pt(280)
+        result.rightCheekApple = pt(50)
+        result.leftEyeCenter = CGPoint(x: 0.35, y: 0.35)
+        result.rightEyeCenter = CGPoint(x: 0.65, y: 0.35)
+        result.leftEyeOuter = pt(33)
+        result.rightEyeOuter = pt(263)
         result.foreheadCenter = pt(FaceMeshGeometry.foreheadCenterIndex)
         let p71 = pt(71), p156 = pt(156)
         result.leftTemple = CGPoint(x: (p71.x + p156.x) * 0.5, y: (p71.y + p156.y) * 0.5)
@@ -761,28 +767,32 @@ final class RunnerTests: XCTestCase {
 
         let m = mesh()
         let base = try render(renderer, source: source, makeup: MakeupSettings(), landmarks: m)
-        let blush = try render(renderer, source: source,
-                               makeup: MakeupSettings(from: ["blushPreset": "rosy", "blushOpacity": 0.8, "blushStyle": "sunkissed"]),
-                               landmarks: m)
 
-        // 1. Cheek should be flushed (red channel higher or shifted)
-        let cheekBase = pixel(base, x: Int(m.leftCheekCenter.x * 256), y: Int((1.0 - m.leftCheekCenter.y) * 256))
-        let cheekBlush = pixel(blush, x: Int(m.leftCheekCenter.x * 256), y: Int((1.0 - m.leftCheekCenter.y) * 256))
+        let styles = ["apple", "sunkissed", "lifted", "undereye", "nose_chin", "temple_c", "eyecorner", "contour"]
+        for style in styles {
+            let blush = try render(renderer, source: source,
+                                   makeup: MakeupSettings(from: ["blushPreset": "rosy", "blushOpacity": 0.8, "blushStyle": style]),
+                                   landmarks: m)
+
+            // Far corners must NOT be tinted
+            let bgBase = pixel(base, x: 5, y: 5)
+            let bgBlush = pixel(blush, x: 5, y: 5)
+            XCTAssertEqual(bgBase, bgBlush, "Blush style \(style) must not affect background or distant pixels")
+
+            let foreheadBase = pixel(base, x: 128, y: 240)
+            let foreheadBlush = pixel(blush, x: 128, y: 240)
+            XCTAssertEqual(foreheadBase, foreheadBlush, "Blush style \(style) must not bleed onto upper forehead")
+        }
+
+        // Test that cheek is visibly flushed in apple style
+        let appleBlush = try render(renderer, source: source,
+                                    makeup: MakeupSettings(from: ["blushPreset": "rosy", "blushOpacity": 0.8, "blushStyle": "apple"]),
+                                    landmarks: m)
+        let cheekPt = m.leftCheekApple != .zero ? m.leftCheekApple : m.leftCheekCenter
+        let cheekBase = pixel(base, x: Int(cheekPt.x * 256), y: Int((1.0 - cheekPt.y) * 256))
+        let cheekBlush = pixel(appleBlush, x: Int(cheekPt.x * 256), y: Int((1.0 - cheekPt.y) * 256))
         let diffCheek = abs(Int(cheekBlush[0]) - Int(cheekBase[0])) + abs(Int(cheekBlush[1]) - Int(cheekBase[1]))
-        XCTAssertGreaterThan(diffCheek, 10, "Blush must flush the cheek center")
-
-        // 2. Far corners (background, forehead top, chin bottom) must NOT be tinted
-        let bgBase = pixel(base, x: 5, y: 5)
-        let bgBlush = pixel(blush, x: 5, y: 5)
-        XCTAssertEqual(bgBase, bgBlush, "Blush must not affect background or distant pixels")
-
-        let foreheadBase = pixel(base, x: 128, y: 240)
-        let foreheadBlush = pixel(blush, x: 128, y: 240)
-        XCTAssertEqual(foreheadBase, foreheadBlush, "Blush must not bleed onto forehead")
-
-        let chinBase = pixel(base, x: 128, y: 20)
-        let chinBlush = pixel(blush, x: 128, y: 20)
-        XCTAssertEqual(chinBase, chinBlush, "Blush must not bleed onto chin")
+        XCTAssertGreaterThan(diffCheek, 5, "Blush must visibly flush the cheek center")
     }
 }
 

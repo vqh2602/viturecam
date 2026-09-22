@@ -28,6 +28,12 @@ class MakeupPanel extends ConsumerWidget {
         return l10n.styleLifted;
       case 'undereye':
         return l10n.styleUndereye;
+      case 'nose_chin':
+        return l10n.localeName.startsWith('vi') ? 'Mũi & cằm' : 'Nose & Chin';
+      case 'temple_c':
+        return l10n.localeName.startsWith('vi') ? 'Thái dương C' : 'C-Temple';
+      case 'eyecorner':
+        return l10n.localeName.startsWith('vi') ? 'Đuôi mắt' : 'Eye Corner';
       case 'contour':
         return l10n.styleContour;
       case 'natural':

@@ -83,8 +83,11 @@ class MakeupPresets {
   static const List<MakeupStyleOption> blushStyles = [
     MakeupStyleOption(id: 'apple', name: 'Gò má tròn', icon: Icons.circle_outlined),
     MakeupStyleOption(id: 'sunkissed', name: 'Say rượu', icon: Icons.wb_sunny_outlined),
-    MakeupStyleOption(id: 'lifted', name: 'Kéo thái dương', icon: Icons.trending_up),
+    MakeupStyleOption(id: 'lifted', name: 'Nâng cơ', icon: Icons.trending_up),
     MakeupStyleOption(id: 'undereye', name: 'Dưới mắt', icon: Icons.remove_red_eye_outlined),
+    MakeupStyleOption(id: 'nose_chin', name: 'Mũi & cằm', icon: Icons.favorite_border),
+    MakeupStyleOption(id: 'temple_c', name: 'Thái dương C', icon: Icons.rounded_corner),
+    MakeupStyleOption(id: 'eyecorner', name: 'Đuôi mắt', icon: Icons.visibility_outlined),
     MakeupStyleOption(id: 'contour', name: 'Tạo khối', icon: Icons.filter_hdr),
   ];
 

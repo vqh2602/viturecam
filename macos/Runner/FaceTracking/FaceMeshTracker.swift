@@ -558,8 +558,8 @@ public final class FaceMeshTracker {
         res.rightTemple = CGPoint(x: (p301.x + p383.x) * 0.5, y: (p301.y + p383.y) * 0.5)
         res.leftEyeOuter = pt(33)
         res.rightEyeOuter = pt(263)
-        res.leftCheekApple = pt(280)
-        res.rightCheekApple = pt(50)
+        res.leftCheekApple = pt(280)  // Landmark 280: subject left cheek apple (image right in mirror, matches leftCheekCenter 205)
+        res.rightCheekApple = pt(50)  // Landmark 50: subject right cheek apple (image left in mirror, matches rightCheekCenter 425)
 
         // Contours for full-face mask, feature protection & makeup
         res.faceContour = FaceMeshGeometry.silhouetteIndices.map { pt($0) }
