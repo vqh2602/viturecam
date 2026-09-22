@@ -26,6 +26,7 @@ public final class BeautyRenderer {
         var mask: CIImage? = nil
     }
     private var lipMaskCache = MakeupMaskCache()
+    private var lipInnerMaskCache = MakeupMaskCache()
     private var eyebrowMaskCache = MakeupMaskCache()
     private var eyelinerMaskCache = MakeupMaskCache()
     private var eyeshadowMaskCache = MakeupMaskCache()
@@ -955,6 +956,7 @@ public final class BeautyRenderer {
             smoothedTeethOpenGate = 0.0
             // Invalidate tất cả mask cache khi mất khuôn mặt
             lipMaskCache = MakeupMaskCache()
+            lipInnerMaskCache = MakeupMaskCache()
             eyebrowMaskCache = MakeupMaskCache()
             eyelinerMaskCache = MakeupMaskCache()
             eyeshadowMaskCache = MakeupMaskCache()
@@ -2102,13 +2104,19 @@ public final class BeautyRenderer {
                         var tintedLips = softLightLips
 
                         // For "gradient" (lòng môi):
-                        // Inner core needs to be deeply saturated and intensely pigmented ("đậm từ trong ra ngoài").
-                        // We composite a rich multiply stain layer so the center has deep, luscious color depth.
+                        // "thực chất như full môi, nhưng màu trong đậm ra dần ngoài sẽ nhạt dần"
+                        // Outer lips wear the delicate, lighter base tone (softLightLips).
+                        // Inner lips wear the rich, deep multiply stain layer (rich).
+                        // We blend rich over softLightLips using innerMask so the color itself
+                        // is deeply saturated on the inside and gradually softens to the outer border.
                         if lipStyle == "gradient",
+                           let innerMask = cachedMask(&lipInnerMaskCache, style: "inner", generator: {
+                               self.createLipInnerMask(landmarks: landmarks, extent: extent)
+                           }),
                            let multiply = CIFilter(name: "CIMultiplyBlendMode") {
-                            let deepR = max(0.0, lipR * 0.90)
-                            let deepG = max(0.0, lipG * 0.60)
-                            let deepB = max(0.0, lipB * 0.60)
+                            let deepR = max(0.0, lipR * 0.85)
+                            let deepG = max(0.0, lipG * 0.45)
+                            let deepB = max(0.0, lipB * 0.45)
                             let deepColor = CIImage(color: CIColor(red: deepR, green: deepG, blue: deepB, alpha: 1.0)).cropped(to: extent)
                             multiply.setValue(deepColor, forKey: kCIInputImageKey)
                             multiply.setValue(result, forKey: kCIInputBackgroundImageKey)
@@ -2117,7 +2125,14 @@ public final class BeautyRenderer {
                                     stainBlend.setValue(multLips, forKey: kCIInputImageKey)
                                     stainBlend.setValue(softLightLips, forKey: kCIInputBackgroundImageKey)
                                     if let rich = stainBlend.outputImage {
-                                        tintedLips = rich
+                                        if let ombreBlend = CIFilter(name: "CIBlendWithMask") {
+                                            ombreBlend.setValue(rich, forKey: kCIInputImageKey)
+                                            ombreBlend.setValue(softLightLips, forKey: kCIInputBackgroundImageKey)
+                                            ombreBlend.setValue(innerMask, forKey: kCIInputMaskImageKey)
+                                            if let ombreResult = ombreBlend.outputImage {
+                                                tintedLips = ombreResult
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -2540,6 +2555,137 @@ public final class BeautyRenderer {
     }
 
     // MARK: - 3D Face Makeup Masks
+
+    /// Anatomical inner stomion gradient mask for "gradient" (lòng môi) style.
+    /// Smoothly falls off from peak intensity (1.0) along the stomion contact line to 0.0 towards the outer lip contour.
+    /// Strictly clipped to the detected lip boundaries so color never bleeds onto teeth or surrounding skin.
+    public func createLipInnerMask(landmarks: FaceMeshLandmarks, extent: CGRect) -> CIImage? {
+        guard landmarks.hasFace else { return nil }
+
+        let upperInner: [CGPoint]
+        let lowerInner: [CGPoint]
+        let lipWidth: CGFloat
+        let lipHeight: CGFloat
+
+        if landmarks.landmarks.count == 468 {
+            func pt(_ idx: Int) -> CGPoint {
+                let lm = landmarks.landmarks[idx]
+                return CGPoint(x: CGFloat(lm.x) * extent.width, y: CGFloat(1.0 - lm.y) * extent.height)
+            }
+            upperInner = [308, 415, 310, 311, 312, 13, 82, 81, 80, 191, 78].map(pt)
+            lowerInner = [78, 95, 88, 178, 87, 14, 317, 402, 318, 324, 308].map(pt)
+            let p0 = pt(0)
+            let p17 = pt(17)
+            let p61 = pt(61)
+            let p291 = pt(291)
+            lipWidth = max(20.0, hypot(p291.x - p61.x, p291.y - p61.y))
+            lipHeight = max(10.0, hypot(p17.x - p0.x, p17.y - p0.y))
+        } else if !landmarks.outerLipContour.isEmpty {
+            func pt(_ p: CGPoint) -> CGPoint {
+                return CGPoint(x: p.x * extent.width, y: (1.0 - p.y) * extent.height)
+            }
+            let outer = landmarks.outerLipContour.map(pt)
+            let inner = landmarks.innerLipContour.map(pt)
+            let n = outer.count
+            let m = inner.count
+            guard n >= 4 else { return nil }
+            let midOut = n / 2
+            if m >= 4 {
+                let midIn = m / 2
+                upperInner = [outer[midOut]] + Array(inner[0...midIn].reversed()) + [outer[0]]
+                lowerInner = [outer[0]] + Array(inner[midIn..<m]) + [inner[0], outer[midOut]]
+            } else {
+                upperInner = Array(outer[0...midOut])
+                lowerInner = [outer[midOut]] + Array(outer[midOut..<n]) + [outer[0]]
+            }
+            let pLeft = outer[0]
+            let pRight = outer[midOut]
+            lipWidth = max(20.0, hypot(pRight.x - pLeft.x, pRight.y - pLeft.y))
+            let allY = outer.map(\.y)
+            lipHeight = max(10.0, (allY.max() ?? 0) - (allY.min() ?? 0))
+        } else {
+            return nil
+        }
+
+        let allPoints = upperInner + lowerInner
+        guard allPoints.allSatisfy({ $0.x.isFinite && $0.y.isFinite }),
+              let minX = allPoints.map(\.x).min(), let maxX = allPoints.map(\.x).max(),
+              let minY = allPoints.map(\.y).min(), let maxY = allPoints.map(\.y).max(),
+              maxX - minX > 1, maxY - minY > 1 else { return nil }
+
+        let bounds = CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
+            .insetBy(dx: -lipWidth * 0.20 - 12, dy: -lipHeight * 0.45 - 12)
+            .intersection(extent).integral
+        guard !bounds.isEmpty,
+              let w = Int(exactly: bounds.width), let h = Int(exactly: bounds.height),
+              w > 0, h > 0 else { return nil }
+
+        guard let context = CGContext(
+            data: nil, width: w, height: h,
+            bitsPerComponent: 8, bytesPerRow: w,
+            space: CGColorSpaceCreateDeviceGray(),
+            bitmapInfo: CGImageAlphaInfo.none.rawValue
+        ) else { return nil }
+        context.translateBy(x: -bounds.minX, y: -bounds.minY)
+
+        context.setFillColor(gray: 0.0, alpha: 1.0)
+        context.fill(bounds)
+
+        let contactPath = CGMutablePath()
+        if let first = upperInner.first {
+            contactPath.move(to: first)
+            addSmoothCurves(to: contactPath, points: upperInner)
+        }
+        if let first = lowerInner.first {
+            contactPath.move(to: first)
+            addSmoothCurves(to: contactPath, points: lowerInner)
+        }
+
+        context.setLineJoin(.round)
+        context.setLineCap(.round)
+
+        // Multi-layered feathered stomion strokes
+        context.setStrokeColor(gray: 0.35, alpha: 1.0)
+        context.setLineWidth(max(6.0, lipHeight * 0.70))
+        context.addPath(contactPath)
+        context.strokePath()
+
+        context.setStrokeColor(gray: 0.65, alpha: 1.0)
+        context.setLineWidth(max(4.0, lipHeight * 0.42))
+        context.addPath(contactPath)
+        context.strokePath()
+
+        context.setStrokeColor(gray: 0.90, alpha: 1.0)
+        context.setLineWidth(max(2.5, lipHeight * 0.24))
+        context.addPath(contactPath)
+        context.strokePath()
+
+        context.setStrokeColor(gray: 1.0, alpha: 1.0)
+        context.setLineWidth(max(1.5, lipHeight * 0.12))
+        context.addPath(contactPath)
+        context.strokePath()
+
+        guard let bitmap = context.makeImage() else { return nil }
+        let rawImg = CIImage(cgImage: bitmap).transformed(by:
+            CGAffineTransform(translationX: bounds.minX, y: bounds.minY))
+
+        let blurRadius = max(3.0, lipHeight * 0.15)
+        let blurred = rawImg.applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: blurRadius])
+            .cropped(to: extent)
+
+        // Strictly clip within the detected lip area so the inner stomion glow never spills outside lips
+        if let pixels = landmarks.lipPixelMask {
+            let black = CIImage(color: .black).cropped(to: extent)
+            let coverage = pixels.composited(over: black).cropped(to: extent)
+            return blurred.applyingFilter("CIMultiplyCompositing", parameters: [kCIInputBackgroundImageKey: coverage])
+                .cropped(to: extent)
+        } else if let fullRibbon = createLipMask(landmarks: landmarks, style: "full", extent: extent) {
+            return blurred.applyingFilter("CIMultiplyCompositing", parameters: [kCIInputBackgroundImageKey: fullRibbon])
+                .cropped(to: extent)
+        }
+        return blurred
+    }
+
     public func createLipMask(landmarks: FaceMeshLandmarks, style: String = "full", extent: CGRect) -> CIImage? {
         guard landmarks.hasFace else { return nil }
         if let pixels = landmarks.lipPixelMask {
@@ -2595,6 +2741,34 @@ public final class BeautyRenderer {
                     }
                 }
                 return linerResult.cropped(to: extent)
+            }
+
+            if style == "gradient" {
+                // Son lòng môi (Korean Ombre Gradient Lip):
+                // "thực chất như full môi, nhưng màu trong đậm ra dần ngoài sẽ nhạt dần"
+                // Outer lips wear a solid base wash (52%) matching full lip contours completely,
+                // while inner stomion ramps smoothly to 100% full intensity.
+                if let inner = self.createLipInnerMask(landmarks: landmarks, extent: extent) {
+                    let baseWash: CGFloat = 0.52
+                    let ramp: CGFloat = 1.0 - baseWash
+                    if let matrix = CIFilter(name: "CIColorMatrix") {
+                        matrix.setValue(inner, forKey: kCIInputImageKey)
+                        matrix.setValue(CIVector(x: ramp, y: 0, z: 0, w: 0), forKey: "inputRVector")
+                        matrix.setValue(CIVector(x: 0, y: ramp, z: 0, w: 0), forKey: "inputGVector")
+                        matrix.setValue(CIVector(x: 0, y: 0, z: ramp, w: 0), forKey: "inputBVector")
+                        matrix.setValue(CIVector(x: 0, y: 0, z: 0, w: 1.0), forKey: "inputAVector")
+                        matrix.setValue(CIVector(x: baseWash, y: baseWash, z: baseWash, w: 0), forKey: "inputBiasVector")
+                        if let scaled = matrix.outputImage,
+                           let mul = CIFilter(name: "CIMultiplyCompositing") {
+                            mul.setValue(scaled, forKey: kCIInputImageKey)
+                            mul.setValue(coverage, forKey: kCIInputBackgroundImageKey)
+                            if let gradMask = mul.outputImage?.cropped(to: extent) {
+                                return gradMask
+                            }
+                        }
+                    }
+                }
+                return coverage
             }
 
             // Style intensity remains independent from detected coverage. Every style
@@ -2816,8 +2990,8 @@ public final class BeautyRenderer {
         let feather = min(1.0, max(0.4, lipWidth * 0.008))
 
         if style == "gradient" {
-            // Lòng môi (Korean Ombre Gradient Lip):
-            // 1. Full solid lip mask
+            // Lòng môi (Korean Ombre Gradient Lip) Geometric Fallback:
+            // 1. Full solid lip mask (covers the whole lips like "full" style)
             guard let solidContext = CGContext(
                 data: nil, width: w, height: h,
                 bitsPerComponent: 8, bytesPerRow: w,
@@ -2830,9 +3004,11 @@ public final class BeautyRenderer {
             solidContext.fillPath()
             guard let solidBitmap = solidContext.makeImage() else { return nil }
             let fullLipMask = CIImage(cgImage: solidBitmap).transformed(by:
-                CGAffineTransform(translationX: bounds.minX, y: bounds.minY)).cropped(to: extent)
+                CGAffineTransform(translationX: bounds.minX, y: bounds.minY))
+                .applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: feather])
+                .cropped(to: extent)
 
-            // 2. Gradient stomion wash
+            // 2. Smooth inner stomion gradient
             guard let gradContext = CGContext(
                 data: nil, width: w, height: h,
                 bitsPerComponent: 8, bytesPerRow: w,
@@ -2841,14 +3017,6 @@ public final class BeautyRenderer {
             gradContext.translateBy(x: -bounds.minX, y: -bounds.minY)
 
             gradContext.setFillColor(gray: 0.0, alpha: 1.0)
-            gradContext.fill(bounds)
-
-            gradContext.addPath(upperRibbon)
-            gradContext.addPath(lowerRibbon)
-            gradContext.clip()
-
-            // Subtle sheer base wash on outer lips (18%) so it fades smoothly without harsh cutoffs
-            gradContext.setFillColor(gray: 0.18, alpha: 1.0)
             gradContext.fill(bounds)
 
             let contactPath = CGMutablePath()
@@ -2864,54 +3032,56 @@ public final class BeautyRenderer {
             gradContext.setLineJoin(.round)
             gradContext.setLineCap(.round)
 
-            gradContext.setStrokeColor(gray: 0.45, alpha: 1.0)
-            gradContext.setLineWidth(max(6.0, lipHeight * 0.85))
+            // Multi-layered feathered stomion strokes
+            gradContext.setStrokeColor(gray: 0.35, alpha: 1.0)
+            gradContext.setLineWidth(max(6.0, lipHeight * 0.70))
             gradContext.addPath(contactPath)
             gradContext.strokePath()
 
-            gradContext.setStrokeColor(gray: 0.75, alpha: 1.0)
-            gradContext.setLineWidth(max(4.0, lipHeight * 0.55))
+            gradContext.setStrokeColor(gray: 0.65, alpha: 1.0)
+            gradContext.setLineWidth(max(4.0, lipHeight * 0.42))
             gradContext.addPath(contactPath)
             gradContext.strokePath()
 
-            gradContext.setStrokeColor(gray: 0.95, alpha: 1.0)
-            gradContext.setLineWidth(max(2.5, lipHeight * 0.35))
+            gradContext.setStrokeColor(gray: 0.90, alpha: 1.0)
+            gradContext.setLineWidth(max(2.5, lipHeight * 0.24))
             gradContext.addPath(contactPath)
             gradContext.strokePath()
 
             gradContext.setStrokeColor(gray: 1.0, alpha: 1.0)
-            gradContext.setLineWidth(max(1.5, lipHeight * 0.18))
+            gradContext.setLineWidth(max(1.5, lipHeight * 0.12))
             gradContext.addPath(contactPath)
             gradContext.strokePath()
-
-            // Central pout blossom concentrated in the middle 50% of the lips
-            let midX = (minX + maxX) * 0.5
-            let midY = (minY + maxY) * 0.5
-            let poutRect = CGRect(
-                x: midX - lipWidth * 0.25,
-                y: midY - lipHeight * 0.35,
-                width: lipWidth * 0.50,
-                height: lipHeight * 0.70
-            )
-            gradContext.setFillColor(gray: 1.0, alpha: 1.0)
-            gradContext.fillEllipse(in: poutRect)
 
             guard let gradBitmap = gradContext.makeImage() else { return nil }
             let gradImg = CIImage(cgImage: gradBitmap).transformed(by:
                 CGAffineTransform(translationX: bounds.minX, y: bounds.minY))
 
-            let blurRadius = max(2.5, lipHeight * 0.14)
+            let blurRadius = max(3.0, lipHeight * 0.15)
             let blurred = gradImg.applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: blurRadius])
+                .cropped(to: extent)
 
-            if let blend = CIFilter(name: "CIBlendWithMask") {
-                blend.setValue(blurred, forKey: kCIInputImageKey)
-                blend.setValue(CIImage.empty(), forKey: kCIInputBackgroundImageKey)
-                blend.setValue(fullLipMask, forKey: kCIInputMaskImageKey)
-                if let maskedGrad = blend.outputImage?.cropped(to: extent) {
-                    return maskedGrad
+            // Outer lips receive a solid base wash (52%) like full lips,
+            // scaling smoothly to 100% at the inner stomion core
+            let baseWash: CGFloat = 0.52
+            let ramp: CGFloat = 1.0 - baseWash
+            if let matrix = CIFilter(name: "CIColorMatrix") {
+                matrix.setValue(blurred, forKey: kCIInputImageKey)
+                matrix.setValue(CIVector(x: ramp, y: 0, z: 0, w: 0), forKey: "inputRVector")
+                matrix.setValue(CIVector(x: 0, y: ramp, z: 0, w: 0), forKey: "inputGVector")
+                matrix.setValue(CIVector(x: 0, y: 0, z: ramp, w: 0), forKey: "inputBVector")
+                matrix.setValue(CIVector(x: 0, y: 0, z: 0, w: 1.0), forKey: "inputAVector")
+                matrix.setValue(CIVector(x: baseWash, y: baseWash, z: baseWash, w: 0), forKey: "inputBiasVector")
+                if let scaled = matrix.outputImage,
+                   let mul = CIFilter(name: "CIMultiplyCompositing") {
+                    mul.setValue(scaled, forKey: kCIInputImageKey)
+                    mul.setValue(fullLipMask, forKey: kCIInputBackgroundImageKey)
+                    if let out = mul.outputImage?.cropped(to: extent) {
+                        return out
+                    }
                 }
             }
-            return blurred.cropped(to: extent)
+            return fullLipMask
         } else if style == "liner" {
             // Viền môi (Lip Liner) Geometric Fallback
             guard let context = CGContext(

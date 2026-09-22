@@ -217,9 +217,24 @@ final class RunnerTests: XCTestCase {
     func testGradientLipMaskHasInnerIntensityAndExcludesSurrounding() throws {
         let renderer = BeautyRenderer()
         let mask = try XCTUnwrap(renderer.createLipMask(landmarks: mesh(), style: "gradient", extent: extent))
+        // Upper lip has solid coverage like "full" lips (> 120 / 255)
         XCTAssertGreaterThan(pixel(mask, x: 128, y: 104)[0], 120)
+        // Oral cavity and surrounding skin strictly excluded (< 2 / 255)
         XCTAssertLessThan(pixel(mask, x: 128, y: 89)[0], 2)
         XCTAssertLessThan(pixel(mask, x: 128, y: 114)[0], 2)
+
+        // Verify inner stomion mask helper directly
+        let inner = try XCTUnwrap(renderer.createLipInnerMask(landmarks: mesh(), extent: extent))
+        XCTAssertGreaterThan(pixel(inner, x: 128, y: 104)[0], 50)
+        XCTAssertLessThan(pixel(inner, x: 128, y: 114)[0], 2)
+
+        // Verify that with pixel segmentation, gradient covers the full lip with base wash (like full lips)
+        var pixelMesh = mesh()
+        pixelMesh.lipPixelMask = CIImage(color: .white)
+            .cropped(to: CGRect(x: 120, y: 99, width: 16, height: 10))
+        let pixelGrad = try XCTUnwrap(renderer.createLipMask(landmarks: pixelMesh, style: "gradient", extent: extent))
+        // Pixel coverage is retained across the entire detected lip with at least base wash (0.52 * 255 ≈ 132)
+        XCTAssertGreaterThan(pixel(pixelGrad, x: 128, y: 104)[0], 100)
     }
 
     func testLipTintMovesWithMouthReshape() throws {
