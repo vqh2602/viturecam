@@ -853,13 +853,75 @@ public final class BeautyRenderer {
             }
 
             // ==========================================
+            // GROUP 6: NỌNG CẰM & ĐƯỜNG VIỀN HÀM (DOUBLE CHIN & JAWLINE DEFINITION - XINGTU ANATOMICAL RESHAPE)
             // ==========================================
-            // GROUP 6: NỌNG CẰM & ĐƯỜNG VIỀN HÀM (DOUBLE CHIN & JAWLINE DEFINITION)
-            // ==========================================
-            // Note: Double chin reduction and jawline definition are handled via
-            // anatomical optical submental depth shadowing & mandibular bone definition
-            // in applySubmentalJawlineDepth(), rather than geometric distortion.
-            // This prevents neck, collar, and background warping/stretching artifacts.
+            // A. Giảm nọng cằm (Double Chin Submental Tuck):
+            // Tucks and lifts the sagging submental fat pad under the chin upward behind the mandibular arch
+            float doubleChin = sculptParams.x;
+            if (doubleChin > 0.001) {
+                vec2 vChin = p - chinCenter;
+                float uC = dot(vChin, axisNormal);   // Lateral across neck (- left, + right)
+                float vC = dot(vChin, faceAxisDir);  // Along face axis: vC > 0 is downward into submental neck
+
+                float submentalHalfW = faceW * 0.38;
+                float submentalLen = faceW * 0.40;
+
+                // Submental triangle: beneath chinCenter and between the lower jaws
+                if (vC > 0.0 && vC < submentalLen && abs(uC) < submentalHalfW) {
+                    float tU = abs(uC) / submentalHalfW;
+                    float wU = (1.0 - tU * tU) * (1.0 - tU * tU);
+
+                    // Peak tuck effect centered in the submental bulge (~0.12 * faceW below chin)
+                    float peakV = faceW * 0.12;
+                    float distV = abs(vC - peakV);
+                    float spanV = (vC < peakV) ? peakV : (submentalLen - peakV);
+                    float tV = clamp(distV / max(0.001, spanV), 0.0, 1.0);
+                    float wV = (1.0 - tV * tV) * (1.0 - tV * tV);
+
+                    float totalW = wU * wV;
+                    // Tucks sagging neck skin UPWARD towards chin (+faceAxisDir samples from lower down)
+                    offset += faceAxisDir * (doubleChin * 0.32 * faceW * totalW);
+                    // Lateral tightening: slightly compresses submental width inward towards midline
+                    offset += axisNormal * (sign(uC) * doubleChin * 0.08 * faceW * totalW);
+                }
+            }
+
+            // B. Viền hàm (Jawline Definition & Sculpting):
+            // Tightens mandibular jowls along midJaw & lowerJaw for a clean, sharp V-line contour
+            float jawline = sculptParams.y;
+            if (jawline > 0.001) {
+                float jlRad = faceW * 0.22;
+
+                // Left mandibular jawline (camera left)
+                float distLL = length(p - leftLowerJaw);
+                if (distLL < jlRad) {
+                    float t = distLL / jlRad;
+                    float w = (1.0 - t * t) * (1.0 - t * t);
+                    offset -= axisNormal * (jawline * 0.22 * w * innerGuard * jlRad);
+                    offset += faceAxisDir * (jawline * 0.07 * w * innerGuard * jlRad);
+                }
+                float distLM = length(p - leftMidJaw);
+                if (distLM < jlRad) {
+                    float t = distLM / jlRad;
+                    float w = (1.0 - t * t) * (1.0 - t * t);
+                    offset -= axisNormal * (jawline * 0.16 * w * innerGuard * jlRad);
+                }
+
+                // Right mandibular jawline (camera right)
+                float distRL = length(p - rightLowerJaw);
+                if (distRL < jlRad) {
+                    float t = distRL / jlRad;
+                    float w = (1.0 - t * t) * (1.0 - t * t);
+                    offset += axisNormal * (jawline * 0.22 * w * innerGuard * jlRad);
+                    offset += faceAxisDir * (jawline * 0.07 * w * innerGuard * jlRad);
+                }
+                float distRM = length(p - rightMidJaw);
+                if (distRM < jlRad) {
+                    float t = distRM / jlRad;
+                    float w = (1.0 - t * t) * (1.0 - t * t);
+                    offset += axisNormal * (jawline * 0.16 * w * innerGuard * jlRad);
+                }
+            }
 
             return p + offset;
         }
@@ -992,6 +1054,7 @@ public final class BeautyRenderer {
 
         // 1. 3D Face Reshaping (Smooth GPU Warp using 468 landmark anchors - zero polygon overlays)
         let hasReshape = face.slimFace > 0.01 || face.smallFace > 0.01 || face.vFace > 0.01 ||
+                         face.doubleChin > 0.01 || face.jawline > 0.01 ||
                          abs(face.jawWidth) > 0.01 || abs(face.cheekWidth) > 0.01 ||
                          abs(face.chinLength) > 0.01 || abs(face.chinWidth) > 0.01 ||
                          abs(face.forehead) > 0.01 || abs(face.templeWidth) > 0.01 ||
@@ -1789,8 +1852,9 @@ public final class BeautyRenderer {
 
 
     // MARK: - Submental Depth & Jawline Contouring
-    // Giảm nọng cằm & làm sắc nét đường viền hàm bằng hiệu ứng đổ bóng chiều sâu 3D.
-    // 4 lớp: A) submental tight shadow, B) wide fade, C) jawbone highlight, D) rim shadow, E) chin accent
+    // MARK: - Submental Jawline & Double Chin
+    // Natural 3D mandibular contouring and submental double chin tucking are executed
+    // via real-time GPU geometric warping in reshapeKernel, eliminating artificial painted lines.
     private func applySubmentalJawlineDepth(
         image: CIImage,
         doubleChin: Double,
@@ -1799,236 +1863,7 @@ public final class BeautyRenderer {
         extent: CGRect,
         skinMask: CIImage?
     ) -> CIImage {
-        guard landmarks.hasFace, doubleChin > 0.001 || jawline > 0.001 else { return image }
-
-        let width = extent.width
-        let height = extent.height
-        let box = landmarks.boundingBox
-        let faceW = max(60.0, box.width * width)
-
-        func ciPt(_ p: CGPoint) -> CGPoint {
-            CGPoint(x: p.x * width, y: (1.0 - p.y) * height)
-        }
-
-        let chinTip       = ciPt(landmarks.chinTip)
-        let leftLowerJaw  = ciPt(landmarks.leftLowerJaw)
-        let rightLowerJaw = ciPt(landmarks.rightLowerJaw)
-        let leftMidJaw    = ciPt(landmarks.leftMidJaw)
-        let rightMidJaw   = ciPt(landmarks.rightMidJaw)
-        let noseBridge    = ciPt(landmarks.noseBridge)
-
-        let axisVec  = CGPoint(x: chinTip.x - noseBridge.x, y: chinTip.y - noseBridge.y)
-        let axisLen  = max(1.0, hypot(axisVec.x, axisVec.y))
-        let axisDown = CGPoint(x: axisVec.x / axisLen, y: axisVec.y / axisLen)
-
-        var result = image
-
-        // Build a Catmull-Rom open spline path through given points
-        func jawArcPath(_ pts: [CGPoint]) -> CGMutablePath {
-            let path = CGMutablePath()
-            guard pts.count >= 2 else { return path }
-            path.move(to: pts[0])
-            let n = pts.count
-            for i in 0..<(n - 1) {
-                let p0 = pts[max(0, i - 1)]
-                let p1 = pts[i]
-                let p2 = pts[i + 1]
-                let p3 = pts[min(n - 1, i + 2)]
-                let cp1 = CGPoint(x: p1.x + (p2.x - p0.x) / 6.0,
-                                  y: p1.y + (p2.y - p0.y) / 6.0)
-                let cp2 = CGPoint(x: p2.x - (p3.x - p1.x) / 6.0,
-                                  y: p2.y - (p3.y - p1.y) / 6.0)
-                path.addCurve(to: p2, control1: cp1, control2: cp2)
-            }
-            return path
-        }
-
-        // Apply a dark layer via CIMultiplyBlendMode masked by maskImg
-        func applyDarkLayer(base: CIImage, maskImg: CIImage, strength: CGFloat) -> CIImage {
-            let dark = CIImage(color: CIColor(red: 0.04, green: 0.02, blue: 0.01, alpha: 1.0)).cropped(to: extent)
-            guard let mul = CIFilter(name: "CIMultiplyBlendMode") else { return base }
-            mul.setValue(dark, forKey: kCIInputImageKey)
-            mul.setValue(base, forKey: kCIInputBackgroundImageKey)
-            guard let darkened = mul.outputImage?.cropped(to: extent) else { return base }
-            var sMask = maskImg
-            if let mx = CIFilter(name: "CIColorMatrix") {
-                mx.setValue(maskImg, forKey: kCIInputImageKey)
-                mx.setValue(CIVector(x: strength, y: 0, z: 0, w: 0), forKey: "inputRVector")
-                mx.setValue(CIVector(x: 0, y: strength, z: 0, w: 0), forKey: "inputGVector")
-                mx.setValue(CIVector(x: 0, y: 0, z: strength, w: 0), forKey: "inputBVector")
-                if let m = mx.outputImage { sMask = m }
-            }
-            guard let bl = CIFilter(name: "CIBlendWithMask") else { return base }
-            bl.setValue(darkened, forKey: kCIInputImageKey)
-            bl.setValue(base, forKey: kCIInputBackgroundImageKey)
-            bl.setValue(sMask, forKey: kCIInputMaskImageKey)
-            return bl.outputImage?.cropped(to: extent) ?? base
-        }
-
-        // Apply a bright layer via CIScreenBlendMode masked by maskImg
-        func applyLightLayer(base: CIImage, maskImg: CIImage, strength: CGFloat) -> CIImage {
-            let light = CIImage(color: CIColor(red: 1.0, green: 0.97, blue: 0.92, alpha: 1.0)).cropped(to: extent)
-            guard let sc = CIFilter(name: "CIScreenBlendMode") else { return base }
-            sc.setValue(light, forKey: kCIInputImageKey)
-            sc.setValue(base, forKey: kCIInputBackgroundImageKey)
-            guard let bright = sc.outputImage?.cropped(to: extent) else { return base }
-            var sMask = maskImg
-            if let mx = CIFilter(name: "CIColorMatrix") {
-                mx.setValue(maskImg, forKey: kCIInputImageKey)
-                mx.setValue(CIVector(x: strength, y: 0, z: 0, w: 0), forKey: "inputRVector")
-                mx.setValue(CIVector(x: 0, y: strength, z: 0, w: 0), forKey: "inputGVector")
-                mx.setValue(CIVector(x: 0, y: 0, z: strength, w: 0), forKey: "inputBVector")
-                if let m = mx.outputImage { sMask = m }
-            }
-            guard let bl = CIFilter(name: "CIBlendWithMask") else { return base }
-            bl.setValue(bright, forKey: kCIInputImageKey)
-            bl.setValue(base, forKey: kCIInputBackgroundImageKey)
-            bl.setValue(sMask, forKey: kCIInputMaskImageKey)
-            return bl.outputImage?.cropped(to: extent) ?? base
-        }
-
-        // ─── LAYER A+B: Submental Shadow (Nọng cằm) ───────────────────────────
-        if doubleChin > 0.001 {
-            let dc = CGFloat(doubleChin)
-            // Arc sits below jawbone — offset each point down along the face axis
-            let drop = faceW * 0.06
-            let arcPts: [CGPoint] = [
-                leftMidJaw,
-                CGPoint(x: leftLowerJaw.x  + axisDown.x * drop,         y: leftLowerJaw.y  + axisDown.y * drop),
-                CGPoint(x: chinTip.x        + axisDown.x * drop * 1.8,   y: chinTip.y       + axisDown.y * drop * 1.8),
-                CGPoint(x: rightLowerJaw.x + axisDown.x * drop,          y: rightLowerJaw.y + axisDown.y * drop),
-                rightMidJaw
-            ]
-            let bW = max(1, Int(faceW * 2.8))
-            let bH = max(1, Int(faceW * 1.5))
-            let ox = arcPts.map(\.x).min()! - faceW * 0.8
-            let oy = arcPts.map(\.y).min()! - faceW * 0.5
-            let org = CGPoint(x: ox, y: oy)
-
-            if let ctx = CGContext(data: nil, width: bW, height: bH,
-                                   bitsPerComponent: 8, bytesPerRow: bW,
-                                   space: CGColorSpaceCreateDeviceGray(),
-                                   bitmapInfo: CGImageAlphaInfo.none.rawValue) {
-                ctx.translateBy(x: -org.x, y: -org.y)
-                ctx.setFillColor(gray: 0, alpha: 1)
-                ctx.fill(CGRect(x: org.x, y: org.y, width: CGFloat(bW), height: CGFloat(bH)))
-                let arc = jawArcPath(arcPts)
-                ctx.setLineCap(.round); ctx.setLineJoin(.round)
-                // Thick bright stroke → blur → dark shadow
-                ctx.setStrokeColor(gray: 1.0, alpha: 1)
-                ctx.setLineWidth(max(10.0, faceW * 0.08))
-                ctx.addPath(arc); ctx.strokePath()
-
-                if let cgImg = ctx.makeImage() {
-                    let raw = CIImage(cgImage: cgImg)
-                        .transformed(by: CGAffineTransform(translationX: org.x, y: org.y))
-                    // Tight blur → defined dark band
-                    let tight = raw.applyingFilter("CIGaussianBlur",
-                                                  parameters: [kCIInputRadiusKey: max(faceW * 0.05, 9.0)])
-                        .cropped(to: extent)
-                    // Wide blur → soft fade
-                    let wide  = raw.applyingFilter("CIGaussianBlur",
-                                                   parameters: [kCIInputRadiusKey: max(faceW * 0.15, 26.0)])
-                        .cropped(to: extent)
-
-                    // Layer A: tight core (very dark)
-                    result = applyDarkLayer(base: result, maskImg: tight, strength: 0.45 + 0.45 * dc)
-                    // Layer B: wide feather (moderate)
-                    result = applyDarkLayer(base: result, maskImg: wide,  strength: 0.22 + 0.28 * dc)
-                }
-            }
-        }
-
-        // ─── LAYER C+D: Jawbone Highlight + Rim Shadow (Viền hàm) ─────────────
-        if jawline > 0.001 {
-            let jl = CGFloat(jawline)
-
-            // Highlight: slightly ABOVE jawbone center
-            let lift = faceW * 0.020
-            let hlPts: [CGPoint] = [
-                CGPoint(x: leftMidJaw.x   - axisDown.x * lift,       y: leftMidJaw.y   - axisDown.y * lift),
-                CGPoint(x: leftLowerJaw.x - axisDown.x * lift * 0.5,  y: leftLowerJaw.y - axisDown.y * lift * 0.5),
-                CGPoint(x: chinTip.x      - axisDown.x * lift * 0.2,  y: chinTip.y      - axisDown.y * lift * 0.2),
-                CGPoint(x: rightLowerJaw.x - axisDown.x * lift * 0.5, y: rightLowerJaw.y - axisDown.y * lift * 0.5),
-                CGPoint(x: rightMidJaw.x   - axisDown.x * lift,       y: rightMidJaw.y   - axisDown.y * lift)
-            ]
-            // Rim shadow: slightly BELOW jawbone center
-            let rimDrop = faceW * 0.032
-            let rimPts = hlPts.map { CGPoint(x: $0.x + axisDown.x * rimDrop,
-                                              y: $0.y + axisDown.y * rimDrop) }
-
-            let bW = max(1, Int(faceW * 2.8))
-            let bH = max(1, Int(faceW * 1.3))
-            let allPts = hlPts + rimPts
-            let ox = allPts.map(\.x).min()! - faceW * 0.7
-            let oy = allPts.map(\.y).min()! - faceW * 0.3
-            let org = CGPoint(x: ox, y: oy)
-
-            // Highlight bitmap
-            if let ctx = CGContext(data: nil, width: bW, height: bH,
-                                   bitsPerComponent: 8, bytesPerRow: bW,
-                                   space: CGColorSpaceCreateDeviceGray(),
-                                   bitmapInfo: CGImageAlphaInfo.none.rawValue) {
-                ctx.translateBy(x: -org.x, y: -org.y)
-                ctx.setFillColor(gray: 0, alpha: 1)
-                ctx.fill(CGRect(x: org.x, y: org.y, width: CGFloat(bW), height: CGFloat(bH)))
-                let hlPath = jawArcPath(hlPts)
-                ctx.setLineCap(.round); ctx.setLineJoin(.round)
-                ctx.setStrokeColor(gray: 1.0, alpha: 1)
-                ctx.setLineWidth(max(3.0, faceW * 0.024))
-                ctx.addPath(hlPath); ctx.strokePath()
-
-                if let cgImg = ctx.makeImage() {
-                    let raw = CIImage(cgImage: cgImg)
-                        .transformed(by: CGAffineTransform(translationX: org.x, y: org.y))
-                    let hlMask = raw.applyingFilter("CIGaussianBlur",
-                                                   parameters: [kCIInputRadiusKey: max(faceW * 0.026, 4.5)])
-                        .cropped(to: extent)
-                    // Layer C: jawbone highlight — strong brightening
-                    result = applyLightLayer(base: result, maskImg: hlMask, strength: 0.30 + 0.42 * jl)
-                }
-            }
-
-            // Rim shadow bitmap
-            if let ctx2 = CGContext(data: nil, width: bW, height: bH,
-                                    bitsPerComponent: 8, bytesPerRow: bW,
-                                    space: CGColorSpaceCreateDeviceGray(),
-                                    bitmapInfo: CGImageAlphaInfo.none.rawValue) {
-                ctx2.translateBy(x: -org.x, y: -org.y)
-                ctx2.setFillColor(gray: 0, alpha: 1)
-                ctx2.fill(CGRect(x: org.x, y: org.y, width: CGFloat(bW), height: CGFloat(bH)))
-                let rimPath = jawArcPath(rimPts)
-                ctx2.setLineCap(.round); ctx2.setLineJoin(.round)
-                ctx2.setStrokeColor(gray: 1.0, alpha: 1)
-                ctx2.setLineWidth(max(4.0, faceW * 0.034))
-                ctx2.addPath(rimPath); ctx2.strokePath()
-
-                if let cgImg2 = ctx2.makeImage() {
-                    let raw2 = CIImage(cgImage: cgImg2)
-                        .transformed(by: CGAffineTransform(translationX: org.x, y: org.y))
-                    let rimMask = raw2.applyingFilter("CIGaussianBlur",
-                                                     parameters: [kCIInputRadiusKey: max(faceW * 0.038, 6.0)])
-                        .cropped(to: extent)
-                    // Layer D: rim shadow — dark band right under jawbone highlight
-                    result = applyDarkLayer(base: result, maskImg: rimMask, strength: 0.32 + 0.38 * jl)
-                }
-            }
-        }
-
-        // ─── LAYER E: Chin Tip Accent Highlight ───────────────────────────────
-        let combinedStrength = max(doubleChin, jawline)
-        if combinedStrength > 0.001 {
-            let s = CGFloat(combinedStrength)
-            let hlR = faceW * 0.068
-            let spot = CIImage(color: CIColor(red: 1.0, green: 0.97, blue: 0.93, alpha: 1.0))
-                .cropped(to: CGRect(x: chinTip.x - hlR, y: chinTip.y - hlR,
-                                    width: hlR * 2, height: hlR * 2))
-                .applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: hlR * 0.65])
-                .cropped(to: extent)
-            result = applyLightLayer(base: result, maskImg: spot, strength: 0.22 + 0.35 * s)
-        }
-
-        return result
+        return image
     }
 
     // MARK: - Makeup (Lipstick, Blush, Eyebrows, Eyeliner, Eyeshadow)
