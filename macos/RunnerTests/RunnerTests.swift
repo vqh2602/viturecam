@@ -1,7 +1,9 @@
 import Cocoa
 import CoreImage
+import CoreMedia
 import CoreML
 import CoreVideo
+import FlutterMacOS
 import XCTest
 @testable import Beauty_Camera
 
@@ -704,4 +706,51 @@ final class RunnerTests: XCTestCase {
         XCTAssertEqual(baseBg, brightBg, "Eye brightening must not affect background")
         XCTAssertEqual(baseBg, sparkleBg, "Eye sparkle must not affect background")
     }
+
+    func testWorkerDecouplesFromCameraCallbackAndDiscardsStaleFrames() throws {
+        final class TestMockTextureRegistry: NSObject, FlutterTextureRegistry {
+            func register(_ texture: FlutterTexture) -> Int64 { 1 }
+            func textureFrameAvailable(_ textureId: Int64) {}
+            func unregisterTexture(_ textureId: Int64) {}
+        }
+
+        let mockRegistry = TestMockTextureRegistry()
+        let engine = BeautyEngine(textureRegistry: mockRegistry)
+        engine.ensureTextureRegistered()
+        engine.beautyEnabled = false
+
+        func createSampleBuffer(pts: CMTime) throws -> CMSampleBuffer {
+            let pb = try buffer()
+            var timing = CMSampleTimingInfo(duration: CMTime.invalid, presentationTimeStamp: pts, decodeTimeStamp: CMTime.invalid)
+            var formatDesc: CMFormatDescription?
+            CMVideoFormatDescriptionCreateForImageBuffer(allocator: kCFAllocatorDefault, imageBuffer: pb, formatDescriptionOut: &formatDesc)
+            var sampleBuffer: CMSampleBuffer?
+            CMSampleBufferCreateReadyWithImageBuffer(allocator: kCFAllocatorDefault, imageBuffer: pb, formatDescription: formatDesc!, sampleTiming: &timing, sampleBufferOut: &sampleBuffer)
+            return sampleBuffer!
+        }
+
+        let startCallbackTime = CACurrentMediaTime()
+        // Feed 10 frames in rapid burst without delay
+        for i in 0..<10 {
+            let sb = try createSampleBuffer(pts: CMTime(value: CMTimeValue(i * 33), timescale: 1000))
+            engine.cameraEngine(engine.cameraEngine, didOutput: sb)
+        }
+        let totalCallbackTime = CACurrentMediaTime() - startCallbackTime
+
+        // The 10 callbacks must return almost instantaneously because they don't do sync processing
+        XCTAssertLessThan(totalCallbackTime, 0.05, "All 10 camera callbacks must return immediately without blocking")
+
+        // Wait a short moment for worker to complete any in-flight / latest frame
+        let exp = expectation(description: "Worker finishes")
+        DispatchQueue.global().asyncAfter(deadline: .now() + 0.3) {
+            exp.fulfill()
+        }
+        wait(for: [exp], timeout: 1.0)
+
+        let stats = engine.getPerformanceStats()
+        let dropped = stats["droppedFrames"] as? Int ?? 0
+        // Because 10 frames were sent in a burst, intermediate frames must have been discarded
+        XCTAssertGreaterThan(dropped, 0, "Intermediate frames should be dropped when camera captures faster than worker")
+    }
 }
+

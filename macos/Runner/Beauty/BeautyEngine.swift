@@ -29,6 +29,16 @@ public final class BeautyEngine: NSObject, CameraEngineDelegate {
     public var colorSettings = ColorSettings()
     public var backgroundSettings = BackgroundSettings()
 
+    // Processing Worker & latest frame store (decoupled from AVCapture callback)
+    private struct CapturedFrame {
+        let pixelBuffer: CVPixelBuffer
+        let timestamp: Double
+    }
+    private let processingQueue = DispatchQueue(label: "com.beautycamera.processing.worker", qos: .userInteractive)
+    private let frameLock = NSLock()
+    private var latestFrame: CapturedFrame?
+    private var isWorkerRunning: Bool = false
+
     // Performance tracking
     private var frameCount: Int = 0
     private var lastFpsUpdateTime: TimeInterval = CACurrentMediaTime()
@@ -63,13 +73,24 @@ public final class BeautyEngine: NSObject, CameraEngineDelegate {
 
     public func startCamera(deviceId: String?, width: Int = 1920, height: Int = 1080, fps: Int = 30, completion: @escaping (Bool, String?, Int64) -> Void) {
         let registeredId = ensureTextureRegistered()
-        faceMeshTracker.reset()
-        faceTracker.reset()
-        skinSegmenter.reset()
+        frameLock.lock()
+        latestFrame = nil
+        isWorkerRunning = false
+        frameLock.unlock()
+
+        processingQueue.async { [weak self] in
+            guard let self = self else { return }
+            self.faceMeshTracker.reset()
+            self.faceTracker.reset()
+            self.skinSegmenter.reset()
+        }
+
         cameraEngine.start(deviceId: deviceId, targetWidth: width, targetHeight: height, fps: fps) { [weak self] success, error in
             guard let self = self else { return }
             if success {
-                self.bufferPool.prepare(width: self.cameraEngine.currentWidth, height: self.cameraEngine.currentHeight)
+                self.processingQueue.async {
+                    self.bufferPool.prepare(width: self.cameraEngine.currentWidth, height: self.cameraEngine.currentHeight)
+                }
             }
             let validId = self.textureId > 0 ? self.textureId : registeredId
             completion(success, error, validId)
@@ -79,37 +100,102 @@ public final class BeautyEngine: NSObject, CameraEngineDelegate {
     public func stopCamera(completion: (() -> Void)? = nil) {
         virtualCam.stop()
         cameraEngine.stop { [weak self] in
-            self?.flutterTexture.clear()
-            self?.faceMeshTracker.reset()
-            self?.faceTracker.reset()
-            self?.skinSegmenter.reset()
-            completion?()
+            guard let self = self else {
+                completion?()
+                return
+            }
+            self.frameLock.lock()
+            self.latestFrame = nil
+            self.frameLock.unlock()
+
+            self.processingQueue.async {
+                self.flutterTexture.clear()
+                self.faceMeshTracker.reset()
+                self.faceTracker.reset()
+                self.skinSegmenter.reset()
+                completion?()
+            }
         }
     }
 
     public func getPerformanceStats() -> [String: Any] {
+        frameLock.lock()
+        let dropped = droppedFrames
+        frameLock.unlock()
+
         return [
             "fps": currentFps,
             "renderTimeMs": lastRenderTimeMs,
             "trackingTimeMs": lastTrackingTimeMs,
             "processingTimeMs": lastProcessingTimeMs,
-            "droppedFrames": droppedFrames,
+            "droppedFrames": dropped,
             "width": cameraEngine.currentWidth,
             "height": cameraEngine.currentHeight
         ]
     }
 
     public func cameraEngineDidDropFrame(_ engine: CameraEngine) {
+        frameLock.lock()
         droppedFrames += 1
+        frameLock.unlock()
     }
 
-    // MARK: - CameraEngineDelegate
+    // MARK: - CameraEngineDelegate (AVCapture callback - Non-blocking)
     public func cameraEngine(_ engine: CameraEngine, didOutput sampleBuffer: CMSampleBuffer) {
         guard let sourcePixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
+            frameLock.lock()
             droppedFrames += 1
+            frameLock.unlock()
             return
         }
 
+        let timestamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer).seconds
+        let validTimestamp = timestamp.isFinite ? timestamp : CACurrentMediaTime()
+        let frame = CapturedFrame(pixelBuffer: sourcePixelBuffer, timestamp: validTimestamp)
+
+        var shouldStartWorker = false
+        frameLock.lock()
+        if latestFrame != nil {
+            // Drop unconsumed older frame when newer frame arrives
+            droppedFrames += 1
+        }
+        latestFrame = frame
+
+        if !isWorkerRunning {
+            isWorkerRunning = true
+            shouldStartWorker = true
+        }
+        frameLock.unlock()
+
+        // Return immediately to AVCapture!
+        if shouldStartWorker {
+            processingQueue.async { [weak self] in
+                self?.runProcessingWorker()
+            }
+        }
+    }
+
+    // MARK: - Processing Worker Loop
+    private func runProcessingWorker() {
+        while true {
+            let frame: CapturedFrame
+            frameLock.lock()
+            if let nextFrame = latestFrame {
+                frame = nextFrame
+                latestFrame = nil
+            } else {
+                isWorkerRunning = false
+                frameLock.unlock()
+                break
+            }
+            frameLock.unlock()
+
+            processPipeline(frame: frame)
+        }
+    }
+
+    private func processPipeline(frame: CapturedFrame) {
+        let sourcePixelBuffer = frame.pixelBuffer
         let width = CVPixelBufferGetWidth(sourcePixelBuffer)
         let height = CVPixelBufferGetHeight(sourcePixelBuffer)
 
@@ -117,13 +203,14 @@ public final class BeautyEngine: NSObject, CameraEngineDelegate {
         bufferPool.prepare(width: width, height: height)
 
         guard let targetPixelBuffer = bufferPool.getPixelBuffer() else {
+            frameLock.lock()
             droppedFrames += 1
+            frameLock.unlock()
             return
         }
 
         let processingStart = CACurrentMediaTime()
-        let timestamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer).seconds
-        let validTimestamp = timestamp.isFinite ? timestamp : processingStart
+        let validTimestamp = frame.timestamp
 
         // Core 1: MediaPipe Face Landmarker / Apple Vision Tracker
         // -> eyes / nose / lips / jaw / chin
