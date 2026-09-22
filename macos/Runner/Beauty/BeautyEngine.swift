@@ -39,6 +39,13 @@ public final class BeautyEngine: NSObject, CameraEngineDelegate {
     private var latestFrame: CapturedFrame?
     private var isWorkerRunning: Bool = false
 
+    // Lip Segmentation background async worker (8-10 FPS rate-limited, decoupled from camera render loop)
+    private let lipQueue = DispatchQueue(label: "viturecam.lip", qos: .userInitiated)
+    private let lipLock = NSLock()
+    private var isLipProcessing: Bool = false
+    private var lastLipTime: CFTimeInterval = 0
+    private var latestLipMask: CIImage?
+
     // Performance tracking
     private var frameCount: Int = 0
     private var lastFpsUpdateTime: TimeInterval = CACurrentMediaTime()
@@ -113,6 +120,10 @@ public final class BeautyEngine: NSObject, CameraEngineDelegate {
                 self.faceMeshTracker.reset()
                 self.faceTracker.reset()
                 self.skinSegmenter.reset()
+                self.lipLock.lock()
+                self.latestLipMask = nil
+                self.lipSegmenter.reset()
+                self.lipLock.unlock()
                 completion?()
             }
         }
@@ -224,10 +235,47 @@ public final class BeautyEngine: NSObject, CameraEngineDelegate {
         } else {
             landmarks = faceTracker.processFrame(pixelBuffer: sourcePixelBuffer, timestamp: validTimestamp)
         }
-        // Semantic labels come from this exact raw frame, before beauty/reshape.
-        // Never reuse a previous frame's mouth mask while speaking.
+        // Semantic lip segmentation (decoupled async background inference):
+        // Camera and rendering run at full 24 FPS reusing latestLipMask without blocking.
+        // LipSegmenter runs on background queue (viturecam.lip) rate-limited to ~8–10 FPS.
         if hasLipMakeup && landmarks.hasFace {
-            landmarks.lipPixelMask = lipSegmenter.processFrame(pixelBuffer: sourcePixelBuffer, landmarks: landmarks)
+            lipLock.lock()
+            landmarks.lipPixelMask = latestLipMask
+
+            let now = CACurrentMediaTime()
+            if !isLipProcessing && (now - lastLipTime >= 0.1) {
+                lastLipTime = now
+                isLipProcessing = true
+                lipLock.unlock()
+
+                let buffer = sourcePixelBuffer
+                let lipLandmarks = landmarks
+
+                lipQueue.async { [weak self] in
+                    guard let self = self else { return }
+
+                    let mask = self.lipSegmenter.processFrame(
+                        pixelBuffer: buffer,
+                        landmarks: lipLandmarks
+                    )
+
+                    self.lipLock.lock()
+                    let stillEnabled = self.beautyEnabled && (self.makeupSettings.lipPreset != "none" && self.makeupSettings.lipOpacity > 0.01)
+                    if stillEnabled {
+                        self.latestLipMask = mask
+                    } else {
+                        self.latestLipMask = nil
+                    }
+                    self.isLipProcessing = false
+                    self.lipLock.unlock()
+                }
+            } else {
+                lipLock.unlock()
+            }
+        } else {
+            lipLock.lock()
+            latestLipMask = nil
+            lipLock.unlock()
         }
         lastTrackingTimeMs = (CACurrentMediaTime() - processingStart) * 1000
 

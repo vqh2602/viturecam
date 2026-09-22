@@ -88,6 +88,12 @@ final class LipSegmenter {
         }
     }
 
+    public func reset() {
+        previousMask = nil
+        failStreak = 0
+        lastProcessTime = 0
+    }
+
     func processFrame(pixelBuffer: CVPixelBuffer, landmarks: FaceMeshLandmarks) -> CIImage? {
         let box = landmarks.boundingBox
         guard landmarks.hasFace, !box.isNull, !box.isInfinite,

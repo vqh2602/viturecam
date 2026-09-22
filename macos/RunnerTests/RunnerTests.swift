@@ -794,5 +794,55 @@ final class RunnerTests: XCTestCase {
         let diffCheek = abs(Int(cheekBlush[0]) - Int(cheekBase[0])) + abs(Int(cheekBlush[1]) - Int(cheekBase[1]))
         XCTAssertGreaterThan(diffCheek, 5, "Blush must visibly flush the cheek center")
     }
+
+    func testBeautyEngineDecoupledAsyncLipSegmentation() throws {
+        final class MockRegistry: NSObject, FlutterTextureRegistry {
+            func register(_ texture: FlutterTexture) -> Int64 { 1 }
+            func textureFrameAvailable(_ textureId: Int64) {}
+            func unregisterTexture(_ textureId: Int64) {}
+        }
+
+        let mockRegistry = MockRegistry()
+        let engine = BeautyEngine(textureRegistry: mockRegistry)
+        engine.ensureTextureRegistered()
+        engine.beautyEnabled = true
+        engine.makeupSettings.lipPreset = "cherry"
+        engine.makeupSettings.lipOpacity = 0.9
+
+        func createSampleBuffer(pts: CMTime) throws -> CMSampleBuffer {
+            let pb = try buffer()
+            var timing = CMSampleTimingInfo(duration: CMTime.invalid, presentationTimeStamp: pts, decodeTimeStamp: CMTime.invalid)
+            var formatDesc: CMFormatDescription?
+            CMVideoFormatDescriptionCreateForImageBuffer(allocator: kCFAllocatorDefault, imageBuffer: pb, formatDescriptionOut: &formatDesc)
+            var sampleBuffer: CMSampleBuffer?
+            CMSampleBufferCreateReadyWithImageBuffer(allocator: kCFAllocatorDefault, imageBuffer: pb, formatDescription: formatDesc!, sampleTiming: &timing, sampleBufferOut: &sampleBuffer)
+            return sampleBuffer!
+        }
+
+        let startCallbackTime = CACurrentMediaTime()
+        // Feed 5 frames with 40ms interval (25 FPS cadence)
+        for i in 0..<5 {
+            let sb = try createSampleBuffer(pts: CMTime(value: CMTimeValue(i * 40), timescale: 1000))
+            engine.cameraEngine(engine.cameraEngine, didOutput: sb)
+            Thread.sleep(forTimeInterval: 0.04)
+        }
+        let totalCallbackTime = CACurrentMediaTime() - startCallbackTime
+
+        // Total time should be roughly 5 * 0.04 = 0.20s, NOT delayed by synchronous AI lip segmentation
+        XCTAssertLessThan(totalCallbackTime, 0.45, "Camera stream must maintain 24+ FPS pace without blocking for LipSegmenter")
+
+        // Wait a short moment for background lip worker and processing loop
+        let exp = expectation(description: "Lip worker finishes")
+        DispatchQueue.global().asyncAfter(deadline: .now() + 0.2) {
+            exp.fulfill()
+        }
+        wait(for: [exp], timeout: 1.0)
+
+        let expStop = expectation(description: "Engine stopped")
+        engine.stopCamera {
+            expStop.fulfill()
+        }
+        wait(for: [expStop], timeout: 1.0)
+    }
 }
 
