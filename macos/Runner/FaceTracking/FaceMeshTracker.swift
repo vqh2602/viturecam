@@ -257,7 +257,7 @@ public final class FaceMeshTracker {
         let prevROI: CanonicalROI? = {
             self.lock.lock()
             defer { self.lock.unlock() }
-            if self.previousLandmarks.hasFace && self.previousLandmarks.confidence > 5.0 {
+            if self.previousLandmarks.hasFace && self.previousLandmarks.confidence > 0.5 {
                 return self.computeCanonicalROIFromLandmarks(self.previousLandmarks.landmarks, imageWidth: width, imageHeight: height)
             }
             return nil
@@ -282,7 +282,7 @@ public final class FaceMeshTracker {
             }
 
             let b = face.boundingBox // Vision bottom-left normalized coordinates
-            let roll = CGFloat(face.roll?.floatValue ?? 0.0) // True radians from Vision
+            let roll = CGFloat(face.roll?.floatValue ?? 0.0) // True radians from Vision (positive is clockwise)
 
             let boxX = b.origin.x * width
             let boxY = (1.0 - b.maxY) * height
@@ -296,7 +296,7 @@ public final class FaceMeshTracker {
             let initialROI = CanonicalROI(
                 centerPx: CGPoint(x: cx_px, y: cy_px),
                 sizePx: size_px,
-                rollAngle: -roll
+                rollAngle: roll
             )
 
             self.smoothedROI = initialROI
@@ -319,36 +319,24 @@ public final class FaceMeshTracker {
         let W = imageWidth
         let H = imageHeight
 
-        // Compute tight bounding box from all 468 landmarks in TRUE PIXEL SPACE (Google MediaPipe standard)
-        var minX_px = CGFloat(landmarks[0].x) * W
-        var maxX_px = minX_px
-        var minY_px = CGFloat(landmarks[0].y) * H
-        var maxY_px = minY_px
-
-        for i in 1..<468 {
-            let px = CGFloat(landmarks[i].x) * W
-            let py = CGFloat(landmarks[i].y) * H
-            if px < minX_px { minX_px = px }
-            if px > maxX_px { maxX_px = px }
-            if py < minY_px { minY_px = py }
-            if py > maxY_px { maxY_px = py }
-        }
-
-        let boxW = maxX_px - minX_px
-        let boxH = maxY_px - minY_px
-        let cx_px = minX_px + boxW * 0.5
-        let cy_px = minY_px + boxH * 0.5
-
-        // The mesh already includes the full face; use a tighter crop than the Vision seed.
-        // Excess padding feeds scale error back into the next frame and makes the ROI grow.
-        let size_px = max(48.0, max(boxW, boxH) * 1.5)
-
         // True physical roll angle between outer eye corners in pixel space (zero aspect-ratio distortion!)
         let p33 = landmarks[33]   // Camera-left outer eye corner
         let p263 = landmarks[263] // Camera-right outer eye corner
         let dx_px = CGFloat(p263.x - p33.x) * W
         let dy_px = CGFloat(p263.y - p33.y) * H
         let roll = atan2(dy_px, dx_px)
+
+        // Rotation-invariant Face Scale & Center:
+        // Forehead center (10) and chin tip (152) define the primary facial axis.
+        // Midpoint gives the true anatomical center of the head, invariant under tilt.
+        let p10 = landmarks[10]
+        let p152 = landmarks[152]
+        let cx_px = CGFloat(p10.x + p152.x) * 0.5 * W
+        let cy_px = CGFloat(p10.y + p152.y) * 0.5 * H
+
+        let faceHeight_px = hypot(CGFloat(p152.x - p10.x) * W, CGFloat(p152.y - p10.y) * H)
+        let eyeDist_px = hypot(dx_px, dy_px)
+        let size_px = max(48.0, max(faceHeight_px * 1.45, eyeDist_px * 2.35))
 
         return CanonicalROI(centerPx: CGPoint(x: cx_px, y: cy_px), sizePx: size_px, rollAngle: roll)
     }
@@ -431,7 +419,7 @@ public final class FaceMeshTracker {
             let ptr = multiArray.dataPointer.bindMemory(to: Float.self, capacity: multiArray.count)
 
             let confidence = ptr[1404]
-            if !confidence.isFinite || confidence < 5.0 {
+            if !confidence.isFinite || confidence < 0.5 {
                 updateNoFace()
                 return false
             }

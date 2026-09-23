@@ -9,6 +9,7 @@ class BeautySettings {
   final double darkCircle; // 0..100
   final double eyeBag; // 0..100
   final double eyeWrinkle; // 0..100
+  final double crowsFeet; // 0..100
   final double teethWhitening; // 0..100
   final double glassSkin; // 0..100
 
@@ -23,6 +24,7 @@ class BeautySettings {
     this.darkCircle = 0,
     this.eyeBag = 0,
     this.eyeWrinkle = 0,
+    this.crowsFeet = 0,
     this.teethWhitening = 0,
     this.glassSkin = 0,
   });
@@ -38,6 +40,7 @@ class BeautySettings {
       darkCircle > 0 ||
       eyeBag > 0 ||
       eyeWrinkle > 0 ||
+      crowsFeet > 0 ||
       teethWhitening > 0 ||
       glassSkin > 0;
 
@@ -61,6 +64,8 @@ class BeautySettings {
         return eyeBag > 0;
       case 'eyeWrinkle':
         return eyeWrinkle > 0;
+      case 'crowsFeet':
+        return crowsFeet > 0;
       case 'teethWhitening':
         return teethWhitening > 0;
       case 'glassSkin':
@@ -81,6 +86,7 @@ class BeautySettings {
     double? darkCircle,
     double? eyeBag,
     double? eyeWrinkle,
+    double? crowsFeet,
     double? teethWhitening,
     double? glassSkin,
   }) {
@@ -95,6 +101,7 @@ class BeautySettings {
       darkCircle: darkCircle ?? this.darkCircle,
       eyeBag: eyeBag ?? this.eyeBag,
       eyeWrinkle: eyeWrinkle ?? this.eyeWrinkle,
+      crowsFeet: crowsFeet ?? this.crowsFeet,
       teethWhitening: teethWhitening ?? this.teethWhitening,
       glassSkin: glassSkin ?? this.glassSkin,
     );
@@ -112,6 +119,7 @@ class BeautySettings {
       'darkCircle': darkCircle / 100.0,
       'eyeBag': eyeBag / 100.0,
       'eyeWrinkle': eyeWrinkle / 100.0,
+      'crowsFeet': crowsFeet / 100.0,
       'teethWhitening': teethWhitening / 100.0,
       'glassSkin': glassSkin / 100.0,
     };
@@ -129,6 +137,7 @@ class BeautySettings {
       darkCircle: (json['darkCircle'] as num?)?.toDouble() ?? 0,
       eyeBag: (json['eyeBag'] as num?)?.toDouble() ?? 0,
       eyeWrinkle: (json['eyeWrinkle'] as num?)?.toDouble() ?? 0,
+      crowsFeet: (json['crowsFeet'] as num?)?.toDouble() ?? 0,
       teethWhitening: (json['teethWhitening'] as num?)?.toDouble() ?? 0,
       glassSkin: (json['glassSkin'] as num?)?.toDouble() ?? 0,
     );
@@ -146,6 +155,7 @@ class BeautySettings {
       'darkCircle': darkCircle,
       'eyeBag': eyeBag,
       'eyeWrinkle': eyeWrinkle,
+      'crowsFeet': crowsFeet,
       'teethWhitening': teethWhitening,
       'glassSkin': glassSkin,
     };

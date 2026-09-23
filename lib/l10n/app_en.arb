@@ -51,6 +51,7 @@
   "beautyDarkCircle": "Dark Circle",
   "beautyEyeBag": "Eye Bag",
   "beautyEyeWrinkle": "Eye Wrinkle",
+  "beautyCrowsFeet": "Crow's Feet",
   "beautyGlassSkin": "Glass Skin",
 
   "sliderSkinSmoothing": "Skin Smoothing",
@@ -62,6 +63,7 @@
   "sliderDarkCircleReduction": "Dark Circle Reduction",
   "sliderEyeBagReduction": "Eye Bag Reduction",
   "sliderEyeWrinkleReduction": "Eye Wrinkle Reduction",
+  "sliderCrowsFeet": "Crow's Feet Smoothing",
   "sliderGlassSkin": "Glass Skin Glow",
   "sliderTeethWhitening": "Teeth Whitening",
 

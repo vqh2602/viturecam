@@ -139,6 +139,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get beautyEyeWrinkle => 'Nếp nhăn mắt';
 
   @override
+  String get beautyCrowsFeet => 'Vết chân chim';
+
+  @override
   String get beautyGlassSkin => 'Da bóng mịn';
 
   @override
@@ -167,6 +170,9 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get sliderEyeWrinkleReduction => 'Giảm nếp nhăn & rãnh mắt';
+
+  @override
+  String get sliderCrowsFeet => 'Làm mờ vết chân chim';
 
   @override
   String get sliderGlassSkin => 'Mức độ da bóng mịn';

@@ -154,7 +154,8 @@ public final class BeautyRenderer {
             vec3 creaseFilled = mix(image.rgb, targetSkin, clamp(valleyDeficit * 3.5, 0.0, 1.0));
 
             // 2. Edge-preserving skin smoothing pass for fine texture irregularities
-            vec3 softened = mix(creaseFilled, smoothPass.rgb, 0.35);
+            // Strong blur/soften effect to blur out ("làm mờ đi") wrinkles & crease lines
+            vec3 softened = mix(creaseFilled, smoothPass.rgb, 0.70);
 
             // 3. Final composite gated strictly by wrinkleMask and wrinkleStrength
             vec3 result = mix(image.rgb, softened, m);
@@ -173,17 +174,17 @@ public final class BeautyRenderer {
         ) {
             vec3 col = image.rgb;
 
-            // 1. Double chin ambient depth shadow: hugs the jaw-neck junction, darkening the sagging submental bulge
-            float subVal = smoothstep(0.04, 0.90, submentalMask.r);
-            float subShadow = subVal * doubleChin * 0.38;
+            // 1. Double chin ambient depth shadow: gentle, natural submental depth under chin
+            float subVal = smoothstep(0.06, 0.85, submentalMask.r);
+            float subShadow = subVal * doubleChin * 0.14;
             col *= (1.0 - subShadow);
 
             // 2. Jawline drop shadow under the jawbone rim (strictly on the neck side)
-            float jShadow = jawShadowMask.r * jawline * 0.25;
+            float jShadow = jawShadowMask.r * jawline * 0.10;
             col *= (1.0 - jShadow);
 
-            // 3. Jawline ridge highlight inside the jawbone rim (strictly on the face side)
-            float jHighlight = jawHighlightMask.r * jawline * 0.08;
+            // 3. Jawline ridge highlight inside the jawbone rim (delicate satin sheen on the face side)
+            float jHighlight = jawHighlightMask.r * jawline * 0.035;
             col = min(vec3(1.0), col + vec3(jHighlight));
 
             return vec4(col, image.a);
@@ -271,24 +272,29 @@ public final class BeautyRenderer {
             float distToInnerCore = min(length(p - noseCenter), length(p - mouthCenter));
             float innerGuard = smoothstep(faceW * 0.12, faceW * 0.24, distToInnerCore);
 
+            // 3D Yaw foreshortening factors for jaw
+            float lYaw = sculptParams.z > 0.01 ? sculptParams.z : 1.0;
+            float rYaw = sculptParams.w > 0.01 ? sculptParams.w : 1.0;
+
             // ==========================================
             // GROUP 1: MẶT (FACE)
             // ==========================================
-            // A. Mid-Jaw Slimming (slimMid)
+            // A. Mid-Jaw Slimming (slimMid / Hàm & Góc hàm)
             float slimMidFactor = faceParams1.x;
-            float jawRad = faceW * 0.22;
+            float jawRadL = faceW * 0.17 * lYaw;
+            float jawRadR = faceW * 0.17 * rYaw;
             if (abs(slimMidFactor) > 0.001) {
                 float distLM = length(p - leftMidJaw);
-                if (distLM < jawRad) {
-                    float t = distLM / jawRad;
+                if (distLM < jawRadL) {
+                    float t = distLM / jawRadL;
                     float w = (1.0 - t * t) * (1.0 - t * t);
-                    offset -= axisNormal * (slimMidFactor * 0.22 * w * innerGuard * jawRad);
+                    offset -= axisNormal * (slimMidFactor * 0.13 * w * innerGuard * jawRadL);
                 }
                 float distRM = length(p - rightMidJaw);
-                if (distRM < jawRad) {
-                    float t = distRM / jawRad;
+                if (distRM < jawRadR) {
+                    float t = distRM / jawRadR;
                     float w = (1.0 - t * t) * (1.0 - t * t);
-                    offset += axisNormal * (slimMidFactor * 0.22 * w * innerGuard * jawRad);
+                    offset += axisNormal * (slimMidFactor * 0.13 * w * innerGuard * jawRadR);
                 }
             }
 
@@ -296,16 +302,16 @@ public final class BeautyRenderer {
             float vFaceFactor = faceParams1.y;
             if (abs(vFaceFactor) > 0.001) {
                 float distLL = length(p - leftLowerJaw);
-                if (distLL < jawRad) {
-                    float t = distLL / jawRad;
+                if (distLL < jawRadL) {
+                    float t = distLL / jawRadL;
                     float w = (1.0 - t * t) * (1.0 - t * t);
-                    offset -= axisNormal * (vFaceFactor * 0.22 * w * innerGuard * jawRad);
+                    offset -= axisNormal * (vFaceFactor * 0.13 * w * innerGuard * jawRadL);
                 }
                 float distRL = length(p - rightLowerJaw);
-                if (distRL < jawRad) {
-                    float t = distRL / jawRad;
+                if (distRL < jawRadR) {
+                    float t = distRL / jawRadR;
                     float w = (1.0 - t * t) * (1.0 - t * t);
-                    offset += axisNormal * (vFaceFactor * 0.22 * w * innerGuard * jawRad);
+                    offset += axisNormal * (vFaceFactor * 0.13 * w * innerGuard * jawRadR);
                 }
             }
 
@@ -956,15 +962,15 @@ public final class BeautyRenderer {
             float doubleChin = sculptParams.x;
             if (doubleChin > 0.001) {
                 // Natural submental anchor: nestled right underneath the mandibular symphysis (chin)
-                vec2 subCenter = chinCenter + faceAxisDir * (faceW * 0.05);
+                vec2 subCenter = chinCenter + faceAxisDir * (faceW * 0.04);
                 vec2 dSub = p - subCenter;
                 float uC = dot(dSub, axisNormal);  // Lateral across neck (- left, + right)
                 float vC = dot(dSub, faceAxisDir); // Along face axis: + downward under chin
 
                 // Confine strictly to submental fat pad immediately behind chin arch
                 // Never extends down into lower neck, clavicles, jewelry, or collars
-                float subHalfW = faceW * 0.22;
-                float subHalfH = faceW * 0.08;
+                float subHalfW = faceW * 0.18;
+                float subHalfH = faceW * 0.07;
 
                 float normU = uC / max(0.001, subHalfW);
                 float normV = vC / max(0.001, subHalfH);
@@ -975,9 +981,9 @@ public final class BeautyRenderer {
                     float w = (1.0 - distSq) * (1.0 - distSq);
 
                     // Gentle, natural upward tuck (+faceAxisDir samples from slightly lower down)
-                    offset += faceAxisDir * (doubleChin * 0.07 * faceW * w);
+                    offset += faceAxisDir * (doubleChin * 0.035 * faceW * w);
                     // Continuous lateral tightening towards midline (zero at center uC = 0, no sign() tear!)
-                    offset -= axisNormal * (normU * doubleChin * 0.03 * faceW * w);
+                    offset -= axisNormal * (normU * doubleChin * 0.015 * faceW * w);
                 }
             }
 
@@ -1167,7 +1173,8 @@ public final class BeautyRenderer {
         let hasSkinBeauty = beauty.smooth > 0.01 || beauty.skinTone > 0.01 || beauty.skinToneType != "natural" ||
                             beauty.whitening > 0.01 || beauty.skinBrightness > 0.01 || beauty.redness > 0.01 ||
                             beauty.darkCircle > 0.01 || beauty.eyeBag > 0.01 || beauty.eyeWrinkle > 0.01 ||
-                            beauty.teethWhitening > 0.01 || face.eyeBrightness > 0.01 || face.eyeSparkle > 0.01 ||
+                            beauty.crowsFeet > 0.01 || beauty.teethWhitening > 0.01 ||
+                            face.eyeBrightness > 0.01 || face.eyeSparkle > 0.01 ||
                             beauty.glassSkin > 0.01 || face.aegyoSal > 0.01
 
         if hasSkinBeauty && landmarks.hasFace {
@@ -1301,11 +1308,20 @@ public final class BeautyRenderer {
         // Normal points 90 degrees to the right of the face axis
         let axisNormal = CGPoint(x: -axisDir.y, y: axisDir.x)
 
-        // Reshape Factors
-        let slimMidFactor = CGFloat(face.slimFace * 0.55 + face.jawWidth * 0.45)
-        let vFaceFactor = CGFloat(face.vFace * 0.65 + face.slimFace * 0.25)
+        // Reshape Factors (Calibrated natural scaling to prevent caving in)
+        let slimMidFactor = CGFloat(face.slimFace * 0.40 + face.jawWidth * 0.35)
+        let vFaceFactor = CGFloat(face.vFace * 0.50 + face.slimFace * 0.20)
         let chinDy = CGFloat(face.chinLength)
         let chinDx = CGFloat(face.chinWidth)
+
+        // 3D Yaw Perspective Foreshortening for Jaw & Mandible
+        let lJawVec = CGPoint(x: leftMidJaw.x - noseBridge.x, y: leftMidJaw.y - noseBridge.y)
+        let rJawVec = CGPoint(x: rightMidJaw.x - noseBridge.x, y: rightMidJaw.y - noseBridge.y)
+        let lDist = max(1.0, abs(lJawVec.x * axisNormal.x + lJawVec.y * axisNormal.y))
+        let rDist = max(1.0, abs(rJawVec.x * axisNormal.x + rJawVec.y * axisNormal.y))
+        let avgJawDist = (lDist + rDist) * 0.5
+        let lYawRatio = max(0.55, min(1.25, lDist / avgJawDist))
+        let rYawRatio = max(0.55, min(1.25, rDist / avgJawDist))
 
         let smallFace = CGFloat(face.smallFace)
         let cheekWidth = CGFloat(face.cheekWidth)
@@ -1397,7 +1413,7 @@ public final class BeautyRenderer {
             CIVector(x: mouthPos, y: nostrilWidth, z: smileCorners, w: mShapeLips),
             CIVector(x: leftBrowCenter.x, y: leftBrowCenter.y, z: rightBrowCenter.x, w: rightBrowCenter.y),
             CIVector(x: eyebrowHeight, y: eyebrowTilt, z: eyebrowArch, w: hairline),
-            CIVector(x: 0.0, y: 0.0, z: 0.0, w: 0.0) // doubleChin & jawline warping disabled - handled optically in applySubmentalJawlineDepth
+            CIVector(x: CGFloat(face.doubleChin), y: 0.0, z: lYawRatio, w: rYawRatio)
         ]
 
         let maxShift = faceW * 0.20
@@ -1621,8 +1637,7 @@ public final class BeautyRenderer {
                 rx: rx,
                 ry: ry,
                 intensity: max(wrinkleIntensity, concealerIntensity),
-                landmarks: landmarks,
-                includeCrowFeet: beauty.eyeWrinkle > 0.01
+                landmarks: landmarks
             ) {
                 // Step A: Morphological Local Maximum to fill narrow dark trenches with surrounding skin
                 let morphRadius = max(2.5, faceW * 0.012)
@@ -1639,7 +1654,7 @@ public final class BeautyRenderer {
                 // Step B: Edge-preserving smooth base for overall under-eye texture
                 let smoothPass = current.applyingGaussianBlur(sigma: max(3.0, faceW * 0.025)).cropped(to: extent)
 
-                // Step C: Execute Crease Infill & Dark Valley Eraser Kernel (Triệt tiêu rãnh nhăn đen đậm)
+                // Step C: Execute Crease Infill & Dark Valley Eraser Kernel (Triệt tiêu rãnh nhăn đen đậm & làm mờ đi vùng quầng thâm)
                 if wrinkleIntensity > 0.01,
                    let infillKernel = eyeWrinkleCreaseInfillKernel,
                    let infilledResult = infillKernel.apply(
@@ -1673,6 +1688,37 @@ public final class BeautyRenderer {
                             current = out
                         }
                     }
+                }
+            }
+        }
+
+        // 3b. Crow's Feet Smoothing (Vết chân chim đuôi mắt - dedicated lateral canthal smoothing)
+        if beauty.crowsFeet > 0.01 {
+            if let crowsFeetMask = createCrowsFeetMask(
+                extent: extent,
+                landmarks: landmarks,
+                faceW: faceW,
+                faceH: faceH,
+                intensity: beauty.crowsFeet
+            ) {
+                let morphRadius = max(2.5, faceW * 0.012)
+                var infilledPass = current
+                if let maxFilter = CIFilter(name: "CIMorphologyMaximum") {
+                    maxFilter.setValue(current, forKey: kCIInputImageKey)
+                    maxFilter.setValue(morphRadius, forKey: kCIInputRadiusKey)
+                    if let out = maxFilter.outputImage?.cropped(to: extent) {
+                        infilledPass = out
+                    }
+                }
+                let smoothInfill = infilledPass.applyingGaussianBlur(sigma: max(2.0, faceW * 0.010)).cropped(to: extent)
+                let smoothPass = current.applyingGaussianBlur(sigma: max(3.0, faceW * 0.025)).cropped(to: extent)
+
+                if let infillKernel = eyeWrinkleCreaseInfillKernel,
+                   let infilledResult = infillKernel.apply(
+                        extent: extent,
+                        arguments: [current, smoothInfill, smoothPass, crowsFeetMask, Float(beauty.crowsFeet)]
+                   ) {
+                    current = infilledResult
                 }
             }
         }
@@ -2083,19 +2129,37 @@ public final class BeautyRenderer {
         faceCtx.setFillColor(gray: 0, alpha: 1)
         faceCtx.fill(CGRect(x: 0, y: 0, width: lowW, height: lowH))
 
-        // Draw face polygon: jaw points + forehead arch
-        let facePath = CGMutablePath()
-        facePath.move(to: scaledJawPts[0])
-        for pt in scaledJawPts.dropFirst() {
-            facePath.addLine(to: pt)
+        // True anatomical face silhouette (36 continuous landmarks along jaw, cheeks, temples & forehead)
+        func ciPt(_ p: CGPoint) -> CGPoint {
+            return CGPoint(x: p.x * width, y: (1.0 - p.y) * height)
         }
-        // Arch over the top of the forehead
-        let topForehead = CGPoint(
-            x: box.midX * lowW,
-            y: (1.0 - max(0.0, box.minY - box.height * 0.10)) * lowH
-        )
-        facePath.addLine(to: topForehead)
-        facePath.closeSubpath()
+
+        let silhouettePts: [CGPoint]
+        if !landmarks.faceContour.isEmpty && landmarks.faceContour.count >= 6 {
+            silhouettePts = landmarks.faceContour.map { scaledPt(ciPt($0)) }
+        } else if landmarks.landmarks.count >= 468 {
+            silhouettePts = FaceMeshGeometry.silhouetteIndices.map { idx in
+                let lm = landmarks.landmarks[idx]
+                return scaledPt(ciPt(CGPoint(x: CGFloat(lm.x), y: CGFloat(lm.y))))
+            }
+        } else {
+            var pts = scaledJawPts
+            let topForehead = CGPoint(
+                x: box.midX * lowW,
+                y: (1.0 - max(0.0, box.minY - box.height * 0.10)) * lowH
+            )
+            pts.append(topForehead)
+            silhouettePts = pts
+        }
+
+        let facePath = CGMutablePath()
+        if let first = silhouettePts.first {
+            facePath.move(to: first)
+            for pt in silhouettePts.dropFirst() {
+                facePath.addLine(to: pt)
+            }
+            facePath.closeSubpath()
+        }
 
         faceCtx.addPath(facePath)
         faceCtx.setFillColor(gray: 1.0, alpha: 1.0)
@@ -2116,7 +2180,7 @@ public final class BeautyRenderer {
         }
 
         // -------------------------------------------------------------
-        // Step 2: Render Submental Crescent Mask (Hugging the jaw-neck junction)
+        // Step 2: Render Submental Crescent Mask (Confined to anatomical submental space under chin)
         // -------------------------------------------------------------
         guard let subCtx = CGContext(
             data: nil, width: iW, height: iH, bitsPerComponent: 8,
@@ -2126,13 +2190,14 @@ public final class BeautyRenderer {
         subCtx.setFillColor(gray: 0, alpha: 1)
         subCtx.fill(CGRect(x: 0, y: 0, width: lowW, height: lowH))
 
-        let maxDepth = (faceW * scaleX) * 0.085
+        let maxDepth = (faceW * scaleX) * 0.060
         let nPts = scaledJawPts.count
         var neckPts: [CGPoint] = []
 
         for (i, p) in scaledJawPts.enumerated() {
             let prog = CGFloat(i) / CGFloat(max(1, nPts - 1))
-            let depthFactor = sin(prog * .pi) // 0 at ears, 1.0 at chin
+            // Concentrated strictly at the submental fat pad under the chin
+            let depthFactor = pow(sin(prog * .pi), 2.5)
             let d = maxDepth * depthFactor
             let q = CGPoint(
                 x: p.x + faceAxisDir.x * d,
@@ -2186,7 +2251,7 @@ public final class BeautyRenderer {
             strokePath.addLine(to: p)
         }
         jawCtx.addPath(strokePath)
-        jawCtx.setLineWidth(max(2.5, (faceW * scaleX) * 0.022))
+        jawCtx.setLineWidth(max(1.8, (faceW * scaleX) * 0.015))
         jawCtx.setLineCap(.round)
         jawCtx.setLineJoin(.round)
         jawCtx.setStrokeColor(gray: 1.0, alpha: 1.0)
@@ -2194,7 +2259,7 @@ public final class BeautyRenderer {
 
         guard let jawCG = jawCtx.makeImage() else { return (submentalMask, nil, nil) }
         var rawJawEdge = CIImage(cgImage: jawCG).transformed(by: transform).cropped(to: extent)
-        rawJawEdge = rawJawEdge.applyingGaussianBlur(sigma: max(2.0, faceW * 0.010)).cropped(to: extent)
+        rawJawEdge = rawJawEdge.applyingGaussianBlur(sigma: max(1.8, faceW * 0.008)).cropped(to: extent)
 
         // Drop shadow is strictly on the neck side (outside face)
         var jawShadowMask = rawJawEdge
@@ -4212,23 +4277,72 @@ public final class BeautyRenderer {
         guard let cgImg = context.makeImage() else { return nil }
         let ciMask = CIImage(cgImage: cgImg).transformed(by: CGAffineTransform(translationX: shadowBounds.minX, y: shadowBounds.minY))
 
-        let blurRadius: Double
+        // Scale-proportional dual-layer Xingtu powder diffusion (loe phấn tự nhiên ra vùng da)
+        let coreBlurRadius: Double
+        let bloomBlurRadius: Double
         switch style {
-        case "cutCrease": blurRadius = 2.2
-        case "outerV":     blurRadius = 3.2
-        case "douyin":     blurRadius = 3.2
-        case "halo":       blurRadius = 2.8
-        case "gradient":   fallthrough
-        default:           blurRadius = 3.5
+        case "cutCrease":
+            coreBlurRadius = Double(max(2.8, faceW * 0.012))
+            bloomBlurRadius = Double(max(7.0, faceW * 0.032))
+        case "outerV":
+            coreBlurRadius = Double(max(3.5, faceW * 0.016))
+            bloomBlurRadius = Double(max(10.0, faceW * 0.052))
+        case "douyin":
+            coreBlurRadius = Double(max(3.2, faceW * 0.015))
+            bloomBlurRadius = Double(max(9.0, faceW * 0.046))
+        case "halo":
+            coreBlurRadius = Double(max(3.0, faceW * 0.014))
+            bloomBlurRadius = Double(max(8.5, faceW * 0.040))
+        case "gradient":
+            fallthrough
+        default:
+            coreBlurRadius = Double(max(3.5, faceW * 0.016))
+            bloomBlurRadius = Double(max(11.0, faceW * 0.056))
         }
 
-        var finalMask = ciMask.cropped(to: extent)
+        var coreMask = ciMask.cropped(to: extent)
         if let blur = CIFilter(name: "CIGaussianBlur") {
             blur.setValue(ciMask, forKey: kCIInputImageKey)
-            blur.setValue(blurRadius, forKey: kCIInputRadiusKey)
+            blur.setValue(coreBlurRadius, forKey: kCIInputRadiusKey)
             if let out = blur.outputImage?.cropped(to: extent) {
-                finalMask = out
+                coreMask = out
             }
+        }
+
+        var bloomMask = ciMask.cropped(to: extent)
+        if let blur = CIFilter(name: "CIGaussianBlur") {
+            blur.setValue(ciMask, forKey: kCIInputImageKey)
+            blur.setValue(bloomBlurRadius, forKey: kCIInputRadiusKey)
+            if let out = blur.outputImage?.cropped(to: extent) {
+                bloomMask = out
+            }
+        }
+
+        // Xingtu Powder Diffusion Blend: Core pigment gives rich eyelid depth, Bloom gives the soft airy fade onto skin
+        var finalMask = coreMask
+        if let blend = CIFilter(name: "CIAdditionCompositing") {
+            var scaledBloom = bloomMask
+            if let matrix = CIFilter(name: "CIColorMatrix") {
+                matrix.setValue(bloomMask, forKey: kCIInputImageKey)
+                matrix.setValue(CIVector(x: 0.45, y: 0, z: 0, w: 0), forKey: "inputRVector")
+                matrix.setValue(CIVector(x: 0, y: 0.45, z: 0, w: 0), forKey: "inputGVector")
+                matrix.setValue(CIVector(x: 0, y: 0, z: 0.45, w: 0), forKey: "inputBVector")
+                matrix.setValue(CIVector(x: 0, y: 0, z: 0, w: 0.45), forKey: "inputAVector")
+                scaledBloom = matrix.outputImage ?? bloomMask
+            }
+            var scaledCore = coreMask
+            if let matrix = CIFilter(name: "CIColorMatrix") {
+                matrix.setValue(coreMask, forKey: kCIInputImageKey)
+                matrix.setValue(CIVector(x: 0.65, y: 0, z: 0, w: 0), forKey: "inputRVector")
+                matrix.setValue(CIVector(x: 0, y: 0.65, z: 0, w: 0), forKey: "inputGVector")
+                matrix.setValue(CIVector(x: 0, y: 0, z: 0.65, w: 0), forKey: "inputBVector")
+                matrix.setValue(CIVector(x: 0, y: 0, z: 0, w: 0.65), forKey: "inputAVector")
+                scaledCore = matrix.outputImage ?? coreMask
+            }
+
+            blend.setValue(scaledBloom, forKey: kCIInputImageKey)
+            blend.setValue(scaledCore, forKey: kCIInputBackgroundImageKey)
+            finalMask = blend.outputImage?.cropped(to: extent) ?? coreMask
         }
 
         // Strict Eyeball Cutout Protection: Ensure eyeshadow pigment never bleeds into eyeball
@@ -4763,15 +4877,14 @@ public final class BeautyRenderer {
         rx: CGFloat,
         ry: CGFloat,
         intensity: Double,
-        landmarks: FaceMeshLandmarks? = nil,
-        includeCrowFeet: Bool = false
+        landmarks: FaceMeshLandmarks? = nil
     ) -> CIImage? {
         guard let lGrad = CIFilter(name: "CIRadialGradient"), let rGrad = CIFilter(name: "CIRadialGradient") else { return nil }
         let c = CGFloat(min(1.0, intensity))
         let whiteColor = CIColor(red: c, green: c, blue: c, alpha: 1.0)
         let blackColor = CIColor(red: 0, green: 0, blue: 0, alpha: 1.0)
 
-        // 1. Under-eye tear trough & lower lid folds (Left & Right)
+        // 1. Under-eye tear trough & lower lid folds (Left & Right) - Vùng quầng thâm & rãnh mắt
         lGrad.setValue(CIVector(x: 0, y: 0), forKey: "inputCenter")
         lGrad.setValue(0.15, forKey: "inputRadius0")
         lGrad.setValue(1.0, forKey: "inputRadius1")
@@ -4799,59 +4912,10 @@ public final class BeautyRenderer {
         maxFilter.setValue(lImg, forKey: kCIInputBackgroundImageKey)
         guard var combinedMask = maxFilter.outputImage?.cropped(to: extent) else { return lImg }
 
-        // 2. Crow's Feet / Lateral Canthal Wrinkles (Vết chân chim đuôi mắt - only when eyeWrinkle > 0)
         let width = extent.width
         let height = extent.height
-        if includeCrowFeet, let lm = landmarks, lm.hasFace {
-            var leftOuter = CGPoint(x: leftCenter.x - rx * 1.10, y: leftCenter.y + ry * 0.50)
-            var rightOuter = CGPoint(x: rightCenter.x + rx * 1.10, y: rightCenter.y + ry * 0.50)
-            if lm.leftEyeOuter != .zero {
-                let lx = lm.leftEyeOuter.x * width
-                let ly = (1.0 - lm.leftEyeOuter.y) * height
-                leftOuter = CGPoint(x: min(lx - 4.0, leftCenter.x - rx * 0.90), y: ly)
-            }
-            if lm.rightEyeOuter != .zero {
-                let rxCoord = lm.rightEyeOuter.x * width
-                let ryCoord = (1.0 - lm.rightEyeOuter.y) * height
-                rightOuter = CGPoint(x: max(rxCoord + 4.0, rightCenter.x + rx * 0.90), y: ryCoord)
-            }
 
-            if let crowL = CIFilter(name: "CIRadialGradient"), let crowR = CIFilter(name: "CIRadialGradient") {
-                let crowR0 = rx * 0.12
-                let crowR1 = rx * 0.45
-                crowL.setValue(CIVector(x: leftOuter.x, y: leftOuter.y), forKey: "inputCenter")
-                crowL.setValue(crowR0, forKey: "inputRadius0")
-                crowL.setValue(crowR1, forKey: "inputRadius1")
-                crowL.setValue(whiteColor, forKey: "inputColor0")
-                crowL.setValue(blackColor, forKey: "inputColor1")
-
-                crowR.setValue(CIVector(x: rightOuter.x, y: rightOuter.y), forKey: "inputCenter")
-                crowR.setValue(crowR0, forKey: "inputRadius0")
-                crowR.setValue(crowR1, forKey: "inputRadius1")
-                crowR.setValue(whiteColor, forKey: "inputColor0")
-                crowR.setValue(blackColor, forKey: "inputColor1")
-
-                if let cL = crowL.outputImage?.cropped(to: extent),
-                   let cR = crowR.outputImage?.cropped(to: extent) {
-                    if let f1 = CIFilter(name: "CILightenBlendMode") {
-                        f1.setValue(cL, forKey: kCIInputImageKey)
-                        f1.setValue(combinedMask, forKey: kCIInputBackgroundImageKey)
-                        if let o1 = f1.outputImage?.cropped(to: extent) {
-                            combinedMask = o1
-                        }
-                    }
-                    if let f2 = CIFilter(name: "CILightenBlendMode") {
-                        f2.setValue(cR, forKey: kCIInputImageKey)
-                        f2.setValue(combinedMask, forKey: kCIInputBackgroundImageKey)
-                        if let o2 = f2.outputImage?.cropped(to: extent) {
-                            combinedMask = o2
-                        }
-                    }
-                }
-            }
-        }
-
-        // 3. Strict Eyeball Center Exclusion Gate:
+        // 2. Strict Eyeball Center Exclusion Gate:
         // Subtract a protective circle around each eye center so eyeball pixels are GUARANTEED 0.0
         if let lm = landmarks, lm.hasFace, lm.leftEyeCenter != .zero, lm.rightEyeCenter != .zero {
             let leftEyePt = CGPoint(x: lm.leftEyeCenter.x * width, y: (1.0 - lm.leftEyeCenter.y) * height)
@@ -4888,7 +4952,7 @@ public final class BeautyRenderer {
             }
         }
 
-        // 4. Strict Eyeball Contour & Lower Lash Protection:
+        // 3. Strict Eyeball Contour & Lower Lash Protection:
         // Cut out the entire eye opening and eyelash roots so concealer/infill NEVER touches the eyes.
         if let lm = landmarks, lm.hasFace, let eyeMask = createEyeballMask(landmarks: lm, extent: extent) {
             var dilatedEye = eyeMask
@@ -4916,6 +4980,112 @@ public final class BeautyRenderer {
         }
 
         return combinedMask
+    }
+
+    // MARK: - Crow's Feet Mask (Vết Chân Chim Đuôi Mắt)
+    public func createCrowsFeetMask(
+        extent: CGRect,
+        landmarks: FaceMeshLandmarks?,
+        faceW: CGFloat,
+        faceH: CGFloat,
+        intensity: Double
+    ) -> CIImage? {
+        guard let lm = landmarks, lm.hasFace, intensity > 0.01 else { return nil }
+        let width = extent.width
+        let height = extent.height
+        let c = CGFloat(min(1.0, intensity))
+        let whiteColor = CIColor(red: c, green: c, blue: c, alpha: 1.0)
+        let blackColor = CIColor(red: 0, green: 0, blue: 0, alpha: 1.0)
+
+        let leftEye = CGPoint(x: lm.leftEyeCenter.x * width, y: (1.0 - lm.leftEyeCenter.y) * height)
+        let rightEye = CGPoint(x: lm.rightEyeCenter.x * width, y: (1.0 - lm.rightEyeCenter.y) * height)
+
+        var leftOuter = CGPoint(x: leftEye.x - faceW * 0.18, y: leftEye.y)
+        var rightOuter = CGPoint(x: rightEye.x + faceW * 0.18, y: rightEye.y)
+
+        if lm.leftEyeOuter != .zero {
+            let lx = lm.leftEyeOuter.x * width
+            let ly = (1.0 - lm.leftEyeOuter.y) * height
+            leftOuter = CGPoint(x: min(lx - 4.0, leftEye.x - faceW * 0.18), y: ly)
+        }
+        if lm.rightEyeOuter != .zero {
+            let rxCoord = lm.rightEyeOuter.x * width
+            let ryCoord = (1.0 - lm.rightEyeOuter.y) * height
+            rightOuter = CGPoint(x: max(rxCoord + 4.0, rightEye.x + faceW * 0.18), y: ryCoord)
+        }
+
+        guard let crowL = CIFilter(name: "CIRadialGradient"),
+              let crowR = CIFilter(name: "CIRadialGradient") else { return nil }
+
+        let crowR0 = faceW * 0.030
+        let crowR1 = faceW * 0.140
+
+        crowL.setValue(CIVector(x: leftOuter.x, y: leftOuter.y), forKey: "inputCenter")
+        crowL.setValue(crowR0, forKey: "inputRadius0")
+        crowL.setValue(crowR1, forKey: "inputRadius1")
+        crowL.setValue(whiteColor, forKey: "inputColor0")
+        crowL.setValue(blackColor, forKey: "inputColor1")
+
+        crowR.setValue(CIVector(x: rightOuter.x, y: rightOuter.y), forKey: "inputCenter")
+        crowR.setValue(crowR0, forKey: "inputRadius0")
+        crowR.setValue(crowR1, forKey: "inputRadius1")
+        crowR.setValue(whiteColor, forKey: "inputColor0")
+        crowR.setValue(blackColor, forKey: "inputColor1")
+
+        guard let cL = crowL.outputImage?.cropped(to: extent),
+              let cR = crowR.outputImage?.cropped(to: extent),
+              let maxF = CIFilter(name: "CILightenBlendMode") else { return nil }
+
+        maxF.setValue(cR, forKey: kCIInputImageKey)
+        maxF.setValue(cL, forKey: kCIInputBackgroundImageKey)
+        guard var mask = maxF.outputImage?.cropped(to: extent) else { return nil }
+
+        // Strict Eyeball Center Exclusion Gate
+        if lm.leftEyeCenter != .zero, lm.rightEyeCenter != .zero {
+            if let lEyeGrad = CIFilter(name: "CIRadialGradient"), let rEyeGrad = CIFilter(name: "CIRadialGradient") {
+                let eyeR0 = faceW * 0.045
+                let eyeR1 = faceW * 0.065
+                lEyeGrad.setValue(CIVector(x: leftEye.x, y: leftEye.y), forKey: "inputCenter")
+                lEyeGrad.setValue(eyeR0, forKey: "inputRadius0")
+                lEyeGrad.setValue(eyeR1, forKey: "inputRadius1")
+                lEyeGrad.setValue(whiteColor, forKey: "inputColor0")
+                lEyeGrad.setValue(blackColor, forKey: "inputColor1")
+
+                rEyeGrad.setValue(CIVector(x: rightEye.x, y: rightEye.y), forKey: "inputCenter")
+                rEyeGrad.setValue(eyeR0, forKey: "inputRadius0")
+                rEyeGrad.setValue(eyeR1, forKey: "inputRadius1")
+                rEyeGrad.setValue(whiteColor, forKey: "inputColor0")
+                rEyeGrad.setValue(blackColor, forKey: "inputColor1")
+
+                if let lCut = lEyeGrad.outputImage?.cropped(to: extent),
+                   let rCut = rEyeGrad.outputImage?.cropped(to: extent),
+                   let maxF2 = CIFilter(name: "CILightenBlendMode") {
+                    maxF2.setValue(rCut, forKey: kCIInputImageKey)
+                    maxF2.setValue(lCut, forKey: kCIInputBackgroundImageKey)
+                    if let eyeCutout = maxF2.outputImage?.cropped(to: extent),
+                       let subF = CIFilter(name: "CISubtractBlendMode") {
+                        subF.setValue(eyeCutout, forKey: kCIInputImageKey)
+                        subF.setValue(mask, forKey: kCIInputBackgroundImageKey)
+                        if let gated = subF.outputImage?.cropped(to: extent) {
+                            mask = gated
+                        }
+                    }
+                }
+            }
+        }
+
+        // Strict Eyeball Aperture Protection
+        if let eyeMask = createEyeballMask(landmarks: lm, extent: extent) {
+            if let subFilter = CIFilter(name: "CISubtractBlendMode") {
+                subFilter.setValue(eyeMask, forKey: kCIInputImageKey)
+                subFilter.setValue(mask, forKey: kCIInputBackgroundImageKey)
+                if let cutMask = subFilter.outputImage?.cropped(to: extent) {
+                    mask = cutMask
+                }
+            }
+        }
+
+        return mask
     }
 
     public func createUnderEyeMask(

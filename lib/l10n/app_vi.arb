@@ -48,6 +48,7 @@
   "beautyDarkCircle": "Quầng thâm",
   "beautyEyeBag": "Bọng mắt",
   "beautyEyeWrinkle": "Nếp nhăn mắt",
+  "beautyCrowsFeet": "Vết chân chim",
   "beautyGlassSkin": "Da bóng mịn",
 
   "sliderSkinSmoothing": "Mức độ làm mịn da",
@@ -59,6 +60,7 @@
   "sliderDarkCircleReduction": "Xóa quầng thâm mắt",
   "sliderEyeBagReduction": "Giảm bọng mắt",
   "sliderEyeWrinkleReduction": "Giảm nếp nhăn & rãnh mắt",
+  "sliderCrowsFeet": "Làm mờ vết chân chim",
   "sliderGlassSkin": "Mức độ da bóng mịn",
   "sliderTeethWhitening": "Làm trắng răng",
 

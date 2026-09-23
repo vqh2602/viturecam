@@ -684,6 +684,36 @@ final class RunnerTests: XCTestCase {
         let treatedCrease = pixel(treated, x: 90, y: 152)
         XCTAssertLessThan(origCrease[0], UInt8(70), "Original crease must be dark")
         XCTAssertGreaterThan(treatedCrease[0], origCrease[0] + 30, "Dark crease must be actively infilled and lifted towards skin tone")
+
+        // Outer corner (crow's feet region: x = 50, y = 166) must NOT be touched by eyeWrinkle
+        let origOuter = pixel(original, x: 50, y: 166)
+        let treatedOuter = pixel(treated, x: 50, y: 166)
+        XCTAssertEqual(origOuter, treatedOuter, "Eye wrinkle treatment must be strictly confined to under-eye area and not bleed into crow's feet")
+    }
+
+    func testCrowsFeetSmoothingSmoothsLateralCanthusWhilePreservingEyeball() throws {
+        let renderer = BeautyRenderer()
+        let source = try buffer()
+
+        // Skin image with a dark crow's feet line at lateral canthus (outer corner of eye: x = 60, y = 166)
+        let skin = CIImage(color: CIColor(red: 0.60, green: 0.52, blue: 0.48)).cropped(to: extent)
+        let crowCrease = CIImage(color: CIColor(red: 0.20, green: 0.16, blue: 0.14)).cropped(to: CGRect(x: 55, y: 165, width: 15, height: 3))
+        let combined = crowCrease.composited(over: skin)
+        context.render(combined, to: source, bounds: extent, colorSpace: nil)
+
+        let original = try render(renderer, source: source)
+        let treated = try render(renderer, source: source, beauty: BeautySettings(from: ["crowsFeet": 1.0]))
+
+        // Eyeball pupil center (x = 90, y = 166) must be 100% protected
+        let origPupil = pixel(original, x: 90, y: 166)
+        let treatedPupil = pixel(treated, x: 90, y: 166)
+        XCTAssertEqual(origPupil, treatedPupil, "Eyeball center must be 100% protected and untouched by crow's feet smoothing")
+
+        // Crow's feet crease at (x = 60, y = 166) must be smoothed / infilled
+        let origCrow = pixel(original, x: 60, y: 166)
+        let treatedCrow = pixel(treated, x: 60, y: 166)
+        XCTAssertLessThan(origCrow[0], UInt8(70), "Original crow's feet line must be dark")
+        XCTAssertGreaterThan(treatedCrow[0], origCrow[0] + 20, "Crow's feet must be actively smoothed and lifted towards skin tone")
     }
 
     func testEyeshadowRendersRichProminentPigmentWithoutBleedingIntoEyeball() throws {
@@ -709,6 +739,30 @@ final class RunnerTests: XCTestCase {
         let shadowEye = pixel(shadowResult, x: 90, y: 166)
         let eyeDelta = zip(origEye, shadowEye).reduce(0) { $0 + abs(Int($1.0) - Int($1.1)) }
         XCTAssertEqual(eyeDelta, 0, "Eyeshadow pigment must never bleed into the eyeball")
+    }
+
+    func testEyeshadowPowderDiffusionBloomOntoUpperSkin() throws {
+        let renderer = BeautyRenderer()
+        let source = try buffer()
+        context.render(CIImage(color: CIColor(red: 0.62, green: 0.55, blue: 0.50)), to: source, bounds: extent, colorSpace: nil)
+
+        let original = try render(renderer, source: source)
+        let makeup = MakeupSettings(from: ["eyeshadowPreset": "rose", "eyeshadowOpacity": 1.0, "eyeshadowStyle": "gradient"])
+        let shadowResult = try render(renderer, source: source, makeup: makeup)
+
+        // Verify soft powder bloom diffusion onto upper skin beyond the lid crease (y = 154...162, x = 126...138)
+        var bloomDelta = 0
+        for y in 154...162 {
+            for x in 126...138 {
+                bloomDelta += zip(pixel(original, x: x, y: y), pixel(shadowResult, x: x, y: y)).reduce(0) { $0 + abs(Int($1.0) - Int($1.1)) }
+            }
+        }
+        XCTAssertGreaterThan(bloomDelta, 15, "Eyeshadow must have soft powder bloom diffusion onto skin above crease")
+
+        // Strict protection of pupil center
+        let origPupil = pixel(original, x: 90, y: 166)
+        let shadowPupil = pixel(shadowResult, x: 90, y: 166)
+        XCTAssertEqual(origPupil, shadowPupil, "Eyeball pupil center must be completely protected from eyeshadow bloom")
     }
 
     func testFacialContourSculptsHollowsWithoutExcessiveDiffusion() throws {
