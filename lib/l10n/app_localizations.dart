@@ -350,6 +350,12 @@ abstract class AppLocalizations {
   /// **'Eye Bag'**
   String get beautyEyeBag;
 
+  /// No description provided for @beautyEyeWrinkle.
+  ///
+  /// In en, this message translates to:
+  /// **'Eye Wrinkle'**
+  String get beautyEyeWrinkle;
+
   /// No description provided for @beautyGlassSkin.
   ///
   /// In en, this message translates to:
@@ -403,6 +409,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Eye Bag Reduction'**
   String get sliderEyeBagReduction;
+
+  /// No description provided for @sliderEyeWrinkleReduction.
+  ///
+  /// In en, this message translates to:
+  /// **'Eye Wrinkle Reduction'**
+  String get sliderEyeWrinkleReduction;
 
   /// No description provided for @sliderGlassSkin.
   ///

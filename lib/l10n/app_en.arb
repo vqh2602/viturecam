@@ -50,6 +50,7 @@
   "beautyRedness": "Redness",
   "beautyDarkCircle": "Dark Circle",
   "beautyEyeBag": "Eye Bag",
+  "beautyEyeWrinkle": "Eye Wrinkle",
   "beautyGlassSkin": "Glass Skin",
 
   "sliderSkinSmoothing": "Skin Smoothing",
@@ -60,6 +61,7 @@
   "sliderRednessReduction": "Redness Reduction",
   "sliderDarkCircleReduction": "Dark Circle Reduction",
   "sliderEyeBagReduction": "Eye Bag Reduction",
+  "sliderEyeWrinkleReduction": "Eye Wrinkle Reduction",
   "sliderGlassSkin": "Glass Skin Glow",
   "sliderTeethWhitening": "Teeth Whitening",
 

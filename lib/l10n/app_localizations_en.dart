@@ -136,6 +136,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get beautyEyeBag => 'Eye Bag';
 
   @override
+  String get beautyEyeWrinkle => 'Eye Wrinkle';
+
+  @override
   String get beautyGlassSkin => 'Glass Skin';
 
   @override
@@ -161,6 +164,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sliderEyeBagReduction => 'Eye Bag Reduction';
+
+  @override
+  String get sliderEyeWrinkleReduction => 'Eye Wrinkle Reduction';
 
   @override
   String get sliderGlassSkin => 'Glass Skin Glow';

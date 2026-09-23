@@ -47,6 +47,7 @@
   "beautyRedness": "Giảm đỏ",
   "beautyDarkCircle": "Quầng thâm",
   "beautyEyeBag": "Bọng mắt",
+  "beautyEyeWrinkle": "Nếp nhăn mắt",
   "beautyGlassSkin": "Da bóng mịn",
 
   "sliderSkinSmoothing": "Mức độ làm mịn da",
@@ -57,6 +58,7 @@
   "sliderRednessReduction": "Khử sắc đỏ da",
   "sliderDarkCircleReduction": "Xóa quầng thâm mắt",
   "sliderEyeBagReduction": "Giảm bọng mắt",
+  "sliderEyeWrinkleReduction": "Giảm nếp nhăn & rãnh mắt",
   "sliderGlassSkin": "Mức độ da bóng mịn",
   "sliderTeethWhitening": "Làm trắng răng",
 

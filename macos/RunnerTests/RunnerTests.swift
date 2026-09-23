@@ -46,6 +46,10 @@ final class RunnerTests: XCTestCase {
         result.rightTemple = CGPoint(x: (p301.x + p383.x) * 0.5, y: (p301.y + p383.y) * 0.5)
         result.rightEyebrowContour = FaceMeshGeometry.rightEyebrowIndices.map { pt($0) }
         result.leftEyebrowContour = FaceMeshGeometry.leftEyebrowIndices.map { pt($0) }
+        result.leftMidJaw = pt(FaceMeshGeometry.leftMidJawIndex)
+        result.rightMidJaw = pt(FaceMeshGeometry.rightMidJawIndex)
+        result.leftLowerJaw = pt(FaceMeshGeometry.leftLowerJawIndex)
+        result.rightLowerJaw = pt(FaceMeshGeometry.rightLowerJawIndex)
         return result
     }
 
@@ -297,6 +301,68 @@ final class RunnerTests: XCTestCase {
         XCTAssertNil(mask, "Teeth mask must be nil when mouth is closed to eliminate flickering on lips")
     }
 
+    func testTeethWhiteningBrightensRealWorldIvoryTeeth() throws {
+        let renderer = BeautyRenderer()
+        let source = try buffer()
+        // Realistic human tooth color with warm/yellowish cast (R: 0.78, G: 0.70, B: 0.52)
+        context.render(CIImage(color: CIColor(red: 0.78, green: 0.70, blue: 0.52)), to: source, bounds: extent, colorSpace: nil)
+
+        let base = try render(renderer, source: source)
+        let whitened = try render(renderer, source: source, beauty: BeautySettings(from: ["teethWhitening": 1.0]))
+
+        // Inner mouth aperture center (teeth position at CI x=128, y=89)
+        let origTeeth = pixel(base, x: 128, y: 89)
+        let newTeeth = pixel(whitened, x: 128, y: 89)
+
+        // Must significantly de-yellow by boosting blue channel
+        XCTAssertGreaterThan(newTeeth[2], origTeeth[2], "Teeth whitening must boost blue channel to neutralize yellow enamel stains")
+        // Must lift overall brightness
+        XCTAssertGreaterThan(newTeeth[0], origTeeth[0], "Teeth whitening must brighten tooth enamel")
+
+        // Upper lip skin (CI x=128, y=104) must remain untouched
+        XCTAssertEqual(pixel(base, x: 128, y: 104), pixel(whitened, x: 128, y: 104), "Lip skin must be protected from teeth whitening")
+    }
+
+    func testLipThicknessPlumpsUpperAndLowerLipsWithoutTearingJunction() throws {
+        let renderer = BeautyRenderer()
+        let source = try buffer()
+        let checker = CIFilter(name: "CICheckerboardGenerator", parameters: [
+            "inputColor0": CIColor(red: 0.85, green: 0.40, blue: 0.40),
+            "inputColor1": CIColor(red: 0.50, green: 0.20, blue: 0.20),
+            "inputWidth": 3.0
+        ])!.outputImage!
+        context.render(checker, to: source, bounds: extent, colorSpace: nil)
+
+        let original = try render(renderer, source: source)
+        let plumpLips = try render(renderer, source: source, face: FaceSettings(from: ["lipThickness": 1.0]))
+
+        // Upper lip region (CI y around 95...108, x around 110...146)
+        var upperLipDiff = 0
+        for y in 95...108 {
+            for x in stride(from: 110, to: 146, by: 2) {
+                upperLipDiff += zip(pixel(original, x: x, y: y), pixel(plumpLips, x: x, y: y)).reduce(0) { $0 + abs(Int($1.0) - Int($1.1)) }
+            }
+        }
+        XCTAssertGreaterThan(upperLipDiff, 50, "Lip thickness must visibly plump and expand upper lip upwards")
+
+        // Lower lip region (CI y around 70...83, x around 110...146)
+        var lowerLipDiff = 0
+        for y in 70...83 {
+            for x in stride(from: 110, to: 146, by: 2) {
+                lowerLipDiff += zip(pixel(original, x: x, y: y), pixel(plumpLips, x: x, y: y)).reduce(0) { $0 + abs(Int($1.0) - Int($1.1)) }
+            }
+        }
+        XCTAssertGreaterThan(lowerLipDiff, 50, "Lip thickness must visibly plump and expand lower lip downwards")
+
+        // The oral fissure seam (mouth center at CI x=128, y=89) must remain smooth and continuous without tearing
+        let seamCenterOrig = pixel(original, x: 128, y: 89)
+        let seamCenterPlump = pixel(plumpLips, x: 128, y: 89)
+        // Seam center has zero displacement in C1 continuous formulation
+        for (a, b) in zip(seamCenterOrig, seamCenterPlump) {
+            XCTAssertLessThanOrEqual(abs(Int(a) - Int(b)), 4, "Mouth center seam must not tear or displace discontinuously")
+        }
+    }
+
     func testEyebrowReshapeMovesEyebrowPixels() throws {
         let renderer = BeautyRenderer()
         let source = try buffer()
@@ -508,6 +574,169 @@ final class RunnerTests: XCTestCase {
             }
         }
         XCTAssertEqual(lowerNeckDiff, 0, "Double chin reshape must strictly preserve lower neck, collars, and jewelry without distortion")
+    }
+
+    func testJawlineDefinesMandibularContourWithoutSqueezingFace() throws {
+        let renderer = BeautyRenderer()
+        let source = try buffer()
+        context.render(CIImage(color: CIColor(red: 0.6, green: 0.6, blue: 0.6)), to: source, bounds: extent, colorSpace: nil)
+
+        let original = try render(renderer, source: source)
+        let jawlineDefined = try render(renderer, source: source, face: FaceSettings(from: ["jawline": 1.0]))
+
+        // Mandibular edge contour must have optical contrast enhancement (depth shadow / highlight)
+        let m = mesh()
+        let lLowCI = CGPoint(x: CGFloat(m.leftLowerJaw.x) * 256.0, y: CGFloat(1.0 - m.leftLowerJaw.y) * 256.0)
+        var jawContourDiff = 0
+        let testX = Int(lLowCI.x)
+        let testY = Int(lLowCI.y)
+        for dy in -3...3 {
+            for dx in -3...3 {
+                jawContourDiff += zip(pixel(original, x: testX + dx, y: testY + dy),
+                                      pixel(jawlineDefined, x: testX + dx, y: testY + dy)).reduce(0) { $0 + abs(Int($1.0) - Int($1.1)) }
+            }
+        }
+        XCTAssertGreaterThan(jawContourDiff, 10, "Jawline must enhance mandibular edge contrast")
+
+        // Lateral outer boundary of cheeks (x=20...40, y=120...136) must NOT be squeezed or shifted inward
+        var cheekBoundaryDiff = 0
+        for y in 120...136 {
+            for x in 20...40 {
+                cheekBoundaryDiff += zip(pixel(original, x: x, y: y),
+                                         pixel(jawlineDefined, x: x, y: y)).reduce(0) { $0 + abs(Int($1.0) - Int($1.1)) }
+            }
+        }
+        XCTAssertEqual(cheekBoundaryDiff, 0, "Jawline must not squeeze face width or warp cheek boundaries")
+    }
+
+    func testJawlineShadowNeverBleedsOntoCheekOrFace() throws {
+        let renderer = BeautyRenderer()
+        let source = try buffer()
+        // Uniform skin tone
+        context.render(CIImage(color: CIColor(red: 0.70, green: 0.60, blue: 0.55)), to: source, bounds: extent, colorSpace: nil)
+
+        let original = try render(renderer, source: source)
+        let treated = try render(renderer, source: source, face: FaceSettings(from: ["jawline": 1.0, "doubleChin": 1.0]))
+
+        let m = mesh()
+        // Cheek center points (inside the face)
+        let leftCheekCI = CGPoint(x: CGFloat(m.leftCheekCenter.x) * 256.0, y: CGFloat(1.0 - m.leftCheekCenter.y) * 256.0)
+        let rightCheekCI = CGPoint(x: CGFloat(m.rightCheekCenter.x) * 256.0, y: CGFloat(1.0 - m.rightCheekCenter.y) * 256.0)
+
+        for center in [leftCheekCI, rightCheekCI] {
+            let cx = Int(center.x)
+            let cy = Int(center.y)
+            for dy in -5...5 {
+                for dx in -5...5 {
+                    let origPx = pixel(original, x: cx + dx, y: cy + dy)
+                    let treatedPx = pixel(treated, x: cx + dx, y: cy + dy)
+                    // Cheeks must NEVER be darkened by jawline or submental shadows
+                    XCTAssertGreaterThanOrEqual(
+                        treatedPx[0], origPx[0],
+                        "Cheek skin at (\(cx + dx), \(cy + dy)) must never be darkened by jawline or double chin shadow"
+                    )
+                }
+            }
+        }
+    }
+
+    func testDarkCirclesReductionPreservesEyeballPixelsAndBrightensUnderEye() throws {
+        let renderer = BeautyRenderer()
+        let source = try buffer()
+        // Provide medium gray skin background
+        context.render(CIImage(color: CIColor(red: 0.45, green: 0.40, blue: 0.38)), to: source, bounds: extent, colorSpace: nil)
+
+        let original = try render(renderer, source: source)
+        let treated = try render(renderer, source: source, beauty: BeautySettings(from: ["darkCircle": 1.0, "eyeBag": 1.0]))
+
+        // Eyeball pupil center (x = 0.35 * 256 = 90, y = (1.0 - 0.35) * 256 = 166)
+        // Must be completely protected: zero alteration
+        let origPupil = pixel(original, x: 90, y: 166)
+        let treatedPupil = pixel(treated, x: 90, y: 166)
+        XCTAssertEqual(origPupil, treatedPupil, "Eyeball center must be 100% protected and untouched by under-eye concealer")
+
+        // Under-eye tear trough region (x = 90, y ≈ 154) must be noticeably brightened
+        let origUnderEye = pixel(original, x: 90, y: 154)
+        let treatedUnderEye = pixel(treated, x: 90, y: 154)
+        XCTAssertGreaterThan(treatedUnderEye[0], origUnderEye[0], "Under-eye area must be noticeably brightened by concealer")
+    }
+
+    func testEyeWrinkleReductionFillsDarkTearTroughCreasesWhilePreservingEyeball() throws {
+        let renderer = BeautyRenderer()
+        let source = try buffer()
+
+        // Base skin image with a prominent dark tear trough crease (vết rãnh mắt đen đậm)
+        let skin = CIImage(color: CIColor(red: 0.60, green: 0.52, blue: 0.48)).cropped(to: extent)
+        let crease = CIImage(color: CIColor(red: 0.20, green: 0.16, blue: 0.14)).cropped(to: CGRect(x: 70, y: 151, width: 40, height: 3))
+        let combined = crease.composited(over: skin)
+        context.render(combined, to: source, bounds: extent, colorSpace: nil)
+
+        let original = try render(renderer, source: source)
+        let treated = try render(renderer, source: source, beauty: BeautySettings(from: ["eyeWrinkle": 1.0]))
+
+        // Eyeball pupil center (x = 90, y = 166) must be 100% protected
+        let origPupil = pixel(original, x: 90, y: 166)
+        let treatedPupil = pixel(treated, x: 90, y: 166)
+        XCTAssertEqual(origPupil, treatedPupil, "Eyeball center must be 100% protected and untouched by wrinkle infill")
+
+        // Dark crease at (x = 90, y = 152) must be filled in with skin tone
+        let origCrease = pixel(original, x: 90, y: 152)
+        let treatedCrease = pixel(treated, x: 90, y: 152)
+        XCTAssertLessThan(origCrease[0], UInt8(70), "Original crease must be dark")
+        XCTAssertGreaterThan(treatedCrease[0], origCrease[0] + 30, "Dark crease must be actively infilled and lifted towards skin tone")
+    }
+
+    func testEyeshadowRendersRichProminentPigmentWithoutBleedingIntoEyeball() throws {
+        let renderer = BeautyRenderer()
+        let source = try buffer()
+        context.render(CIImage(color: CIColor(red: 0.6, green: 0.55, blue: 0.5)), to: source, bounds: extent, colorSpace: nil)
+
+        let original = try render(renderer, source: source)
+        let makeup = MakeupSettings(from: ["eyeshadowPreset": "rose", "eyeshadowOpacity": 1.0, "eyeshadowStyle": "gradient"])
+        let shadowResult = try render(renderer, source: source, makeup: makeup)
+
+        // Upper eyelid region receives rich, prominent pigment depth
+        var eyelidDelta = 0
+        for y in 140...152 {
+            for x in 126...138 {
+                eyelidDelta += zip(pixel(original, x: x, y: y), pixel(shadowResult, x: x, y: y)).reduce(0) { $0 + abs(Int($1.0) - Int($1.1)) }
+            }
+        }
+        XCTAssertGreaterThan(eyelidDelta, 30, "Eyeshadow must produce rich, prominent pigment on upper eyelid")
+
+        // Eyeball pupil center (x = 90, y = 166) must be protected by cutout gate
+        let origEye = pixel(original, x: 90, y: 166)
+        let shadowEye = pixel(shadowResult, x: 90, y: 166)
+        let eyeDelta = zip(origEye, shadowEye).reduce(0) { $0 + abs(Int($1.0) - Int($1.1)) }
+        XCTAssertEqual(eyeDelta, 0, "Eyeshadow pigment must never bleed into the eyeball")
+    }
+
+    func testFacialContourSculptsHollowsWithoutExcessiveDiffusion() throws {
+        let renderer = BeautyRenderer()
+        let source = try buffer()
+        context.render(CIImage(color: CIColor(red: 0.65, green: 0.6, blue: 0.55)), to: source, bounds: extent, colorSpace: nil)
+
+        let original = try render(renderer, source: source)
+        let makeup = MakeupSettings(from: ["contourPreset": "natural", "contourOpacity": 1.0, "contourStyle": "natural"])
+        let contoured = try render(renderer, source: source, makeup: makeup)
+
+        // Cheek hollow region receives sculpted shading around (135, 156)
+        var hollowDiff = 0
+        for y in 150...162 {
+            for x in 128...142 {
+                hollowDiff += zip(pixel(original, x: x, y: y), pixel(contoured, x: x, y: y)).reduce(0) { $0 + abs(Int($1.0) - Int($1.1)) }
+            }
+        }
+        XCTAssertGreaterThan(hollowDiff, 20, "Contour must sculpt the cheek hollow")
+
+        // Outer margin beyond the face boundary (x = 10...25, y = 120...140) must have zero shading spillover
+        var outerSpillDiff = 0
+        for y in 120...140 {
+            for x in 10...25 {
+                outerSpillDiff += zip(pixel(original, x: x, y: y), pixel(contoured, x: x, y: y)).reduce(0) { $0 + abs(Int($1.0) - Int($1.1)) }
+            }
+        }
+        XCTAssertEqual(outerSpillDiff, 0, "Contour shading must be tightly controlled without excessive diffusion or spillover")
     }
 
     func testBackgroundModesProduceDistinctEffects() throws {
