@@ -146,23 +146,35 @@ class MakeupPresets {
   ];
 
   static const List<MakeupStyleOption> eyeshadowStyles = [
-    MakeupStyleOption(id: 'gradient', name: 'Tán đều', icon: Icons.gradient),
+    MakeupStyleOption(id: 'korean', name: 'Trong trẻo', icon: Icons.auto_awesome),
+    MakeupStyleOption(id: 'gradient', name: 'Tán loang', icon: Icons.gradient),
+    MakeupStyleOption(id: 'sheer', name: 'Phủ sương', icon: Icons.blur_on),
+    MakeupStyleOption(id: 'shimmer', name: 'Ánh nhũ', icon: Icons.flare),
     MakeupStyleOption(id: 'halo', name: 'Tâm sáng', icon: Icons.wb_sunny_outlined),
-    MakeupStyleOption(id: 'cutCrease', name: 'Cắt mí', icon: Icons.content_cut),
-    MakeupStyleOption(id: 'outerV', name: 'Đuôi V', icon: Icons.change_history),
+    MakeupStyleOption(id: 'puppy', name: 'Mắt cún', icon: Icons.sentiment_satisfied_alt),
     MakeupStyleOption(id: 'douyin', name: 'Douyin', icon: Icons.star_border),
+    MakeupStyleOption(id: 'outerV', name: 'Đuôi V', icon: Icons.change_history),
+    MakeupStyleOption(id: 'cutCrease', name: 'Cắt mí', icon: Icons.content_cut),
   ];
 
   static const List<MakeupOption> eyeshadowOptions = [
     MakeupOption(id: 'none', name: 'None', color: Colors.transparent),
-    MakeupOption(id: 'earth', name: 'Nâu đất', color: Color(0xFFA1887F)),
+    MakeupOption(id: 'dewyPeach', name: 'Đào sương', color: Color(0xFFF99D84)),
+    MakeupOption(id: 'milkyPink', name: 'Hồng sữa', color: Color(0xFFF7ADC3)),
+    MakeupOption(id: 'apricotMilk', name: 'Trà mơ sữa', color: Color(0xFFF6AD80)),
+    MakeupOption(id: 'glassCoral', name: 'San hô trong', color: Color(0xFFFA7B66)),
+    MakeupOption(id: 'pearlGlow', name: 'Nhũ ngọc trai', color: Color(0xFFF4E0CC)),
+    MakeupOption(id: 'berryDew', name: 'Dâu mọng', color: Color(0xFFDC6180)),
+    MakeupOption(id: 'softMocha', name: 'Nâu sữa', color: Color(0xFFB38B76)),
+    MakeupOption(id: 'grapefruit', name: 'Cam bưởi', color: Color(0xFFFA6A56)),
     MakeupOption(id: 'peach', name: 'Cam đào', color: Color(0xFFF4A261)),
-    MakeupOption(id: 'sunset', name: 'Hoàng hôn', color: Color(0xFFFF8A65)),
     MakeupOption(id: 'rose', name: 'Hồng đất', color: Color(0xFFC75B7A)),
-    MakeupOption(id: 'pink', name: 'Hồng phấn', color: Color(0xFFF48FB1)),
     MakeupOption(id: 'coral', name: 'San hô', color: Color(0xFFE06D53)),
-    MakeupOption(id: 'mauve', name: 'Tím khói', color: Color(0xFF9E7B8E)),
     MakeupOption(id: 'champagne', name: 'Sâm banh', color: Color(0xFFE8C8A9)),
+    MakeupOption(id: 'pink', name: 'Hồng phấn', color: Color(0xFFF48FB1)),
+    MakeupOption(id: 'earth', name: 'Nâu đất', color: Color(0xFFA1887F)),
+    MakeupOption(id: 'sunset', name: 'Hoàng hôn', color: Color(0xFFFF8A65)),
+    MakeupOption(id: 'mauve', name: 'Tím khói', color: Color(0xFF9E7B8E)),
     MakeupOption(id: 'smoky', name: 'Khói đen', color: Color(0xFF505050)),
   ];
   static const List<MakeupStyleOption> contourStyles = [

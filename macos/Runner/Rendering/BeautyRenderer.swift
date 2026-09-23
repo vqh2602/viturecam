@@ -242,7 +242,7 @@ public final class BeautyRenderer {
 
             // 0. Inner Facial Core Protection Guard
             float distToInnerCore = min(length(p - noseCenter), length(p - mouthCenter));
-            float innerGuard = smoothstep(faceW * 0.12, faceW * 0.24, distToInnerCore);
+            float innerGuard = smoothstep(faceW * 0.08, faceW * 0.18, distToInnerCore);
 
             // 3D Yaw foreshortening factors for jaw
             float lYaw = sculptParams.z > 0.01 ? sculptParams.z : 1.0;
@@ -253,37 +253,71 @@ public final class BeautyRenderer {
             // ==========================================
             // A. Mid-Jaw Slimming (slimMid / Hàm & Góc hàm)
             float slimMidFactor = faceParams1.x;
-            float jawRadL = faceW * 0.17 * lYaw;
-            float jawRadR = faceW * 0.17 * rYaw;
+            float jawRadL = faceW * 0.26 * lYaw;
+            float jawRadR = faceW * 0.26 * rYaw;
             if (abs(slimMidFactor) > 0.001) {
+                // Điểm góc hàm (Mid-Jaw / Mandibular Angle)
                 float distLM = length(p - leftMidJaw);
                 if (distLM < jawRadL) {
                     float t = distLM / jawRadL;
                     float w = (1.0 - t * t) * (1.0 - t * t);
-                    offset -= axisNormal * (slimMidFactor * 0.13 * w * innerGuard * jawRadL);
+                    offset -= axisNormal * (slimMidFactor * 0.22 * w * innerGuard * jawRadL);
                 }
                 float distRM = length(p - rightMidJaw);
                 if (distRM < jawRadR) {
                     float t = distRM / jawRadR;
                     float w = (1.0 - t * t) * (1.0 - t * t);
-                    offset += axisNormal * (slimMidFactor * 0.13 * w * innerGuard * jawRadR);
+                    offset += axisNormal * (slimMidFactor * 0.22 * w * innerGuard * jawRadR);
+                }
+
+                // Mở rộng ảnh hưởng nối dài xuống viền hàm dưới để gọt hàm liền mạch, rõ rệt
+                float distLL_J = length(p - leftLowerJaw);
+                if (distLL_J < jawRadL) {
+                    float t = distLL_J / jawRadL;
+                    float w = (1.0 - t * t) * (1.0 - t * t);
+                    offset -= axisNormal * (slimMidFactor * 0.12 * w * innerGuard * jawRadL);
+                }
+                float distRL_J = length(p - rightLowerJaw);
+                if (distRL_J < jawRadR) {
+                    float t = distRL_J / jawRadR;
+                    float w = (1.0 - t * t) * (1.0 - t * t);
+                    offset += axisNormal * (slimMidFactor * 0.12 * w * innerGuard * jawRadR);
                 }
             }
 
-            // B. Lower-Jaw (V-Face)
+            // B. Lower-Jaw (V-Face / Mặt V-line)
             float vFaceFactor = faceParams1.y;
+            float vJawRadL = faceW * 0.27 * lYaw;
+            float vJawRadR = faceW * 0.27 * rYaw;
             if (abs(vFaceFactor) > 0.001) {
+                // Thon gọn phần hàm dưới & cằm (Lower-Jaw)
                 float distLL = length(p - leftLowerJaw);
-                if (distLL < jawRadL) {
-                    float t = distLL / jawRadL;
+                if (distLL < vJawRadL) {
+                    float t = distLL / vJawRadL;
                     float w = (1.0 - t * t) * (1.0 - t * t);
-                    offset -= axisNormal * (vFaceFactor * 0.13 * w * innerGuard * jawRadL);
+                    offset -= axisNormal * (vFaceFactor * 0.24 * w * innerGuard * vJawRadL);
+                    offset += faceAxisDir * (vFaceFactor * 0.06 * w * innerGuard * vJawRadL);
                 }
                 float distRL = length(p - rightLowerJaw);
-                if (distRL < jawRadR) {
-                    float t = distRL / jawRadR;
+                if (distRL < vJawRadR) {
+                    float t = distRL / vJawRadR;
                     float w = (1.0 - t * t) * (1.0 - t * t);
-                    offset += axisNormal * (vFaceFactor * 0.13 * w * innerGuard * jawRadR);
+                    offset += axisNormal * (vFaceFactor * 0.24 * w * innerGuard * vJawRadR);
+                    offset += faceAxisDir * (vFaceFactor * 0.06 * w * innerGuard * vJawRadR);
+                }
+
+                // Mở rộng ảnh hưởng lên góc hàm giữa tạo dáng V-line thanh thoát toàn diện
+                float distLM_V = length(p - leftMidJaw);
+                if (distLM_V < vJawRadL) {
+                    float t = distLM_V / vJawRadL;
+                    float w = (1.0 - t * t) * (1.0 - t * t);
+                    offset -= axisNormal * (vFaceFactor * 0.13 * w * innerGuard * vJawRadL);
+                }
+                float distRM_V = length(p - rightMidJaw);
+                if (distRM_V < vJawRadR) {
+                    float t = distRM_V / vJawRadR;
+                    float w = (1.0 - t * t) * (1.0 - t * t);
+                    offset += axisNormal * (vFaceFactor * 0.13 * w * innerGuard * vJawRadR);
                 }
             }
 
@@ -963,21 +997,21 @@ public final class BeautyRenderer {
             // Tightens mandibular jowls along midJaw & lowerJaw for a clean, sharp V-line contour
             float jawline = sculptParams.y;
             if (jawline > 0.001) {
-                float jlRad = faceW * 0.22;
+                float jlRad = faceW * 0.25;
 
                 // Left mandibular jawline (camera left)
                 float distLL = length(p - leftLowerJaw);
                 if (distLL < jlRad) {
                     float t = distLL / jlRad;
                     float w = (1.0 - t * t) * (1.0 - t * t);
-                    offset -= axisNormal * (jawline * 0.22 * w * innerGuard * jlRad);
-                    offset += faceAxisDir * (jawline * 0.07 * w * innerGuard * jlRad);
+                    offset -= axisNormal * (jawline * 0.26 * w * innerGuard * jlRad);
+                    offset += faceAxisDir * (jawline * 0.08 * w * innerGuard * jlRad);
                 }
                 float distLM = length(p - leftMidJaw);
                 if (distLM < jlRad) {
                     float t = distLM / jlRad;
                     float w = (1.0 - t * t) * (1.0 - t * t);
-                    offset -= axisNormal * (jawline * 0.16 * w * innerGuard * jlRad);
+                    offset -= axisNormal * (jawline * 0.20 * w * innerGuard * jlRad);
                 }
 
                 // Right mandibular jawline (camera right)
@@ -985,14 +1019,14 @@ public final class BeautyRenderer {
                 if (distRL < jlRad) {
                     float t = distRL / jlRad;
                     float w = (1.0 - t * t) * (1.0 - t * t);
-                    offset += axisNormal * (jawline * 0.22 * w * innerGuard * jlRad);
-                    offset += faceAxisDir * (jawline * 0.07 * w * innerGuard * jlRad);
+                    offset += axisNormal * (jawline * 0.26 * w * innerGuard * jlRad);
+                    offset += faceAxisDir * (jawline * 0.08 * w * innerGuard * jlRad);
                 }
                 float distRM = length(p - rightMidJaw);
                 if (distRM < jlRad) {
                     float t = distRM / jlRad;
                     float w = (1.0 - t * t) * (1.0 - t * t);
-                    offset += axisNormal * (jawline * 0.16 * w * innerGuard * jlRad);
+                    offset += axisNormal * (jawline * 0.20 * w * innerGuard * jlRad);
                 }
             }
 
@@ -1269,9 +1303,9 @@ public final class BeautyRenderer {
         // Normal points 90 degrees to the right of the face axis
         let axisNormal = CGPoint(x: -axisDir.y, y: axisDir.x)
 
-        // Reshape Factors (Calibrated natural scaling to prevent caving in)
-        let slimMidFactor = CGFloat(face.slimFace * 0.40 + face.jawWidth * 0.35)
-        let vFaceFactor = CGFloat(face.vFace * 0.50 + face.slimFace * 0.20)
+        // Reshape Factors (Calibrated natural scaling for visible, sharp & elegant V-Line / Jaw contour)
+        let slimMidFactor = CGFloat(face.slimFace * 0.45 + face.jawWidth * 0.75)
+        let vFaceFactor = CGFloat(face.vFace * 0.85 + face.slimFace * 0.30)
         let chinDy = CGFloat(face.chinLength)
         let chinDx = CGFloat(face.chinWidth)
 
@@ -1377,7 +1411,7 @@ public final class BeautyRenderer {
             CIVector(x: CGFloat(face.doubleChin), y: CGFloat(face.jawline), z: lYawRatio, w: rYawRatio)
         ]
 
-        let maxShift = faceW * 0.20
+        let maxShift = faceW * 0.25
         // Edge pixels must extend into the warp ROI. Sampling a finite image outside
         // its extent returns transparent black, which is especially visible when a
         // chin sits close to the bottom of the camera frame.
@@ -1586,11 +1620,11 @@ public final class BeautyRenderer {
             let leftEye = CGPoint(x: landmarks.leftEyeCenter.x * width, y: (1.0 - landmarks.leftEyeCenter.y) * height)
             let rightEye = CGPoint(x: landmarks.rightEyeCenter.x * width, y: (1.0 - landmarks.rightEyeCenter.y) * height)
             // Anatomical infraorbital placement covering tear troughs and lower lid creases
-            let underEyeOffsetY = faceH * 0.065
+            let underEyeOffsetY = faceH * 0.075
             let leftCenter = CGPoint(x: leftEye.x, y: leftEye.y - underEyeOffsetY)
             let rightCenter = CGPoint(x: rightEye.x, y: rightEye.y - underEyeOffsetY)
             let rx = faceW * 0.14
-            let ry = faceH * 0.038
+            let ry = faceH * 0.050
 
             let wrinkleIntensity = min(1.0, beauty.eyeWrinkle * 0.95 + beauty.darkCircle * 0.45 + beauty.eyeBag * 0.35)
             let concealerIntensity = min(1.0, beauty.darkCircle * 0.70 + beauty.eyeBag * 0.50 + beauty.eyeWrinkle * 0.20)
@@ -2606,16 +2640,25 @@ public final class BeautyRenderer {
         if makeup.eyeshadowPreset != "none" && makeup.eyeshadowOpacity > 0.01 {
             var sR: CGFloat = 0.50; var sG: CGFloat = 0.30; var sB: CGFloat = 0.20
             switch makeup.eyeshadowPreset {
-            case "earth":     sR = 0.50; sG = 0.30; sB = 0.20 // Rich warm terracotta earth
-            case "peach":     sR = 0.94; sG = 0.50; sB = 0.34 // Warm vivid peach coral
-            case "sunset":    sR = 0.96; sG = 0.42; sB = 0.20 // Golden sunset amber
-            case "rose":      sR = 0.78; sG = 0.26; sB = 0.36 // Deep velvety berry rose
-            case "pink":      sR = 0.94; sG = 0.38; sB = 0.56 // Vivid sakura blossom pink
-            case "coral":     sR = 0.96; sG = 0.36; sB = 0.28 // Warm radiant coral
-            case "mauve":     sR = 0.54; sG = 0.28; sB = 0.44 // Deep smoky plum mauve
-            case "champagne": sR = 0.94; sG = 0.78; sB = 0.56 // Gilded champagne bronze
-            case "smoky":     sR = 0.18; sG = 0.16; sB = 0.18 // Sultry charcoal espresso
-            default:          sR = 0.50; sG = 0.30; sB = 0.20
+            case "earth":       sR = 0.50; sG = 0.30; sB = 0.20 // Rich warm terracotta earth
+            case "peach":       sR = 0.94; sG = 0.50; sB = 0.34 // Warm vivid peach coral
+            case "sunset":      sR = 0.96; sG = 0.42; sB = 0.20 // Golden sunset amber
+            case "rose":        sR = 0.78; sG = 0.26; sB = 0.36 // Deep velvety berry rose
+            case "pink":        sR = 0.94; sG = 0.38; sB = 0.56 // Vivid sakura blossom pink
+            case "coral":       sR = 0.96; sG = 0.36; sB = 0.28 // Warm radiant coral
+            case "mauve":       sR = 0.54; sG = 0.28; sB = 0.44 // Deep smoky plum mauve
+            case "champagne":   sR = 0.94; sG = 0.78; sB = 0.56 // Gilded champagne bronze
+            case "smoky":       sR = 0.18; sG = 0.16; sB = 0.18 // Sultry charcoal espresso
+            // Korean transparent & dewy presets
+            case "dewyPeach":   sR = 0.98; sG = 0.62; sB = 0.52 // Peach Dew - trong veo đào mọng
+            case "milkyPink":   sR = 0.97; sG = 0.68; sB = 0.76 // Milky Pink - hồng sữa thanh thuần
+            case "apricotMilk": sR = 0.96; sG = 0.68; sB = 0.50 // Apricot Milk - trà mơ sữa
+            case "glassCoral":  sR = 0.98; sG = 0.48; sB = 0.40 // Glass Coral - san hô mọng nước
+            case "pearlGlow":   sR = 0.96; sG = 0.88; sB = 0.80 // Pearl Glow - nhũ ngọc trai trong suốt
+            case "berryDew":    sR = 0.86; sG = 0.38; sB = 0.50 // Berry Dew - dâu mọng dịu ngọt
+            case "softMocha":   sR = 0.70; sG = 0.54; sB = 0.46 // Soft Mocha - nâu sữa tự nhiên
+            case "grapefruit":  sR = 0.98; sG = 0.42; sB = 0.34 // Grapefruit - cam bưởi tươi tắn
+            default:            sR = 0.50; sG = 0.30; sB = 0.20
             }
 
             if let shadowMask = cachedMask(&eyeshadowMaskCache, style: makeup.eyeshadowStyle + makeup.eyeshadowPreset, generator: {
@@ -4138,6 +4181,63 @@ public final class BeautyRenderer {
             context.setFillColor(gray: 0.35, alpha: 1.0)
             context.fillEllipse(in: CGRect(x: rMid.x - spotR, y: rMid.y - spotR, width: spotR * 2, height: spotR * 2))
             context.fillEllipse(in: CGRect(x: lMid.x - spotR, y: lMid.y - spotR, width: spotR * 2, height: spotR * 2))
+        } else if style == "shimmer" && landmarks.landmarks.count >= 468 {
+            let rMid = CGPoint(x: (pt(159).x + pt(27).x) * 0.5, y: (pt(159).y + pt(27).y) * 0.5)
+            let lMid = CGPoint(x: (pt(386).x + pt(257).x) * 0.5, y: (pt(386).y + pt(257).y) * 0.5)
+            let spotR = max(7.0, faceW * 0.028)
+
+            // Radiant center shimmer + inner corner highlight
+            context.setFillColor(gray: 0.45, alpha: 1.0)
+            context.fillEllipse(in: CGRect(x: rMid.x - spotR, y: rMid.y - spotR, width: spotR * 2, height: spotR * 2))
+            context.fillEllipse(in: CGRect(x: lMid.x - spotR, y: lMid.y - spotR, width: spotR * 2, height: spotR * 2))
+            let innerR = max(3.5, faceW * 0.014)
+            context.fillEllipse(in: CGRect(x: pt(133).x - innerR, y: pt(133).y - innerR, width: innerR * 2, height: innerR * 2))
+            context.fillEllipse(in: CGRect(x: pt(362).x - innerR, y: pt(362).y - innerR, width: innerR * 2, height: innerR * 2))
+        } else if style == "korean" && landmarks.landmarks.count >= 468 {
+            // Korean Dewy: Soft translucent upper lid + subtle dewy aegyo-sal accent
+            let rLower = [7, 163, 144, 145, 153]
+            let lLower = [249, 390, 373, 374, 380]
+            let aegyoPath = CGMutablePath()
+            let aegyoOffset = max(3.0, faceW * 0.012)
+            if let first = rLower.first {
+                let p0 = pt(first)
+                aegyoPath.move(to: CGPoint(x: p0.x, y: p0.y - aegyoOffset))
+                for idx in rLower.dropFirst() {
+                    let p = pt(idx)
+                    aegyoPath.addLine(to: CGPoint(x: p.x, y: p.y - aegyoOffset))
+                }
+            }
+            if let first = lLower.first {
+                let p0 = pt(first)
+                aegyoPath.move(to: CGPoint(x: p0.x, y: p0.y - aegyoOffset))
+                for idx in lLower.dropFirst() {
+                    let p = pt(idx)
+                    aegyoPath.addLine(to: CGPoint(x: p.x, y: p.y - aegyoOffset))
+                }
+            }
+            context.setStrokeColor(gray: 0.50, alpha: 1.0)
+            context.setLineWidth(max(1.8, faceW * 0.008))
+            context.setLineCap(.round)
+            context.addPath(aegyoPath)
+            context.strokePath()
+        } else if style == "puppy" && landmarks.landmarks.count >= 468 {
+            // Puppy Eyes: Gentle downward-sloping outer corner accent
+            let rOuter = [157, 173, 133, 154, 153]
+            let lOuter = [384, 398, 362, 381, 380]
+            let pupPath = CGMutablePath()
+            if let first = rOuter.first {
+                pupPath.move(to: pt(first))
+                for idx in rOuter.dropFirst() { pupPath.addLine(to: pt(idx)) }
+            }
+            if let first = lOuter.first {
+                pupPath.move(to: pt(first))
+                for idx in lOuter.dropFirst() { pupPath.addLine(to: pt(idx)) }
+            }
+            context.setStrokeColor(gray: 0.65, alpha: 1.0)
+            context.setLineWidth(max(2.2, faceW * 0.010))
+            context.setLineCap(.round)
+            context.addPath(pupPath)
+            context.strokePath()
         } else if style == "cutCrease" && landmarks.landmarks.count >= 468 {
             context.setStrokeColor(gray: 1.0, alpha: 1.0)
             context.setLineWidth(max(1.8, faceW * 0.008))
@@ -4189,6 +4289,18 @@ public final class BeautyRenderer {
         let coreBlurRadius: Double
         let bloomBlurRadius: Double
         switch style {
+        case "sheer":
+            coreBlurRadius = Double(max(4.2, faceW * 0.020))
+            bloomBlurRadius = Double(max(14.0, faceW * 0.070))
+        case "korean":
+            coreBlurRadius = Double(max(3.8, faceW * 0.018))
+            bloomBlurRadius = Double(max(13.0, faceW * 0.065))
+        case "shimmer":
+            coreBlurRadius = Double(max(3.2, faceW * 0.015))
+            bloomBlurRadius = Double(max(10.0, faceW * 0.048))
+        case "puppy":
+            coreBlurRadius = Double(max(3.5, faceW * 0.016))
+            bloomBlurRadius = Double(max(11.0, faceW * 0.055))
         case "cutCrease":
             coreBlurRadius = Double(max(2.8, faceW * 0.012))
             bloomBlurRadius = Double(max(7.0, faceW * 0.032))
@@ -4805,8 +4917,8 @@ public final class BeautyRenderer {
         let faceW = max(50.0, landmarks?.boundingBox.width != nil && landmarks!.boundingBox.width > 0 ? landmarks!.boundingBox.width * width : rx / 0.14)
         let faceH = max(60.0, landmarks?.boundingBox.height != nil && landmarks!.boundingBox.height > 0 ? landmarks!.boundingBox.height * height : ry / 0.038)
 
-        let leftEyePt = landmarks != nil && landmarks!.leftEyeCenter != .zero ? normPt(landmarks!.leftEyeCenter) : CGPoint(x: leftCenter.x, y: leftCenter.y + faceH * 0.065)
-        let rightEyePt = landmarks != nil && landmarks!.rightEyeCenter != .zero ? normPt(landmarks!.rightEyeCenter) : CGPoint(x: rightCenter.x, y: rightCenter.y + faceH * 0.065)
+        let leftEyePt = landmarks != nil && landmarks!.leftEyeCenter != .zero ? normPt(landmarks!.leftEyeCenter) : CGPoint(x: leftCenter.x, y: leftCenter.y + faceH * 0.075)
+        let rightEyePt = landmarks != nil && landmarks!.rightEyeCenter != .zero ? normPt(landmarks!.rightEyeCenter) : CGPoint(x: rightCenter.x, y: rightCenter.y + faceH * 0.075)
 
         // 1. Lower Eyelid Margin Points (Viền bờ mi dưới ôm tự nhiên theo dáng mắt)
         var leftRim: [CGPoint] = []
@@ -4881,27 +4993,40 @@ public final class BeautyRenderer {
             var topPts: [CGPoint] = []
             var botPts: [CGPoint] = []
             let count = rimPts.count
-            let maxDepth = faceH * 0.065
-            let topInset = max(1.0, faceH * 0.003)
+            // Mở rộng sâu vùng ảnh hưởng xuống phía dưới để che phủ toàn bộ rãnh lệ & rãnh mắt
+            let maxDepth = faceH * 0.130
 
             for (i, p) in rimPts.enumerated() {
                 let t = CGFloat(i) / CGFloat(count - 1)
                 let arc = sin(t * .pi)
-                let tearTroughBias = (1.0 - t) * 0.35
-                let depthFactor = arc * 0.75 + tearTroughBias * 0.35 + 0.15
-                let localDepth = maxDepth * depthFactor
+
+                // Khoảng cách an toàn dời xa bờ mi mắt dưới, tránh dính/lẹm vào lông mi và viền mí mắt
+                let topInset = max(3.0, faceH * (0.014 + 0.008 * arc))
+
+                // Rãnh lệ (tear trough) bắt đầu từ khóe trong (t=0..0.4) và kéo dài sâu xuống rãnh mũi - má
+                let tearTroughBias = max(0.0, 1.0 - t * 1.5) * 0.45
+                let depthFactor = arc * 0.72 + tearTroughBias + 0.30
+                let localDepth = maxDepth * min(1.15, depthFactor)
 
                 let rx = p.x - eyeCenter.x
                 let ry = p.y - eyeCenter.y
                 let rLen = max(1.0, hypot(rx, ry))
                 let radDir = CGPoint(x: rx / rLen, y: ry / rLen)
-                let combinedX = radDir.x * 0.60 + faceDown.x * 0.40
-                let combinedY = radDir.y * 0.60 + faceDown.y * 0.40
-                let cLen = max(0.1, hypot(combinedX, combinedY))
-                let normDir = CGPoint(x: combinedX / cLen, y: combinedY / cLen)
 
-                let topPt = CGPoint(x: p.x + normDir.x * topInset, y: p.y + normDir.y * topInset)
-                let botPt = CGPoint(x: p.x + normDir.x * (topInset + localDepth), y: p.y + normDir.y * (topInset + localDepth))
+                // Vector hướng trên: hơi tỏa theo hình dáng bờ mi
+                let topCombinedX = radDir.x * 0.55 + faceDown.x * 0.45
+                let topCombinedY = radDir.y * 0.55 + faceDown.y * 0.45
+                let topCLen = max(0.1, hypot(topCombinedX, topCombinedY))
+                let topNormDir = CGPoint(x: topCombinedX / topCLen, y: topCombinedY / topCLen)
+
+                // Vector hướng dưới: hướng thẳng xuống dưới theo trục mặt để che phủ trọn rãnh mắt/rãnh má
+                let botCombinedX = radDir.x * 0.30 + faceDown.x * 0.70
+                let botCombinedY = radDir.y * 0.30 + faceDown.y * 0.70
+                let botCLen = max(0.1, hypot(botCombinedX, botCombinedY))
+                let botNormDir = CGPoint(x: botCombinedX / botCLen, y: botCombinedY / botCLen)
+
+                let topPt = CGPoint(x: p.x + topNormDir.x * topInset, y: p.y + topNormDir.y * topInset)
+                let botPt = CGPoint(x: p.x + botNormDir.x * (topInset + localDepth), y: p.y + botNormDir.y * (topInset + localDepth))
                 topPts.append(topPt)
                 botPts.append(botPt)
             }
@@ -4967,8 +5092,8 @@ public final class BeautyRenderer {
 
         // Zero out eyeball apertures inside graphics context to prevent any infill inside eye opening
         ctx.setFillColor(gray: 0.0, alpha: 1.0)
-        ctx.fillEllipse(in: CGRect(x: leftEyePt.x - eyeRx * 0.85, y: leftEyePt.y - eyeRy * 0.95, width: eyeRx * 1.7, height: eyeRy * 1.9))
-        ctx.fillEllipse(in: CGRect(x: rightEyePt.x - eyeRx * 0.85, y: rightEyePt.y - eyeRy * 0.95, width: eyeRx * 1.7, height: eyeRy * 1.9))
+        ctx.fillEllipse(in: CGRect(x: leftEyePt.x - eyeRx * 0.85, y: leftEyePt.y - eyeRy * 1.02, width: eyeRx * 1.7, height: eyeRy * 2.04))
+        ctx.fillEllipse(in: CGRect(x: rightEyePt.x - eyeRx * 0.85, y: rightEyePt.y - eyeRy * 1.02, width: eyeRx * 1.7, height: eyeRy * 2.04))
 
         guard let maskCG = ctx.makeImage() else { return nil }
         var combinedMask = CIImage(cgImage: maskCG).transformed(by: CGAffineTransform(translationX: bounds.minX, y: bounds.minY))
@@ -4988,13 +5113,13 @@ public final class BeautyRenderer {
             var dilatedEye = eyeMask
             if let dilate = CIFilter(name: "CIMorphologyDilate") {
                 dilate.setValue(eyeMask, forKey: kCIInputImageKey)
-                dilate.setValue(1.5, forKey: kCIInputRadiusKey)
+                dilate.setValue(max(2.0, faceW * 0.008), forKey: kCIInputRadiusKey)
                 if let out = dilate.outputImage?.cropped(to: extent) {
                     dilatedEye = out
                 }
             } else if let blur = CIFilter(name: "CIGaussianBlur") {
                 blur.setValue(eyeMask, forKey: kCIInputImageKey)
-                blur.setValue(1.0, forKey: kCIInputRadiusKey)
+                blur.setValue(1.5, forKey: kCIInputRadiusKey)
                 if let out = blur.outputImage?.cropped(to: extent) {
                     dilatedEye = out
                 }

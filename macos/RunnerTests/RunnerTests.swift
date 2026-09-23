@@ -742,6 +742,31 @@ final class RunnerTests: XCTestCase {
         XCTAssertEqual(origOuter, treatedOuter, "Eye wrinkle treatment must be strictly confined to under-eye area and not bleed into crow's feet")
     }
 
+    func testEyeWrinkleReductionPreservesLowerEyelidMarginAndCoversDeepTearTrough() throws {
+        let renderer = BeautyRenderer()
+        let source = try buffer()
+
+        // Base skin image with a deep tear trough crease extending further down to the cheek (y = 143)
+        let skin = CIImage(color: CIColor(red: 0.60, green: 0.52, blue: 0.48)).cropped(to: extent)
+        let deepCrease = CIImage(color: CIColor(red: 0.20, green: 0.16, blue: 0.14)).cropped(to: CGRect(x: 75, y: 142, width: 35, height: 3))
+        let combined = deepCrease.composited(over: skin)
+        context.render(combined, to: source, bounds: extent, colorSpace: nil)
+
+        let original = try render(renderer, source: source)
+        let treated = try render(renderer, source: source, beauty: BeautySettings(from: ["eyeWrinkle": 1.0]))
+
+        // Lower eyelid margin immediately under eyeball (x = 90, y = 160) must be preserved
+        let origLid = pixel(original, x: 90, y: 160)
+        let treatedLid = pixel(treated, x: 90, y: 160)
+        XCTAssertEqual(origLid, treatedLid, "Lower eyelid margin must be protected and not encroached by wrinkle treatment")
+
+        // Deep tear trough / under-eye groove at (x = 90, y = 143) must be covered and lifted
+        let origDeepCrease = pixel(original, x: 90, y: 143)
+        let treatedDeepCrease = pixel(treated, x: 90, y: 143)
+        XCTAssertLessThan(origDeepCrease[0], UInt8(70), "Original deep crease must be dark")
+        XCTAssertGreaterThan(treatedDeepCrease[0], origDeepCrease[0] + 30, "Deep tear trough must be covered and infilled towards skin tone")
+    }
+
     func testCrowsFeetSmoothingSmoothsLateralCanthusWhilePreservingEyeball() throws {
         let renderer = BeautyRenderer()
         let source = try buffer()

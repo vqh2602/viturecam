@@ -19,9 +19,19 @@ class FilterPreset {
 
   String get lutCubePath => id == 'original' ? '' : 'assets/luts/$id.cube';
   String get lutPngPath => id == 'original' ? '' : 'assets/luts/$id.png';
+  bool get isVip => category == 'Douyin';
 }
 
 class FilterCatalog {
+  static bool isCategoryVip(String category) => category == 'Douyin';
+
+  static FilterPreset? getFilterById(String id) {
+    for (final p in presets) {
+      if (p.id == id) return p;
+    }
+    return null;
+  }
+
   static const List<FilterPreset> presets = [
     // --- Natural (Tự nhiên & Trong trẻo) ---
     FilterPreset(

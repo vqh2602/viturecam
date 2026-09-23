@@ -158,7 +158,7 @@ class UpdateService {
     bool Function()? isCancelled,
   }) async {
     final tempDir = await getTemporaryDirectory();
-    final targetFile = File('${tempDir.path}/BeautyCamera_${targetVersion}.dmg');
+    final targetFile = File('${tempDir.path}/BeautyCamera_$targetVersion.dmg');
 
     if (await targetFile.exists()) {
       await targetFile.delete();

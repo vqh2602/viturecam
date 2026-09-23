@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/app_localizations.dart';
 import '../../widgets/beauty_slider.dart';
 import '../../widgets/tool_button.dart';
+import '../../widgets/vip_badge.dart';
 import '../camera/camera_controller.dart';
+import '../patreon/patreon_provider.dart';
 
 class ReshapePanel extends ConsumerWidget {
   const ReshapePanel({super.key});
@@ -12,6 +14,7 @@ class ReshapePanel extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final state = ref.watch(cameraControllerProvider);
+    final isPatron = ref.watch(patreonProvider).isPatron;
     final controller = ref.read(cameraControllerProvider.notifier);
     final f = state.face;
     final b = state.beauty;
@@ -21,7 +24,7 @@ class ReshapePanel extends ConsumerWidget {
       {'id': 'slimFace', 'label': l10n.reshapeSlimFace, 'icon': Icons.face_retouching_natural},
       {'id': 'smallFace', 'label': l10n.reshapeSmallFace, 'icon': Icons.compress},
       {'id': 'vFace', 'label': l10n.reshapeVFace, 'icon': Icons.arrow_downward},
-      {'id': 'jawWidth', 'label': l10n.reshapeJaw, 'icon': Icons.swap_horiz},
+      {'id': 'jawWidth', 'label': l10n.reshapeJaw, 'icon': Icons.swap_horiz, 'isVip': true},
       {'id': 'jawline', 'label': l10n.reshapeJawline, 'icon': Icons.linear_scale},
       {'id': 'doubleChin', 'label': l10n.reshapeDoubleChin, 'icon': Icons.expand_more},
       {'id': 'cheekWidth', 'label': l10n.reshapeCheek, 'icon': Icons.aspect_ratio},
@@ -168,6 +171,9 @@ class ReshapePanel extends ConsumerWidget {
             onChanged: (v) => controller.updateFace(f.copyWith(vFace: v)),
           );
         case 'jawWidth':
+          if (!isPatron) {
+            return VipInlineBanner(featureName: l10n.reshapeJaw);
+          }
           return BeautySlider(
             label: l10n.sliderJawWidth,
             value: f.jawWidth,
@@ -616,6 +622,7 @@ class ReshapePanel extends ConsumerWidget {
                   isActive: t['id'] == 'teethWhitening'
                       ? b.teethWhitening > 0
                       : f.isKeyActive(t['id'] as String),
+                  trailing: t['isVip'] == true ? VipBadge(isPatron: isPatron) : null,
                   onTap: () => controller.selectSubTool(t['id'] as String),
                 ),
             ],

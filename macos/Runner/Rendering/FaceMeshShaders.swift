@@ -95,7 +95,7 @@ vertex ReshapeVertexOutput faceReshapeVertex(
 
     // 1. Cheek and Jaw slimming (V-Face, Slim Face)
     if (fType == 1 && w > 0.0) {
-        float factor = (uniforms.slimFace * 0.06 + uniforms.vFace * 0.07) * w;
+        float factor = (uniforms.slimFace * 0.12 + uniforms.vFace * 0.15) * w;
         deformed.x += (uniforms.faceCenter.x - pos.x) * factor;
     }
     // 2. Chin length and width

@@ -282,6 +282,8 @@
   "reinstallExtension": "Reinstall Extension",
   "openSystemSettings": "System Settings",
   "virtualCamReinstallTip": "If the virtual camera fails or other apps cannot find it after an update, click to reinstall the camera extension.",
+  "restartApp": "Restart App",
+  "restartAppAfterReinstallTip": "Extension reinstall requested. Please click Restart App to complete virtual camera activation.",
   "hardwarePipelineStats": "Hardware & Pipeline Stats",
   "statFps": "FPS",
   "statProcessing": "Processing",

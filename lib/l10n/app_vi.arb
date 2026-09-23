@@ -259,6 +259,8 @@
   "reinstallExtension": "Gỡ & Cài lại Extension",
   "openSystemSettings": "Cài đặt hệ thống",
   "virtualCamReinstallTip": "Nếu camera ảo bị lỗi hoặc ứng dụng khác không nhận sau khi cập nhật, bấm để tự động gỡ và cài đặt lại extension.",
+  "restartApp": "Khởi động lại app",
+  "restartAppAfterReinstallTip": "Đã gửi yêu cầu cài đặt lại extension. Vui lòng bấm Khởi động lại app để hoàn tất kích hoạt camera ảo.",
   "hardwarePipelineStats": "Thông số phần cứng & Xử lý",
   "statFps": "FPS",
   "statProcessing": "Xử lý",
