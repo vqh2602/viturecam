@@ -116,11 +116,11 @@ public final class BeautyRenderer {
             if (dist >= 1.0) {
                 return vec4(0.0, 0.0, 0.0, 0.0);
             }
-            // Smooth continuous cosine-squared falloff: peaks at center and smoothly vanishes at perimeter
-            // Eliminates artificial flat core disk and visible circular ring
-            float a = cos(dist * 1.57079632679);
-            a = a * a;
-            return vec4(1.0, 1.0, 1.0, a);
+            // Ultra-smooth powder diffusion falloff (Tán phấn má lan toả tự nhiên):
+            // Smooth bell curve with silky perimeter gradient - no visible ring or sharp edge
+            float t = 1.0 - dist;
+            float a = t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
+            return vec4(a, a, a, a);
         }
         """)
 
@@ -859,30 +859,29 @@ public final class BeautyRenderer {
             // Tucks and lifts the sagging submental fat pad under the chin upward behind the mandibular arch
             float doubleChin = sculptParams.x;
             if (doubleChin > 0.001) {
-                vec2 vChin = p - chinCenter;
-                float uC = dot(vChin, axisNormal);   // Lateral across neck (- left, + right)
-                float vC = dot(vChin, faceAxisDir);  // Along face axis: vC > 0 is downward into submental neck
+                // Natural submental anchor: nestled right underneath the mandibular symphysis (chin)
+                vec2 subCenter = chinCenter + faceAxisDir * (faceW * 0.05);
+                vec2 dSub = p - subCenter;
+                float uC = dot(dSub, axisNormal);  // Lateral across neck (- left, + right)
+                float vC = dot(dSub, faceAxisDir); // Along face axis: + downward under chin
 
-                float submentalHalfW = faceW * 0.38;
-                float submentalLen = faceW * 0.40;
+                // Confine strictly to submental fat pad immediately behind chin arch
+                // Never extends down into lower neck, clavicles, jewelry, or collars
+                float subHalfW = faceW * 0.22;
+                float subHalfH = faceW * 0.08;
 
-                // Submental triangle: beneath chinCenter and between the lower jaws
-                if (vC > 0.0 && vC < submentalLen && abs(uC) < submentalHalfW) {
-                    float tU = abs(uC) / submentalHalfW;
-                    float wU = (1.0 - tU * tU) * (1.0 - tU * tU);
+                float normU = uC / max(0.001, subHalfW);
+                float normV = vC / max(0.001, subHalfH);
+                float distSq = normU * normU + normV * normV;
 
-                    // Peak tuck effect centered in the submental bulge (~0.12 * faceW below chin)
-                    float peakV = faceW * 0.12;
-                    float distV = abs(vC - peakV);
-                    float spanV = (vC < peakV) ? peakV : (submentalLen - peakV);
-                    float tV = clamp(distV / max(0.001, spanV), 0.0, 1.0);
-                    float wV = (1.0 - tV * tV) * (1.0 - tV * tV);
+                if (distSq < 1.0) {
+                    // Smooth C2 continuous radial falloff - zero box corners, zero seams
+                    float w = (1.0 - distSq) * (1.0 - distSq);
 
-                    float totalW = wU * wV;
-                    // Tucks sagging neck skin UPWARD towards chin (+faceAxisDir samples from lower down)
-                    offset += faceAxisDir * (doubleChin * 0.32 * faceW * totalW);
-                    // Lateral tightening: slightly compresses submental width inward towards midline
-                    offset += axisNormal * (sign(uC) * doubleChin * 0.08 * faceW * totalW);
+                    // Gentle, natural upward tuck (+faceAxisDir samples from slightly lower down)
+                    offset += faceAxisDir * (doubleChin * 0.07 * faceW * w);
+                    // Continuous lateral tightening towards midline (zero at center uC = 0, no sign() tear!)
+                    offset -= axisNormal * (normU * doubleChin * 0.03 * faceW * w);
                 }
             }
 
@@ -1306,7 +1305,15 @@ public final class BeautyRenderer {
             CIVector(x: CGFloat(face.doubleChin), y: CGFloat(face.jawline), z: 0.0, w: 0.0)
         ]
 
-        if let warped = kernel.apply(extent: extent, roiCallback: { _, rect in rect }, image: image, arguments: args) {
+        let maxShift = faceW * 0.20
+        if let warped = kernel.apply(
+            extent: extent,
+            roiCallback: { _, rect in
+                rect.insetBy(dx: -maxShift, dy: -maxShift)
+            },
+            image: image,
+            arguments: args
+        ) {
             return warped.cropped(to: extent)
         }
 
@@ -1885,6 +1892,10 @@ public final class BeautyRenderer {
         let height = extent.height
         let box = landmarks.boundingBox
         let faceW = max(50.0, box.width * width)
+        let faceH = max(60.0, box.height * height)
+        // Face height is invariant under horizontal yaw rotation (turning left/right).
+        // Taking max ensures face scale never collapses when turning head sideways.
+        let stableFaceScale = max(faceW, faceH * 0.75)
 
         func ciPt(_ p: CGPoint) -> CGPoint {
             return CGPoint(x: p.x * width, y: (1.0 - p.y) * height)
@@ -2070,7 +2081,7 @@ public final class BeautyRenderer {
                     extent: extent,
                     landmarks: landmarks,
                     style: makeup.blushStyle,
-                    faceW: faceW
+                    faceW: stableFaceScale
                 )
             }) {
                 let colorImg = CIImage(color: CIColor(red: bR, green: bG, blue: bB, alpha: 1.0)).cropped(to: extent)
@@ -2103,14 +2114,14 @@ public final class BeautyRenderer {
                     }
                 }
 
-                // Modulate mask intensity accurately and linearly via CIColorMatrix inputAVector
+                // Modulate mask intensity accurately and linearly via CIColorMatrix across all channels
                 var effMask = blushMask
                 let opacity = CGFloat(min(1.0, max(0.0, makeup.blushOpacity)))
                 if let matrix = CIFilter(name: "CIColorMatrix") {
                     matrix.setValue(blushMask, forKey: kCIInputImageKey)
-                    matrix.setValue(CIVector(x: 1, y: 0, z: 0, w: 0), forKey: "inputRVector")
-                    matrix.setValue(CIVector(x: 0, y: 1, z: 0, w: 0), forKey: "inputGVector")
-                    matrix.setValue(CIVector(x: 0, y: 0, z: 1, w: 0), forKey: "inputBVector")
+                    matrix.setValue(CIVector(x: opacity, y: 0, z: 0, w: 0), forKey: "inputRVector")
+                    matrix.setValue(CIVector(x: 0, y: opacity, z: 0, w: 0), forKey: "inputGVector")
+                    matrix.setValue(CIVector(x: 0, y: 0, z: opacity, w: 0), forKey: "inputBVector")
                     matrix.setValue(CIVector(x: 0, y: 0, z: 0, w: opacity), forKey: "inputAVector")
                     if let out = matrix.outputImage { effMask = out }
                 }
@@ -4131,9 +4142,9 @@ public final class BeautyRenderer {
         let lDist = max(10.0, hypot(leftTemple.x - noseTip.x, leftTemple.y - noseTip.y))
         let rDist = max(10.0, hypot(rightTemple.x - noseTip.x, rightTemple.y - noseTip.y))
         let avgDist = (lDist + rDist) * 0.5
-        // When head is turned (yaw), foreshorten the cheek turned away proportionally in 3D
-        let lYawRatio = max(0.40, min(1.20, lDist / avgDist))
-        let rYawRatio = max(0.40, min(1.20, rDist / avgDist))
+        // When head is turned (yaw), near cheek sweeps along cheekbone (>=1.0) while far cheek softly compresses (>=0.65)
+        let lYawRatio = max(0.65, min(1.25, lDist / avgDist))
+        let rYawRatio = max(0.65, min(1.25, rDist / avgDist))
 
         // Natural cheekbone angles: from cheek apple slanting up towards outer temple
         let lCheekAngle = atan2(leftTemple.y - leftApple.y, leftTemple.x - leftApple.x)
@@ -4147,9 +4158,9 @@ public final class BeautyRenderer {
             // Connects high cheek apples across the bridge of the nose
             let lCenter = CGPoint(x: leftApple.x, y: leftApple.y * 0.70 + leftEye.y * 0.30)
             let rCenter = CGPoint(x: rightApple.x, y: rightApple.y * 0.70 + rightEye.y * 0.30)
-            let lCheek = makeBlushOvalMask(center: lCenter, rx: faceW * 0.16 * lYawRatio, ry: faceW * 0.08, angle: rollAngle, extent: extent)
-            let rCheek = makeBlushOvalMask(center: rCenter, rx: faceW * 0.16 * rYawRatio, ry: faceW * 0.08, angle: rollAngle, extent: extent)
-            let bridge = makeBlushOvalMask(center: noseBridge, rx: faceW * 0.10, ry: faceW * 0.05, angle: rollAngle, extent: extent)
+            let lCheek = makeBlushOvalMask(center: lCenter, rx: faceW * 0.25 * lYawRatio, ry: faceW * 0.14, angle: rollAngle, extent: extent)
+            let rCheek = makeBlushOvalMask(center: rCenter, rx: faceW * 0.25 * rYawRatio, ry: faceW * 0.14, angle: rollAngle, extent: extent)
+            let bridge = makeBlushOvalMask(center: noseBridge, rx: faceW * 0.15, ry: faceW * 0.08, angle: rollAngle, extent: extent)
             combinedMask = combineBlushMasks([lCheek, rCheek, bridge])
 
         case "lifted":
@@ -4157,30 +4168,30 @@ public final class BeautyRenderer {
             // Angled diagonally along the zygomatic arch up towards the temples
             let rCenter = CGPoint(x: rightApple.x * 0.45 + rightTemple.x * 0.55, y: rightApple.y * 0.45 + rightTemple.y * 0.55)
             let rAngle = atan2(rightTemple.y - rightApple.y, rightTemple.x - rightApple.x)
-            let rGrad = makeBlushOvalMask(center: rCenter, rx: faceW * 0.18 * rYawRatio, ry: faceW * 0.07, angle: rAngle, extent: extent)
+            let rGrad = makeBlushOvalMask(center: rCenter, rx: faceW * 0.26 * rYawRatio, ry: faceW * 0.13, angle: rAngle, extent: extent)
 
             let lCenter = CGPoint(x: leftApple.x * 0.45 + leftTemple.x * 0.55, y: leftApple.y * 0.45 + leftTemple.y * 0.55)
             let lAngle = atan2(leftTemple.y - leftApple.y, leftTemple.x - leftApple.x)
-            let lGrad = makeBlushOvalMask(center: lCenter, rx: faceW * 0.18 * lYawRatio, ry: faceW * 0.07, angle: lAngle, extent: extent)
+            let lGrad = makeBlushOvalMask(center: lCenter, rx: faceW * 0.26 * lYawRatio, ry: faceW * 0.13, angle: lAngle, extent: extent)
             combinedMask = combineBlushMasks([lGrad, rGrad])
 
         case "undereye":
             // Dưới mắt Douyin / Búp bê (Undereye / Aegyo-sal):
             // Directly beneath lower eyelids, soft doll-like aesthetic
             let rCenter = CGPoint(x: rightEye.x, y: rightEye.y - faceW * 0.065)
-            let rGrad = makeBlushOvalMask(center: rCenter, rx: faceW * 0.13 * rYawRatio, ry: faceW * 0.065, angle: rollAngle, extent: extent)
+            let rGrad = makeBlushOvalMask(center: rCenter, rx: faceW * 0.22 * rYawRatio, ry: faceW * 0.12, angle: rollAngle, extent: extent)
 
             let lCenter = CGPoint(x: leftEye.x, y: leftEye.y - faceW * 0.065)
-            let lGrad = makeBlushOvalMask(center: lCenter, rx: faceW * 0.13 * lYawRatio, ry: faceW * 0.065, angle: rollAngle, extent: extent)
+            let lGrad = makeBlushOvalMask(center: lCenter, rx: faceW * 0.22 * lYawRatio, ry: faceW * 0.12, angle: rollAngle, extent: extent)
             combinedMask = combineBlushMasks([lGrad, rGrad])
 
         case "nose_chin":
             // Đầu mũi & Cằm thuần dục (Nose & Chin / Pure Desire / Crying Makeup):
             // Soft apple cheeks + sweet blush on nose tip + chin tip
-            let lCheek = makeBlushOvalMask(center: leftApple, rx: faceW * 0.13 * lYawRatio, ry: faceW * 0.085, angle: lCheekAngle, extent: extent)
-            let rCheek = makeBlushOvalMask(center: rightApple, rx: faceW * 0.13 * rYawRatio, ry: faceW * 0.085, angle: rCheekAngle, extent: extent)
-            let nTip = makeBlushOvalMask(center: noseTip, rx: faceW * 0.065, ry: faceW * 0.055, angle: rollAngle, extent: extent)
-            let cTip = makeBlushOvalMask(center: chinTip, rx: faceW * 0.075, ry: faceW * 0.055, angle: rollAngle, extent: extent)
+            let lCheek = makeBlushOvalMask(center: leftApple, rx: faceW * 0.22 * lYawRatio, ry: faceW * 0.14, angle: lCheekAngle, extent: extent)
+            let rCheek = makeBlushOvalMask(center: rightApple, rx: faceW * 0.22 * rYawRatio, ry: faceW * 0.14, angle: rCheekAngle, extent: extent)
+            let nTip = makeBlushOvalMask(center: noseTip, rx: faceW * 0.09, ry: faceW * 0.07, angle: rollAngle, extent: extent)
+            let cTip = makeBlushOvalMask(center: chinTip, rx: faceW * 0.11, ry: faceW * 0.07, angle: rollAngle, extent: extent)
             combinedMask = combineBlushMasks([lCheek, rCheek, nTip, cTip])
 
         case "temple_c":
@@ -4188,23 +4199,23 @@ public final class BeautyRenderer {
             // Wraps in a C-curve from the outer eyebrow / temple down into the high cheekbone
             let rTempleUpper = CGPoint(x: rightTemple.x * 0.85 + rightEye.x * 0.15, y: rightTemple.y)
             let rCheekHigh = CGPoint(x: rightApple.x * 0.55 + rightTemple.x * 0.45, y: rightApple.y * 0.70 + rightEye.y * 0.30)
-            let rT = makeBlushOvalMask(center: rTempleUpper, rx: faceW * 0.11 * rYawRatio, ry: faceW * 0.08, angle: rollAngle, extent: extent)
-            let rC = makeBlushOvalMask(center: rCheekHigh, rx: faceW * 0.13 * rYawRatio, ry: faceW * 0.075, angle: rCheekAngle, extent: extent)
+            let rT = makeBlushOvalMask(center: rTempleUpper, rx: faceW * 0.18 * rYawRatio, ry: faceW * 0.13, angle: rollAngle, extent: extent)
+            let rC = makeBlushOvalMask(center: rCheekHigh, rx: faceW * 0.22 * rYawRatio, ry: faceW * 0.13, angle: rCheekAngle, extent: extent)
 
             let lTempleUpper = CGPoint(x: leftTemple.x * 0.85 + leftEye.x * 0.15, y: leftTemple.y)
             let lCheekHigh = CGPoint(x: leftApple.x * 0.55 + leftTemple.x * 0.45, y: leftApple.y * 0.70 + leftEye.y * 0.30)
-            let lT = makeBlushOvalMask(center: lTempleUpper, rx: faceW * 0.11 * lYawRatio, ry: faceW * 0.08, angle: rollAngle, extent: extent)
-            let lC = makeBlushOvalMask(center: lCheekHigh, rx: faceW * 0.13 * lYawRatio, ry: faceW * 0.075, angle: lCheekAngle, extent: extent)
+            let lT = makeBlushOvalMask(center: lTempleUpper, rx: faceW * 0.18 * lYawRatio, ry: faceW * 0.13, angle: rollAngle, extent: extent)
+            let lC = makeBlushOvalMask(center: lCheekHigh, rx: faceW * 0.22 * lYawRatio, ry: faceW * 0.13, angle: lCheekAngle, extent: extent)
             combinedMask = combineBlushMasks([rT, rC, lT, lC])
 
         case "eyecorner":
             // Đuôi mắt thuần dục (Outer Eye Corner / Fox Aesthetic):
             // Concentrated at outer corner of eyes, fanning to upper cheek
             let rCenter = CGPoint(x: rightEyeOuter.x * 0.70 + rightTemple.x * 0.30, y: rightEyeOuter.y * 0.65 + rightApple.y * 0.35)
-            let rGrad = makeBlushOvalMask(center: rCenter, rx: faceW * 0.12 * rYawRatio, ry: faceW * 0.08, angle: rCheekAngle, extent: extent)
+            let rGrad = makeBlushOvalMask(center: rCenter, rx: faceW * 0.20 * rYawRatio, ry: faceW * 0.12, angle: rCheekAngle, extent: extent)
 
             let lCenter = CGPoint(x: leftEyeOuter.x * 0.70 + leftTemple.x * 0.30, y: leftEyeOuter.y * 0.65 + leftApple.y * 0.35)
-            let lGrad = makeBlushOvalMask(center: lCenter, rx: faceW * 0.12 * lYawRatio, ry: faceW * 0.08, angle: lCheekAngle, extent: extent)
+            let lGrad = makeBlushOvalMask(center: lCenter, rx: faceW * 0.20 * lYawRatio, ry: faceW * 0.12, angle: lCheekAngle, extent: extent)
             combinedMask = combineBlushMasks([lGrad, rGrad])
 
         case "contour":
@@ -4212,20 +4223,20 @@ public final class BeautyRenderer {
             // Angled in the cheek hollow down towards jaw
             let rCenter = CGPoint(x: rightApple.x * 0.50 + rightJaw.x * 0.50, y: rightApple.y * 0.50 + rightJaw.y * 0.50)
             let rAngle = atan2(rightJaw.y - rightApple.y, rightJaw.x - rightApple.x)
-            let rGrad = makeBlushOvalMask(center: rCenter, rx: faceW * 0.17 * rYawRatio, ry: faceW * 0.08, angle: rAngle, extent: extent)
+            let rGrad = makeBlushOvalMask(center: rCenter, rx: faceW * 0.26 * rYawRatio, ry: faceW * 0.13, angle: rAngle, extent: extent)
 
             let lCenter = CGPoint(x: leftApple.x * 0.50 + leftJaw.x * 0.50, y: leftApple.y * 0.50 + leftJaw.y * 0.50)
             let lAngle = atan2(leftJaw.y - leftApple.y, leftJaw.x - leftApple.x)
-            let lGrad = makeBlushOvalMask(center: lCenter, rx: faceW * 0.17 * lYawRatio, ry: faceW * 0.08, angle: lAngle, extent: extent)
+            let lGrad = makeBlushOvalMask(center: lCenter, rx: faceW * 0.26 * lYawRatio, ry: faceW * 0.13, angle: lAngle, extent: extent)
             combinedMask = combineBlushMasks([lGrad, rGrad])
 
         case "apple":
             fallthrough
         default:
             // Gò má tròn tự nhiên (Classic Apple):
-            // Aligned along the natural zygomatic cheekbone diagonal, foreshortened in 3D yaw
-            let rGrad = makeBlushOvalMask(center: rightApple, rx: faceW * 0.14 * rYawRatio, ry: faceW * 0.09, angle: rCheekAngle, extent: extent)
-            let lGrad = makeBlushOvalMask(center: leftApple, rx: faceW * 0.14 * lYawRatio, ry: faceW * 0.09, angle: lCheekAngle, extent: extent)
+            // Aligned along the natural zygomatic cheekbone diagonal, sweeps gracefully across the cheek
+            let rGrad = makeBlushOvalMask(center: rightApple, rx: faceW * 0.24 * rYawRatio, ry: faceW * 0.15, angle: rCheekAngle, extent: extent)
+            let lGrad = makeBlushOvalMask(center: leftApple, rx: faceW * 0.24 * lYawRatio, ry: faceW * 0.15, angle: lCheekAngle, extent: extent)
             combinedMask = combineBlushMasks([lGrad, rGrad])
         }
 

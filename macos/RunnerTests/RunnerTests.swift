@@ -33,8 +33,8 @@ final class RunnerTests: XCTestCase {
         }
         result.leftCheekCenter = pt(FaceMeshGeometry.leftCheekApexIndex)
         result.rightCheekCenter = pt(FaceMeshGeometry.rightCheekApexIndex)
-        result.leftCheekApple = pt(280)
-        result.rightCheekApple = pt(50)
+        result.leftCheekApple = pt(50)
+        result.rightCheekApple = pt(280)
         result.leftEyeCenter = CGPoint(x: 0.35, y: 0.35)
         result.rightEyeCenter = CGPoint(x: 0.65, y: 0.35)
         result.leftEyeOuter = pt(33)
@@ -476,6 +476,38 @@ final class RunnerTests: XCTestCase {
         }
 
         XCTAssertGreaterThan(cheekDifferences(original, slimCheek), 50, "Cheek reshape must smoothly shift cheek and contour pixels")
+    }
+
+    func testDoubleChinReshapesSubmentalAreaWithoutDisturbingLowerNeck() throws {
+        let renderer = BeautyRenderer()
+        let source = try buffer()
+        let checker = CIFilter(name: "CICheckerboardGenerator", parameters: [
+            "inputColor0": CIColor(red: 0.8, green: 0.8, blue: 0.8),
+            "inputColor1": CIColor(red: 0.2, green: 0.2, blue: 0.2),
+            "inputWidth": 4.0
+        ])!.outputImage!
+        context.render(checker, to: source, bounds: extent, colorSpace: nil)
+
+        let original = try render(renderer, source: source)
+        let tuckedChin = try render(renderer, source: source, face: FaceSettings(from: ["doubleChin": 1.0]))
+
+        // Submental area directly under chin tip (chin is at CI y ≈ 51, submental is y 35...48)
+        var submentalDiff = 0
+        for y in 35...48 {
+            for x in stride(from: 110, to: 146, by: 2) {
+                submentalDiff += zip(pixel(original, x: x, y: y), pixel(tuckedChin, x: x, y: y)).reduce(0) { $0 + abs(Int($1.0) - Int($1.1)) }
+            }
+        }
+        XCTAssertGreaterThan(submentalDiff, 30, "Double chin reshape must shift submental tissues upward")
+
+        // Lower neck area where necklaces/collars sit (CI y 5...20) must be completely undisturbed
+        var lowerNeckDiff = 0
+        for y in 5...20 {
+            for x in stride(from: 80, to: 176, by: 4) {
+                lowerNeckDiff += zip(pixel(original, x: x, y: y), pixel(tuckedChin, x: x, y: y)).reduce(0) { $0 + abs(Int($1.0) - Int($1.1)) }
+            }
+        }
+        XCTAssertEqual(lowerNeckDiff, 0, "Double chin reshape must strictly preserve lower neck, collars, and jewelry without distortion")
     }
 
     func testBackgroundModesProduceDistinctEffects() throws {
