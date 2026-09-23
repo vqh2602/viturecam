@@ -61,6 +61,16 @@ final class RunnerTests: XCTestCase {
         return bytes
     }
 
+    private func rgbaBytes(_ image: CIImage) -> [UInt8] {
+        let width = Int(extent.width)
+        let height = Int(extent.height)
+        var bytes = [UInt8](repeating: 0, count: width * height * 4)
+        context.render(image, toBitmap: &bytes, rowBytes: width * 4,
+                       bounds: extent, format: .RGBA8,
+                       colorSpace: CGColorSpaceCreateDeviceRGB())
+        return bytes
+    }
+
     private func buffer() throws -> CVPixelBuffer {
         var buffer: CVPixelBuffer?
         let status = CVPixelBufferCreate(kCFAllocatorDefault, 256, 256, kCVPixelFormatType_32BGRA,
@@ -579,12 +589,17 @@ final class RunnerTests: XCTestCase {
     func testJawlineDefinesMandibularContourWithoutSqueezingFace() throws {
         let renderer = BeautyRenderer()
         let source = try buffer()
-        context.render(CIImage(color: CIColor(red: 0.6, green: 0.6, blue: 0.6)), to: source, bounds: extent, colorSpace: nil)
+        let checker = CIFilter(name: "CICheckerboardGenerator", parameters: [
+            "inputColor0": CIColor(red: 0.8, green: 0.8, blue: 0.8),
+            "inputColor1": CIColor(red: 0.2, green: 0.2, blue: 0.2),
+            "inputWidth": 4.0
+        ])!.outputImage!
+        context.render(checker, to: source, bounds: extent, colorSpace: nil)
 
         let original = try render(renderer, source: source)
         let jawlineDefined = try render(renderer, source: source, face: FaceSettings(from: ["jawline": 1.0]))
 
-        // Mandibular edge contour must have optical contrast enhancement (depth shadow / highlight)
+        // Mandibular tissue around the detected contour must move with the reshape.
         let m = mesh()
         let lLowCI = CGPoint(x: CGFloat(m.leftLowerJaw.x) * 256.0, y: CGFloat(1.0 - m.leftLowerJaw.y) * 256.0)
         var jawContourDiff = 0
@@ -596,7 +611,7 @@ final class RunnerTests: XCTestCase {
                                       pixel(jawlineDefined, x: testX + dx, y: testY + dy)).reduce(0) { $0 + abs(Int($1.0) - Int($1.1)) }
             }
         }
-        XCTAssertGreaterThan(jawContourDiff, 10, "Jawline must enhance mandibular edge contrast")
+        XCTAssertGreaterThan(jawContourDiff, 10, "Jawline must reshape tissue at the detected mandibular contour")
 
         // Lateral outer boundary of cheeks (x=20...40, y=120...136) must NOT be squeezed or shifted inward
         var cheekBoundaryDiff = 0
@@ -607,6 +622,42 @@ final class RunnerTests: XCTestCase {
             }
         }
         XCTAssertEqual(cheekBoundaryDiff, 0, "Jawline must not squeeze face width or warp cheek boundaries")
+    }
+
+    func testDoubleChinAndJawlineNeverDrawDarkOverlays() throws {
+        let renderer = BeautyRenderer()
+        let source = try buffer()
+        context.render(
+            CIImage(color: CIColor(red: 0.70, green: 0.60, blue: 0.55)),
+            to: source,
+            bounds: extent,
+            colorSpace: nil
+        )
+
+        let original = try render(renderer, source: source)
+        let tuckedChin = try render(renderer, source: source, face: FaceSettings(from: ["doubleChin": 1.0]))
+        let definedJaw = try render(renderer, source: source, face: FaceSettings(from: ["jawline": 1.0]))
+
+        let originalBytes = rgbaBytes(original)
+        XCTAssertEqual(rgbaBytes(tuckedChin), originalBytes,
+                       "Double chin must reshape source pixels without painting a dark crescent")
+        XCTAssertEqual(rgbaBytes(definedJaw), originalBytes,
+                       "Jawline must reshape source pixels without drawing an inset contour")
+
+        var bottomEdgeMesh = mesh()
+        bottomEdgeMesh.boundingBox = CGRect(x: 0.2, y: 0.25, width: 0.6, height: 0.74)
+        bottomEdgeMesh.noseBridge = CGPoint(x: 0.5, y: 0.55)
+        bottomEdgeMesh.chinTip = CGPoint(x: 0.5, y: 0.99)
+        bottomEdgeMesh.leftLowerJaw = CGPoint(x: 0.4, y: 0.94)
+        bottomEdgeMesh.rightLowerJaw = CGPoint(x: 0.6, y: 0.94)
+        let edgeTuck = try render(
+            renderer,
+            source: source,
+            face: FaceSettings(from: ["doubleChin": 1.0]),
+            landmarks: bottomEdgeMesh
+        )
+        XCTAssertEqual(rgbaBytes(edgeTuck), originalBytes,
+                       "Double chin must not sample black outside the frame when the chin is near an image edge")
     }
 
     func testJawlineShadowNeverBleedsOntoCheekOrFace() throws {
@@ -1160,4 +1211,3 @@ final class RunnerTests: XCTestCase {
         wait(for: [expStop], timeout: 1.0)
     }
 }
-
