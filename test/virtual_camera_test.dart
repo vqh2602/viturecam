@@ -47,4 +47,26 @@ void main() {
     expect(status.state, 'error');
     expect(status.message, 'Move app to Applications');
   });
+
+  test('reinstallVirtualCamera invokes method and returns pending or updated status', () async {
+    String? calledMethod;
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      calledMethod = call.method;
+      return {'state': 'installing', 'message': 'Requesting macOS to uninstall old Camera Extension…'};
+    });
+    final status = await api.reinstallVirtualCamera();
+    expect(calledMethod, 'reinstallVirtualCamera');
+    expect(status.pending, isTrue);
+    expect(status.message, contains('uninstall'));
+  });
+
+  test('openCameraExtensionSettings invokes native channel without throwing', () async {
+    String? calledMethod;
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      calledMethod = call.method;
+      return {'success': true};
+    });
+    await api.openCameraExtensionSettings();
+    expect(calledMethod, 'openCameraExtensionSettings');
+  });
 }

@@ -10,6 +10,8 @@ public struct BeautySettings {
     public var redness: Double = 0.0         // 0.0 .. 1.0
     public var darkCircle: Double = 0.0      // 0.0 .. 1.0
     public var eyeBag: Double = 0.0          // 0.0 .. 1.0
+    public var eyeWrinkle: Double = 0.0       // 0.0 .. 1.0
+    public var crowsFeet: Double = 0.0        // 0.0 .. 1.0
     public var teethWhitening: Double = 0.0  // 0.0 .. 1.0
     public var glassSkin: Double = 0.0       // 0.0 .. 1.0
 
@@ -24,6 +26,8 @@ public struct BeautySettings {
         if let v = dict["redness"] as? Double { redness = v }
         if let v = dict["darkCircle"] as? Double { darkCircle = v }
         if let v = dict["eyeBag"] as? Double { eyeBag = v }
+        if let v = dict["eyeWrinkle"] as? Double { eyeWrinkle = v }
+        if let v = dict["crowsFeet"] as? Double { crowsFeet = v }
         if let v = dict["teethWhitening"] as? Double { teethWhitening = v }
         if let v = dict["glassSkin"] as? Double { glassSkin = v }
     }

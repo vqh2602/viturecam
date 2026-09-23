@@ -161,6 +161,39 @@ class SettingsDialog extends ConsumerWidget {
                     l10n.virtualCamDescription,
                     style: const TextStyle(fontSize: 11, color: Colors.white54, height: 1.4),
                   ),
+                  const SizedBox(height: 10),
+                  const Divider(color: Colors.white10, height: 1),
+                  const SizedBox(height: 10),
+                  Text(
+                    l10n.virtualCamReinstallTip,
+                    style: const TextStyle(fontSize: 11, color: Colors.white38, height: 1.3),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFFFF8DA1),
+                          side: const BorderSide(color: Color(0xFFFF7597), width: 0.8),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        ),
+                        icon: const Icon(Icons.build_circle_outlined, size: 14),
+                        label: Text(l10n.reinstallExtension, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                        onPressed: state.virtualCamera.pending ? null : () => controller.reinstallVirtualCamera(),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white70,
+                          side: const BorderSide(color: Colors.white24, width: 0.8),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        ),
+                        icon: const Icon(Icons.open_in_new, size: 13),
+                        label: Text(l10n.openSystemSettings, style: const TextStyle(fontSize: 11)),
+                        onPressed: () => controller.openCameraExtensionSettings(),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),

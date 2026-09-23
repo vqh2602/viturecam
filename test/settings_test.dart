@@ -332,5 +332,19 @@ void main() {
       expect(categories.contains('Cool'), true);
       expect(categories.contains('B&W'), true);
     });
+
+    test('verifies all aesthetic filters use 3D LUT Color', () {
+      for (final preset in FilterCatalog.presets) {
+        if (preset.id == 'original') {
+          expect(preset.isLut, false);
+          expect(preset.lutCubePath, '');
+          expect(preset.lutPngPath, '');
+        } else {
+          expect(preset.isLut, true, reason: '${preset.id} must be 3D LUT');
+          expect(preset.lutCubePath, 'assets/luts/${preset.id}.cube');
+          expect(preset.lutPngPath, 'assets/luts/${preset.id}.png');
+        }
+      }
+    });
   });
 }

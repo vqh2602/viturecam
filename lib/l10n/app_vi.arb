@@ -47,6 +47,8 @@
   "beautyRedness": "Giảm đỏ",
   "beautyDarkCircle": "Quầng thâm",
   "beautyEyeBag": "Bọng mắt",
+  "beautyEyeWrinkle": "Nếp nhăn mắt",
+  "beautyCrowsFeet": "Vết chân chim",
   "beautyGlassSkin": "Da bóng mịn",
 
   "sliderSkinSmoothing": "Mức độ làm mịn da",
@@ -57,6 +59,8 @@
   "sliderRednessReduction": "Khử sắc đỏ da",
   "sliderDarkCircleReduction": "Xóa quầng thâm mắt",
   "sliderEyeBagReduction": "Giảm bọng mắt",
+  "sliderEyeWrinkleReduction": "Giảm nếp nhăn & rãnh mắt",
+  "sliderCrowsFeet": "Làm mờ vết chân chim",
   "sliderGlassSkin": "Mức độ da bóng mịn",
   "sliderTeethWhitening": "Làm trắng răng",
 
@@ -252,6 +256,9 @@
   "virtualCamActive": "HOẠT ĐỘNG",
   "virtualCamStandby": "CHỜ",
   "virtualCamDescription": "Khi bật, chọn \"Beauty Camera\" trong Zoom, Google Meet, OBS, Discord, Telegram hoặc Microsoft Teams để phát trực tiếp hình ảnh đã làm đẹp.",
+  "reinstallExtension": "Gỡ & Cài lại Extension",
+  "openSystemSettings": "Cài đặt hệ thống",
+  "virtualCamReinstallTip": "Nếu camera ảo bị lỗi hoặc ứng dụng khác không nhận sau khi cập nhật, bấm để tự động gỡ và cài đặt lại extension.",
   "hardwarePipelineStats": "Thông số phần cứng & Xử lý",
   "statFps": "FPS",
   "statProcessing": "Xử lý",

@@ -105,7 +105,16 @@ public final class FaceTracker {
         let rightEyebrowPts = convertPoints(landmarks?.rightEyebrow)
         let nosePts = convertPoints(landmarks?.nose)
         let noseCrestPts = convertPoints(landmarks?.noseCrest)
-        let outerLipPts = convertPoints(landmarks?.outerLips)
+        let rawOuterLipPts = convertPoints(landmarks?.outerLips)
+        // Apple Vision outerLips: indices 0..6 (upper lip), 7 (right corner),
+        // 8..12 (lower lip), 13 (left corner).
+        // Reorder so that index 0 starts at left commissure to match FaceMeshGeometry.outerLipContour (landmark 61).
+        let outerLipPts: [CGPoint]
+        if rawOuterLipPts.count == 14 {
+            outerLipPts = [rawOuterLipPts[13]] + Array(rawOuterLipPts[0..<13])
+        } else {
+            outerLipPts = rawOuterLipPts
+        }
         let innerLipPts = convertPoints(landmarks?.innerLips)
 
         var res = FaceMeshLandmarks()
@@ -253,8 +262,8 @@ public final class FaceTracker {
         setAnchor(FaceMeshGeometry.foreheadCenterIndex, res.foreheadCenter)
         setAnchor(FaceMeshGeometry.leftCheekApexIndex, res.leftCheekCenter)
         setAnchor(FaceMeshGeometry.rightCheekApexIndex, res.rightCheekCenter)
-        setAnchor(50, res.rightCheekApple)
-        setAnchor(280, res.leftCheekApple)
+        setAnchor(50, res.leftCheekApple)
+        setAnchor(280, res.rightCheekApple)
         setAnchor(127, res.leftTemple)
         setAnchor(356, res.rightTemple)
         setAnchor(33, res.leftEyeOuter)

@@ -83,8 +83,11 @@ class MakeupPresets {
   static const List<MakeupStyleOption> blushStyles = [
     MakeupStyleOption(id: 'apple', name: 'Gò má tròn', icon: Icons.circle_outlined),
     MakeupStyleOption(id: 'sunkissed', name: 'Say rượu', icon: Icons.wb_sunny_outlined),
-    MakeupStyleOption(id: 'lifted', name: 'Kéo thái dương', icon: Icons.trending_up),
+    MakeupStyleOption(id: 'lifted', name: 'Nâng cơ', icon: Icons.trending_up),
     MakeupStyleOption(id: 'undereye', name: 'Dưới mắt', icon: Icons.remove_red_eye_outlined),
+    MakeupStyleOption(id: 'nose_chin', name: 'Mũi & cằm', icon: Icons.favorite_border),
+    MakeupStyleOption(id: 'temple_c', name: 'Thái dương C', icon: Icons.rounded_corner),
+    MakeupStyleOption(id: 'eyecorner', name: 'Đuôi mắt', icon: Icons.visibility_outlined),
     MakeupStyleOption(id: 'contour', name: 'Tạo khối', icon: Icons.filter_hdr),
   ];
 
@@ -196,17 +199,23 @@ class MakeupPresets {
 
   static const List<MakeupOption> lensOptions = [
     MakeupOption(id: 'none', name: 'None', color: Colors.transparent),
-    MakeupOption(id: 'hazel', name: 'Hổ phách', color: Color(0xFF8B5A2B)),
-    MakeupOption(id: 'honey', name: 'Mật ong', color: Color(0xFFC68642)),
-    MakeupOption(id: 'choc', name: 'Sô-cô-la', color: Color(0xFF4A2E18)),
-    MakeupOption(id: 'gray', name: 'Xám khói', color: Color(0xFF8E8E93)),
+    MakeupOption(id: 'hazel', name: 'Hổ phách mật ong', color: Color(0xFF8B5A2B)),
+    MakeupOption(id: 'honey', name: 'Mật ong sáng', color: Color(0xFFC68642)),
+    MakeupOption(id: 'choc', name: 'Nâu sô-cô-la', color: Color(0xFF4A2E18)),
+    MakeupOption(id: 'gray', name: 'Xám pha lê', color: Color(0xFF8E8E93)),
     MakeupOption(id: 'blue', name: 'Xanh biển', color: Color(0xFF2C5E8A)),
     MakeupOption(id: 'aqua', name: 'Ngọc bích', color: Color(0xFF2E8B8B)),
     MakeupOption(id: 'green', name: 'Lục bảo', color: Color(0xFF2E7D32)),
     MakeupOption(id: 'violet', name: 'Thạch anh', color: Color(0xFF6A3D8A)),
-    MakeupOption(id: 'pink', name: 'Hồng đào', color: Color(0xFFD87093)),
-    MakeupOption(id: 'amber', name: 'Vàng nâu', color: Color(0xFFD48817)),
-    MakeupOption(id: 'black', name: 'Đen tuyền', color: Color(0xFF1C1C1E)),
+    MakeupOption(id: 'pink', name: 'Hồng anh đào', color: Color(0xFFD87093)),
+    MakeupOption(id: 'amber', name: 'Hổ phách vàng', color: Color(0xFFD48817)),
+    MakeupOption(id: 'black', name: 'Đen búp bê', color: Color(0xFF1C1C1E)),
+    MakeupOption(id: 'cosmic_galaxy', name: 'Ngân hà', color: Color(0xFF483D8B)),
+    MakeupOption(id: 'supernova_star', name: 'Siêu tân tinh', color: Color(0xFF9370DB)),
+    MakeupOption(id: 'barbie_brown', name: 'Nâu Barbie', color: Color(0xFF8B4513)),
+    MakeupOption(id: 'cat_eye_gold', name: 'Mắt mèo vàng', color: Color(0xFFDAA520)),
+    MakeupOption(id: 'midnight_navy', name: 'Xanh thẫm', color: Color(0xFF191970)),
+    MakeupOption(id: 'platinum_silver', name: 'Bạc bạch kim', color: Color(0xFFC0C0C0)),
   ];
 
   static const List<MakeupStyleOption> sparkleStyles = [

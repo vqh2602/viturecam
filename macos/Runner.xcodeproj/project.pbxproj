@@ -53,6 +53,7 @@
 		BC0000012C00000000000033 /* LipParsing.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000033 /* LipParsing.mlmodel */; };
 		BC0000012C00000000000034 /* LipParsing-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000034 /* LipParsing-LICENSE.txt */; };
 		BC0000012C00000000000040 /* AutoUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000040 /* AutoUpdater.swift */; };
+		BC0000012C00000000000050 /* LUTColorEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC0000022C00000000000050 /* LUTColorEngine.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -144,6 +145,7 @@
 		BC0000022C00000000000031 /* LipContourRefiner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceTracking/LipContourRefiner.swift; sourceTree = "<group>"; };
 		BC0000022C00000000000011 /* FaceMeshRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Rendering/FaceMeshRenderer.swift; sourceTree = "<group>"; };
 		BC0000022C00000000000012 /* FaceMeshShaders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Rendering/FaceMeshShaders.swift; sourceTree = "<group>"; };
+		BC0000022C00000000000050 /* LUTColorEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Rendering/LUTColorEngine.swift; sourceTree = "<group>"; };
 		BC0000022C00000000000013 /* FaceMesh.mlmodelc */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = FaceTracking/FaceMesh.mlmodelc; sourceTree = "<group>"; };
 		BC0000022C00000000000020 /* SkinSegmenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceTracking/SkinSegmenter.swift; sourceTree = "<group>"; };
 		BC0000022C00000000000021 /* SelfieSegmenter.mlmodelc */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = FaceTracking/SelfieSegmenter.mlmodelc; sourceTree = "<group>"; };
@@ -272,6 +274,7 @@
 				BC0000022C00000000000032 /* LipSegmenter.swift */,
 				BC0000022C00000000000011 /* FaceMeshRenderer.swift */,
 				BC0000022C00000000000012 /* FaceMeshShaders.swift */,
+				BC0000022C00000000000050 /* LUTColorEngine.swift */,
 				BC0000022C00000000000013 /* FaceMesh.mlmodelc */,
 				BC0000022C00000000000020 /* SkinSegmenter.swift */,
 				BC0000022C00000000000021 /* SelfieSegmenter.mlmodelc */,
@@ -607,6 +610,7 @@
 				BC0000012C00000000000032 /* LipSegmenter.swift in Sources */,
 				BC0000012C00000000000011 /* FaceMeshRenderer.swift in Sources */,
 				BC0000012C00000000000012 /* FaceMeshShaders.swift in Sources */,
+				BC0000012C00000000000050 /* LUTColorEngine.swift in Sources */,
 				BC0000012C00000000000020 /* SkinSegmenter.swift in Sources */,
 				BC0000012C00000000000040 /* AutoUpdater.swift in Sources */,
 				33CC10F12044A3C60003C045 /* AppDelegate.swift in Sources */,

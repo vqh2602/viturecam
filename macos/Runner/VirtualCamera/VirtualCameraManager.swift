@@ -1,3 +1,4 @@
+import AppKit
 import AVFoundation
 import CoreImage
 import CoreMedia
@@ -23,6 +24,8 @@ public final class VirtualCameraManager: NSObject, OSSystemExtensionRequestDeleg
     private var lastFrameTime: Double = 0
     private var isSendingFrame = false
     private var activationRequest: OSSystemExtensionRequest?
+    private var deactivationRequest: OSSystemExtensionRequest?
+    private var isReinstalling = false
     private var connectionTimer: Timer?
     private var connectionAttempts = 0
     private var propertiesRequest: OSSystemExtensionRequest?
@@ -113,7 +116,7 @@ public final class VirtualCameraManager: NSObject, OSSystemExtensionRequestDeleg
         case .connect:
             if diagnosingConnection {
                 let reason = queue.sync { connectionFailure }
-                setState("error", "Beauty Camera's extension is enabled, but the video connection could not open. \(reason) Quit other copies of Beauty Camera and reopen this app from Applications. If the problem persists after an update, restart your Mac.")
+                setState("error", "Beauty Camera is installed but unavailable in macOS. \(reason) Click 'Reinstall Extension' to reset the camera extension, or check System Settings.")
             } else {
                 beginConnecting()
             }
@@ -152,11 +155,48 @@ public final class VirtualCameraManager: NSObject, OSSystemExtensionRequestDeleg
         OSSystemExtensionManager.shared.submitRequest(request)
     }
 
+    public func reinstall() -> [String: Any] {
+        guard #available(macOS 12.3, *) else {
+            setState("error", "Virtual Camera requires macOS 12.3 or later.")
+            return status
+        }
+        guard Bundle.main.bundleURL.path.hasPrefix("/Applications/") else {
+            setState("error", "Move Beauty Camera to Applications and reopen it to reinstall Virtual Camera.")
+            return status
+        }
+        guard bundledExtension != nil else {
+            setState("error", "This build does not include Virtual Camera. Install a build with the camera extension.")
+            return status
+        }
+
+        stop()
+        isReinstalling = true
+        setState("installing", "Requesting macOS to uninstall old Camera Extension…")
+
+        let request = OSSystemExtensionRequest.deactivationRequest(forExtensionWithIdentifier: extensionID, queue: .main)
+        deactivationRequest = request
+        request.delegate = self
+        OSSystemExtensionManager.shared.submitRequest(request)
+        return status
+    }
+
+    public func openSystemSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension"),
+           NSWorkspace.shared.open(url) {
+            return
+        }
+        if let fallback = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera") {
+            NSWorkspace.shared.open(fallback)
+        }
+    }
+
     public func stop() {
         connectionTimer?.invalidate()
         connectionTimer = nil
         activationRequest = nil
         propertiesRequest = nil
+        deactivationRequest = nil
+        isReinstalling = false
         discoverySession = nil
         queue.sync {
             if device != 0 && stream != 0 { CMIODeviceStopStream(device, stream) }
@@ -183,6 +223,10 @@ public final class VirtualCameraManager: NSObject, OSSystemExtensionRequestDeleg
     }
 
     public func requestNeedsUserApproval(_ request: OSSystemExtensionRequest) {
+        if deactivationRequest === request {
+            setState("approval", "Allow uninstalling the old camera extension in System Settings or enter your admin password.")
+            return
+        }
         guard activationRequest === request else { return }
         setState("approval", "Allow Beauty Camera in macOS System Settings → General → Login Items & Extensions → Camera Extensions (or Privacy & Security).")
     }
@@ -194,6 +238,15 @@ public final class VirtualCameraManager: NSObject, OSSystemExtensionRequestDeleg
         return .replace
     }
     public func request(_ request: OSSystemExtensionRequest, didFailWithError error: Error) {
+        if deactivationRequest === request {
+            deactivationRequest = nil
+            if isReinstalling {
+                submitActivationRequest()
+                return
+            }
+            setState("error", "Could not uninstall camera extension: \(error.localizedDescription)")
+            return
+        }
         if propertiesRequest === request {
             propertiesRequest = nil
             setState("error", "Could not check the installed camera extension: \(error.localizedDescription)")
@@ -201,12 +254,23 @@ public final class VirtualCameraManager: NSObject, OSSystemExtensionRequestDeleg
         }
         guard activationRequest === request else { return }
         activationRequest = nil
+        isReinstalling = false
         setState("error", "Virtual Camera could not be installed: \(error.localizedDescription)")
     }
 
     public func request(_ request: OSSystemExtensionRequest, didFinishWithResult result: OSSystemExtensionRequest.Result) {
+        if deactivationRequest === request {
+            deactivationRequest = nil
+            if isReinstalling {
+                submitActivationRequest()
+                return
+            }
+            setState("off", "Camera extension uninstalled.")
+            return
+        }
         guard activationRequest === request else { return }
         activationRequest = nil
+        isReinstalling = false
         guard result == .completed else {
             setState("error", "Restart your Mac to finish installing Beauty Camera, then enable Virtual Cam again.")
             return

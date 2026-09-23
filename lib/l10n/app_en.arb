@@ -50,6 +50,8 @@
   "beautyRedness": "Redness",
   "beautyDarkCircle": "Dark Circle",
   "beautyEyeBag": "Eye Bag",
+  "beautyEyeWrinkle": "Eye Wrinkle",
+  "beautyCrowsFeet": "Crow's Feet",
   "beautyGlassSkin": "Glass Skin",
 
   "sliderSkinSmoothing": "Skin Smoothing",
@@ -60,6 +62,8 @@
   "sliderRednessReduction": "Redness Reduction",
   "sliderDarkCircleReduction": "Dark Circle Reduction",
   "sliderEyeBagReduction": "Eye Bag Reduction",
+  "sliderEyeWrinkleReduction": "Eye Wrinkle Reduction",
+  "sliderCrowsFeet": "Crow's Feet Smoothing",
   "sliderGlassSkin": "Glass Skin Glow",
   "sliderTeethWhitening": "Teeth Whitening",
 
@@ -275,6 +279,9 @@
   "virtualCamActive": "ACTIVE",
   "virtualCamStandby": "STANDBY",
   "virtualCamDescription": "When enabled, select \"Beauty Camera\" in Zoom, Google Meet, OBS, Discord, Telegram, or Microsoft Teams to use your beautified video stream directly.",
+  "reinstallExtension": "Reinstall Extension",
+  "openSystemSettings": "System Settings",
+  "virtualCamReinstallTip": "If the virtual camera fails or other apps cannot find it after an update, click to reinstall the camera extension.",
   "hardwarePipelineStats": "Hardware & Pipeline Stats",
   "statFps": "FPS",
   "statProcessing": "Processing",

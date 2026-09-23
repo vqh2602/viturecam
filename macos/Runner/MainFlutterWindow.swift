@@ -122,6 +122,13 @@ class MainFlutterWindow: NSWindow {
             case "startVirtualCamera":
                 result(engine.virtualCam.start())
 
+            case "reinstallVirtualCamera":
+                result(engine.virtualCam.reinstall())
+
+            case "openCameraExtensionSettings":
+                engine.virtualCam.openSystemSettings()
+                result(["success": true])
+
             case "getVirtualCameraStatus":
                 result(engine.virtualCam.status)
 

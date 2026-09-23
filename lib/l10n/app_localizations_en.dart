@@ -136,6 +136,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get beautyEyeBag => 'Eye Bag';
 
   @override
+  String get beautyEyeWrinkle => 'Eye Wrinkle';
+
+  @override
+  String get beautyCrowsFeet => 'Crow\'s Feet';
+
+  @override
   String get beautyGlassSkin => 'Glass Skin';
 
   @override
@@ -161,6 +167,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sliderEyeBagReduction => 'Eye Bag Reduction';
+
+  @override
+  String get sliderEyeWrinkleReduction => 'Eye Wrinkle Reduction';
+
+  @override
+  String get sliderCrowsFeet => 'Crow\'s Feet Smoothing';
 
   @override
   String get sliderGlassSkin => 'Glass Skin Glow';
@@ -708,6 +720,16 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get virtualCamDescription =>
       'When enabled, select \"Beauty Camera\" in Zoom, Google Meet, OBS, Discord, Telegram, or Microsoft Teams to use your beautified video stream directly.';
+
+  @override
+  String get reinstallExtension => 'Reinstall Extension';
+
+  @override
+  String get openSystemSettings => 'System Settings';
+
+  @override
+  String get virtualCamReinstallTip =>
+      'If the virtual camera fails or other apps cannot find it after an update, click to reinstall the camera extension.';
 
   @override
   String get hardwarePipelineStats => 'Hardware & Pipeline Stats';

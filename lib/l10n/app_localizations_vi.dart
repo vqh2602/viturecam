@@ -136,6 +136,12 @@ class AppLocalizationsVi extends AppLocalizations {
   String get beautyEyeBag => 'Bọng mắt';
 
   @override
+  String get beautyEyeWrinkle => 'Nếp nhăn mắt';
+
+  @override
+  String get beautyCrowsFeet => 'Vết chân chim';
+
+  @override
   String get beautyGlassSkin => 'Da bóng mịn';
 
   @override
@@ -161,6 +167,12 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get sliderEyeBagReduction => 'Giảm bọng mắt';
+
+  @override
+  String get sliderEyeWrinkleReduction => 'Giảm nếp nhăn & rãnh mắt';
+
+  @override
+  String get sliderCrowsFeet => 'Làm mờ vết chân chim';
 
   @override
   String get sliderGlassSkin => 'Mức độ da bóng mịn';
@@ -707,6 +719,16 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String get virtualCamDescription =>
       'Khi bật, chọn \"Beauty Camera\" trong Zoom, Google Meet, OBS, Discord, Telegram hoặc Microsoft Teams để phát trực tiếp hình ảnh đã làm đẹp.';
+
+  @override
+  String get reinstallExtension => 'Gỡ & Cài lại Extension';
+
+  @override
+  String get openSystemSettings => 'Cài đặt hệ thống';
+
+  @override
+  String get virtualCamReinstallTip =>
+      'Nếu camera ảo bị lỗi hoặc ứng dụng khác không nhận sau khi cập nhật, bấm để tự động gỡ và cài đặt lại extension.';
 
   @override
   String get hardwarePipelineStats => 'Thông số phần cứng & Xử lý';
