@@ -20,6 +20,7 @@ class PatreonState {
 
   bool get isLoggedIn => account != null;
   bool get isPatron => account?.isPatron ?? false;
+  bool get isCreator => account?.isCreator ?? false;
   bool get isTestMode => account?.isTestMode ?? false;
   String get fullName => account?.fullName ?? '';
   String get email => account?.email ?? '';
@@ -57,7 +58,11 @@ class PatreonNotifier extends StateNotifier<PatreonState> {
 
   Future<void> loadSavedState() async {
     state = state.copyWith(isLoading: true);
-    final account = await PatreonStorage.loadAccount();
+    var account = await PatreonStorage.loadAccount();
+    if (account != null && account.isTestMode) {
+      await PatreonStorage.saveAccount(null);
+      account = null;
+    }
     final config = await PatreonStorage.loadConfig();
     if (!mounted) return;
     state = state.copyWith(
@@ -79,10 +84,37 @@ class PatreonNotifier extends StateNotifier<PatreonState> {
       final account = await _service.loginWithOAuth(state.config);
       await PatreonStorage.saveAccount(account);
       if (!mounted) return false;
+      final msg = account.isCreator
+          ? 'Chào mừng tác giả Huy Vương! Đã mở khóa toàn bộ tính năng VIP.'
+          : (account.isPatron
+              ? 'Đăng nhập Patreon thành công! Gói ủng hộ đang hoạt động (${account.displayAmount}/tháng).'
+              : 'Đăng nhập thành công, nhưng tài khoản chưa đăng ký gói ủng hộ.');
       state = state.copyWith(
         account: account,
         isLoading: false,
-        successMessage: 'Đăng nhập Patreon thành công!',
+        successMessage: msg,
+      );
+      return true;
+    } catch (e) {
+      if (!mounted) return false;
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      );
+      return false;
+    }
+  }
+
+  Future<bool> loginWithCreatorToken() async {
+    state = state.copyWith(isLoading: true, clearError: true, clearSuccess: true);
+    try {
+      final account = await _service.loginWithCreatorToken(config: state.config);
+      await PatreonStorage.saveAccount(account);
+      if (!mounted) return false;
+      state = state.copyWith(
+        account: account,
+        isLoading: false,
+        successMessage: 'Đăng nhập thành công với tư cách Tác giả (Creator VIP)!',
       );
       return true;
     } catch (e) {
@@ -98,18 +130,6 @@ class PatreonNotifier extends StateNotifier<PatreonState> {
   Future<bool> checkMembershipStatus() async {
     if (state.account == null) return false;
 
-    if (state.account!.isTestMode) {
-      // Trong test mode, làm mới trạng thái test
-      final updated = PatreonService.createTestAccount(isPatron: true);
-      await PatreonStorage.saveAccount(updated);
-      if (!mounted) return true;
-      state = state.copyWith(
-        account: updated,
-        successMessage: 'Đã xác nhận tư cách thành viên VIP (Test Mode)',
-      );
-      return true;
-    }
-
     state = state.copyWith(isLoading: true, clearError: true, clearSuccess: true);
     try {
       var token = state.account!.accessToken;
@@ -119,6 +139,7 @@ class PatreonNotifier extends StateNotifier<PatreonState> {
         updatedAccount = await _service.fetchIdentity(
           accessToken: token,
           refreshToken: state.account!.refreshToken,
+          targetCampaignId: state.config.campaignId,
         );
       } catch (e) {
         // Nếu token hết hạn và có refresh token
@@ -130,6 +151,7 @@ class PatreonNotifier extends StateNotifier<PatreonState> {
           updatedAccount = await _service.fetchIdentity(
             accessToken: token,
             refreshToken: state.account!.refreshToken,
+            targetCampaignId: state.config.campaignId,
           );
         } else {
           rethrow;
@@ -138,12 +160,15 @@ class PatreonNotifier extends StateNotifier<PatreonState> {
 
       await PatreonStorage.saveAccount(updatedAccount);
       if (!mounted) return updatedAccount.isPatron;
+      final successMsg = updatedAccount.isCreator
+          ? 'Đã xác nhận: Bạn là Tác giả của dự án (Creator VIP)!'
+          : (updatedAccount.isPatron
+              ? 'Đã xác nhận: Bạn đang là Patron hoạt động (${updatedAccount.displayAmount}/tháng)'
+              : 'Tài khoản chưa có gói ủng hộ nào đang hoạt động cho chiến dịch này');
       state = state.copyWith(
         account: updatedAccount,
         isLoading: false,
-        successMessage: updatedAccount.isPatron
-            ? 'Đã xác nhận: Bạn đang là Patron hoạt động (${updatedAccount.displayAmount}/tháng)'
-            : 'Tài khoản chưa có gói ủng hộ nào đang hoạt động',
+        successMessage: successMsg,
       );
       return updatedAccount.isPatron;
     } catch (e) {
@@ -162,21 +187,10 @@ class PatreonNotifier extends StateNotifier<PatreonState> {
     state = state.copyWith(clearAccount: true, clearError: true, clearSuccess: true);
   }
 
-  Future<void> enableTestMode(bool enable) async {
-    if (enable) {
-      final testAccount = PatreonService.createTestAccount(isPatron: true);
-      await PatreonStorage.saveAccount(testAccount);
-      if (!mounted) return;
-      state = state.copyWith(account: testAccount, clearError: true, clearSuccess: true);
-    } else {
-      if (state.account?.isTestMode == true) {
-        await logout();
-      }
-    }
-  }
-
   Future<void> openCampaign() async {
-    final url = state.config.campaignUrl.isNotEmpty ? state.config.campaignUrl : 'https://www.patreon.com';
+    final url = state.config.campaignUrl.isNotEmpty
+        ? state.config.campaignUrl
+        : PatreonConfig.defaultCampaignUrl;
     await _service.openUrl(url);
   }
 }

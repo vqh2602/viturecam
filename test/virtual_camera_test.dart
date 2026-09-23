@@ -69,4 +69,14 @@ void main() {
     await api.openCameraExtensionSettings();
     expect(calledMethod, 'openCameraExtensionSettings');
   });
+
+  test('restartApp invokes native channel without throwing', () async {
+    String? calledMethod;
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      calledMethod = call.method;
+      return {'success': true};
+    });
+    await api.restartApp();
+    expect(calledMethod, 'restartApp');
+  });
 }

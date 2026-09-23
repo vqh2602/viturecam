@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/update_service.dart';
@@ -50,7 +49,6 @@ class _UpdateDialogState extends State<UpdateDialog> {
   int _totalBytes = 0;
   String _errorMessage = '';
   bool _isCancelled = false;
-  File? _downloadedFile;
 
   void _startUpdate() async {
     setState(() {
@@ -80,8 +78,6 @@ class _UpdateDialogState extends State<UpdateDialog> {
       );
 
       if (_isCancelled) return;
-
-      _downloadedFile = dmgFile;
 
       setState(() {
         _state = UpdateDialogState.installing;

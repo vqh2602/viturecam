@@ -58,7 +58,7 @@ class ToolButton extends StatelessWidget {
                 color: isSelected ? Colors.white : (isActive ? Colors.white : Colors.white60),
               ),
             ),
-            if (trailing != null) trailing!,
+            ?trailing,
             if (isActive) ...[
               const SizedBox(width: 4),
               Container(

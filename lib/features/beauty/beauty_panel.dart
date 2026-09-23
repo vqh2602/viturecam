@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/app_localizations.dart';
 import '../../widgets/beauty_slider.dart';
 import '../../widgets/tool_button.dart';
+import '../../widgets/vip_badge.dart';
 import '../camera/camera_controller.dart';
+import '../patreon/patreon_provider.dart';
 
 class BeautyPanel extends ConsumerWidget {
   const BeautyPanel({super.key});
@@ -12,6 +14,7 @@ class BeautyPanel extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final state = ref.watch(cameraControllerProvider);
+    final isPatron = ref.watch(patreonProvider).isPatron;
     final controller = ref.read(cameraControllerProvider.notifier);
     final b = state.beauty;
     final subTool = state.activeSubTool;
@@ -20,8 +23,8 @@ class BeautyPanel extends ConsumerWidget {
       {'id': 'smooth', 'label': l10n.beautySmooth, 'icon': Icons.blur_on},
       {'id': 'skinTexture', 'label': l10n.beautyTexture, 'icon': Icons.grain},
       {'id': 'skinTone', 'label': l10n.beautySkinTone, 'icon': Icons.palette_outlined},
-      {'id': 'skinBrightness', 'label': l10n.beautyBrighten, 'icon': Icons.brightness_6},
-      {'id': 'whitening', 'label': l10n.beautyWhitening, 'icon': Icons.wb_sunny_outlined},
+      {'id': 'skinBrightness', 'label': l10n.beautyBrighten, 'icon': Icons.brightness_6, 'isVip': true},
+      {'id': 'whitening', 'label': l10n.beautyWhitening, 'icon': Icons.wb_sunny_outlined, 'isVip': true},
       {'id': 'teethWhitening', 'label': l10n.beautyTeethWhitening, 'icon': Icons.auto_awesome},
       {'id': 'redness', 'label': l10n.beautyRedness, 'icon': Icons.spa_outlined},
       {'id': 'darkCircle', 'label': l10n.beautyDarkCircle, 'icon': Icons.remove_red_eye_outlined},
@@ -137,6 +140,9 @@ class BeautyPanel extends ConsumerWidget {
             ],
           );
         case 'skinBrightness':
+          if (!isPatron) {
+            return VipInlineBanner(featureName: l10n.beautyBrighten);
+          }
           return BeautySlider(
             label: l10n.sliderSkinBrightness,
             value: b.skinBrightness,
@@ -144,6 +150,9 @@ class BeautyPanel extends ConsumerWidget {
             onChanged: (v) => controller.updateBeauty(b.copyWith(skinBrightness: v)),
           );
         case 'whitening':
+          if (!isPatron) {
+            return VipInlineBanner(featureName: l10n.beautyWhitening);
+          }
           return BeautySlider(
             label: l10n.sliderSkinWhitening,
             value: b.whitening,
@@ -236,6 +245,7 @@ class BeautyPanel extends ConsumerWidget {
                   icon: t['icon'] as IconData,
                   isSelected: subTool == t['id'],
                   isActive: b.isKeyActive(t['id'] as String),
+                  trailing: t['isVip'] == true ? VipBadge(isPatron: isPatron) : null,
                   onTap: () => controller.selectSubTool(t['id'] as String),
                 ),
             ],

@@ -139,6 +139,19 @@ class MainFlutterWindow: NSWindow {
             case "getPerformanceStats":
                 result(engine.getPerformanceStats())
 
+            case "restartApp":
+                let pid = ProcessInfo.processInfo.processIdentifier
+                let bundlePath = Bundle.main.bundlePath
+                let script = "while kill -0 \(pid) 2>/dev/null; do sleep 0.1; done; open -n \"\(bundlePath)\""
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: "/bin/bash")
+                process.arguments = ["-c", script]
+                try? process.run()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    NSApplication.shared.terminate(nil)
+                }
+                result(["success": true])
+
             default:
                 result(FlutterMethodNotImplemented)
             }

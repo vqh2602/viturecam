@@ -194,6 +194,45 @@ class SettingsDialog extends ConsumerWidget {
                       ),
                     ],
                   ),
+                  if (state.virtualCameraReinstalled && state.virtualCamera.state != 'installing') ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF7597).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFFF7597).withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.restart_alt_rounded, size: 18, color: Color(0xFFFF8DA1)),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              l10n.restartAppAfterReinstallTip,
+                              style: const TextStyle(fontSize: 11, color: Colors.white70, height: 1.3),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFFF7597),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                            ),
+                            icon: const Icon(Icons.restart_alt_rounded, size: 14),
+                            label: Text(
+                              l10n.restartApp,
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
+                            onPressed: () => controller.restartApp(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -480,7 +519,7 @@ class _PatreonSection extends ConsumerWidget {
                                 child: Image.network(
                                   avatarUrl,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => const Icon(Icons.person_rounded, size: 20, color: Colors.white70),
+                                  errorBuilder: (_, _, _) => const Icon(Icons.person_rounded, size: 20, color: Colors.white70),
                                 ),
                               )
                             : Icon(
@@ -528,17 +567,19 @@ class _PatreonSection extends ConsumerWidget {
                                 ),
                               ),
                               child: Text(
-                                state.isTestMode
-                                    ? l10n.patreonTestModeActive
+                                state.isCreator
+                                    ? 'Creator VIP'
                                     : (state.isPatron
                                         ? l10n.patreonActive
                                         : (state.isLoggedIn ? l10n.patreonInactive : l10n.patreonNotConnected)),
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w600,
-                                  color: state.isPatron
-                                      ? const Color(0xFF81C784)
-                                      : (state.isLoggedIn ? const Color(0xFFFFB74D) : Colors.white38),
+                                  color: state.isCreator
+                                      ? const Color(0xFFFF7597)
+                                      : (state.isPatron
+                                          ? const Color(0xFF81C784)
+                                          : (state.isLoggedIn ? const Color(0xFFFFB74D) : Colors.white38)),
                                 ),
                               ),
                             ),
@@ -575,18 +616,17 @@ class _PatreonSection extends ConsumerWidget {
                 ),
               ],
               const SizedBox(height: 12),
-              Row(
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   if (!state.isLoggedIn) ...[
                     ElevatedButton.icon(
                       onPressed: state.isLoading
                           ? null
                           : () async {
-                              if (!state.config.isConfigured) {
-                                PatreonConfigDialog.show(context);
-                              } else {
-                                await notifier.loginWithOAuth();
-                              }
+                              await notifier.loginWithOAuth();
                             },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFFF424D),
@@ -607,7 +647,21 @@ class _PatreonSection extends ConsumerWidget {
                         style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    if (state.config.hasCreatorToken) ...[
+                      OutlinedButton.icon(
+                        onPressed: state.isLoading
+                            ? null
+                            : () => notifier.loginWithCreatorToken(),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFFFF8DA1),
+                          side: const BorderSide(color: Color(0xFFFF7597), width: 0.8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        ),
+                        icon: const Icon(Icons.flash_on_rounded, size: 13, color: Color(0xFFFF7597)),
+                        label: const Text('Đăng nhập Tác giả', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                      ),
+                    ],
                     OutlinedButton.icon(
                       onPressed: () => notifier.openCampaign(),
                       style: OutlinedButton.styleFrom(
@@ -647,7 +701,6 @@ class _PatreonSection extends ConsumerWidget {
                         style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600),
                       ),
                     ),
-                    const SizedBox(width: 8),
                     OutlinedButton.icon(
                       onPressed: () => notifier.openCampaign(),
                       style: OutlinedButton.styleFrom(
@@ -662,7 +715,6 @@ class _PatreonSection extends ConsumerWidget {
                         style: const TextStyle(fontSize: 11),
                       ),
                     ),
-                    const Spacer(),
                     TextButton.icon(
                       onPressed: () => notifier.logout(),
                       style: TextButton.styleFrom(

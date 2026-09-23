@@ -731,6 +731,13 @@ class AppLocalizationsVi extends AppLocalizations {
       'Nếu camera ảo bị lỗi hoặc ứng dụng khác không nhận sau khi cập nhật, bấm để tự động gỡ và cài đặt lại extension.';
 
   @override
+  String get restartApp => 'Khởi động lại app';
+
+  @override
+  String get restartAppAfterReinstallTip =>
+      'Đã gửi yêu cầu cài đặt lại extension. Vui lòng bấm Khởi động lại app để hoàn tất kích hoạt camera ảo.';
+
+  @override
   String get hardwarePipelineStats => 'Thông số phần cứng & Xử lý';
 
   @override

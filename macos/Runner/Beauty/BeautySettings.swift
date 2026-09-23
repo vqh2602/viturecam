@@ -135,7 +135,7 @@ public struct MakeupSettings {
     public var eyelinerStyle: String = "classic" // "natural", "classic", "cat", "puppy", "fox"
     public var eyeshadowPreset: String = "none"
     public var eyeshadowOpacity: Double = 0.0
-    public var eyeshadowStyle: String = "gradient" // "gradient", "halo", "cutCrease", "outerV", "douyin"
+    public var eyeshadowStyle: String = "gradient" // "korean", "gradient", "sheer", "shimmer", "halo", "puppy", "douyin", "outerV", "cutCrease"
     public var eyelashesPreset: String = "none"
     public var eyelashesOpacity: Double = 0.0
     public var contactLensPreset: String = "none"

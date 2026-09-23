@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:viturecam/app/app.dart';
 import 'package:viturecam/app/locale_provider.dart';
-import 'package:viturecam/features/patreon/patreon_models.dart';
 import 'package:viturecam/features/patreon/patreon_provider.dart';
 import 'package:viturecam/features/patreon/patreon_service.dart';
 

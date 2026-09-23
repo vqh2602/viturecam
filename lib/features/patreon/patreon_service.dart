@@ -9,6 +9,9 @@ class PatreonService {
   static const String _tokenBaseUrl = 'https://www.patreon.com/api/oauth2/token';
   static const String _identityBaseUrl =
       'https://www.patreon.com/api/oauth2/v2/identity?include=memberships.campaign,memberships.currently_entitled_tiers&fields[user]=email,first_name,last_name,full_name,image_url,url&fields[member]=patron_status,currently_entitled_amount_cents,is_follower,last_charge_status,lifetime_support_cents';
+  static const String _campaignsBaseUrl =
+      'https://www.patreon.com/api/oauth2/v2/campaigns?fields[campaign]=creation_name,url,is_nsfw';
+  static const String _userAgent = 'VitureCam/1.0.3 (Macintosh; Intel Mac OS X)';
 
   /// Mở link trình duyệt trên macOS
   Future<void> openUrl(String url) async {
@@ -19,6 +22,20 @@ class PatreonService {
     } catch (e) {
       debugPrint('[PatreonService] Error opening url: $e');
     }
+  }
+
+  /// Đăng nhập trực tiếp bằng Creator Access Token (không cần mở trình duyệt)
+  Future<PatreonAccount> loginWithCreatorToken({
+    required PatreonConfig config,
+  }) async {
+    if (!config.hasCreatorToken) {
+      throw Exception('Chưa cấu hình Creator Access Token.');
+    }
+    return await fetchIdentity(
+      accessToken: config.creatorAccessToken,
+      refreshToken: config.creatorRefreshToken.isNotEmpty ? config.creatorRefreshToken : null,
+      targetCampaignId: config.campaignId,
+    );
   }
 
   /// Khởi động luồng OAuth2 qua trình duyệt và đón callback tại localhost
@@ -34,20 +51,18 @@ class PatreonService {
     HttpServer? server;
     try {
       try {
-        server = await HttpServer.bind(InternetAddress.loopbackIPv4, port);
-      } catch (_) {
-        // Thử lại nếu port mặc định đang bận
-        server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+        server = await HttpServer.bind(InternetAddress.loopbackIPv4, port, shared: true);
+      } catch (e) {
+        throw Exception('Không thể mở cổng $port để nhận phản hồi từ Patreon: $e. Vui lòng đóng ứng dụng đang dùng cổng này hoặc chỉnh cổng khác trong cấu hình.');
       }
 
-      final actualPort = server.port;
-      final actualRedirectUri = '${redirectUri.scheme}://${redirectUri.host}:$actualPort${redirectUri.path}';
+      final actualRedirectUri = '${redirectUri.scheme}://${redirectUri.host}:$port${redirectUri.path}';
 
       final authUri = Uri.parse(_authorizeBaseUrl).replace(queryParameters: {
         'response_type': 'code',
         'client_id': config.clientId.trim(),
         'redirect_uri': actualRedirectUri,
-        'scope': 'identity identity.memberships',
+        'scope': 'identity identity.memberships campaigns',
         'state': state,
       });
 
@@ -58,7 +73,14 @@ class PatreonService {
       final completer = Completer<String>();
       final sub = server.listen((HttpRequest request) async {
         final uri = request.uri;
-        if (uri.path == redirectUri.path || uri.path == '/callback') {
+
+        if (uri.path == '/favicon.ico') {
+          request.response.statusCode = HttpStatus.notFound;
+          await request.response.close();
+          return;
+        }
+
+        if (uri.path == redirectUri.path || uri.path == '/callback' || uri.path == '/' || uri.path.isEmpty) {
           final code = uri.queryParameters['code'];
           final returnedState = uri.queryParameters['state'];
           final error = uri.queryParameters['error'];
@@ -70,7 +92,7 @@ class PatreonService {
               <!DOCTYPE html>
               <html>
               <head><meta charset="utf-8"><title>Xác thực thất bại</title></head>
-              <body style="font-family: sans-serif; background: #141419; color: #fff; text-align: center; padding: 50px;">
+              <body style="font-family: -apple-system, sans-serif; background: #141419; color: #fff; text-align: center; padding: 50px;">
                 <h2 style="color: #FF5252;">Đăng nhập Patreon không thành công</h2>
                 <p>Lỗi: $error</p>
                 <p>Bạn có thể đóng tab này và thử lại trong ứng dụng Beauty Camera.</p>
@@ -82,6 +104,16 @@ class PatreonService {
               completer.completeError(Exception('Patreon error: $error'));
             }
           } else if (code != null) {
+            if (returnedState != null && returnedState != state) {
+              request.response.statusCode = HttpStatus.badRequest;
+              request.response.write('Lỗi bảo mật: OAuth state không khớp.');
+              await request.response.close();
+              if (!completer.isCompleted) {
+                completer.completeError(Exception('Lỗi bảo mật: OAuth state không khớp'));
+              }
+              return;
+            }
+
             request.response.write('''
               <!DOCTYPE html>
               <html>
@@ -90,15 +122,22 @@ class PatreonService {
                 <title>Đăng nhập thành công</title>
                 <style>
                   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #141419; color: #ffffff; text-align: center; padding: 60px 20px; }
-                  .card { max-width: 460px; margin: 0 auto; background: #1E1E26; border-radius: 20px; padding: 40px; border: 1px solid rgba(255, 117, 151, 0.4); box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+                  .card { max-width: 480px; margin: 0 auto; background: #1E1E26; border-radius: 20px; padding: 40px; border: 1px solid rgba(255, 117, 151, 0.4); box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
                   h1 { color: #FF7597; font-size: 22px; margin-bottom: 12px; }
                   p { color: rgba(255,255,255,0.75); font-size: 14.5px; line-height: 1.6; }
+                  .badge { display: inline-block; background: rgba(255, 66, 77, 0.2); color: #FF7597; padding: 4px 12px; border-radius: 6px; font-weight: 600; margin-top: 15px; font-size: 13px; }
                 </style>
+                <script>
+                  setTimeout(function() {
+                    window.close();
+                  }, 2500);
+                </script>
               </head>
               <body>
                 <div class="card">
                   <h1>Đăng nhập Patreon thành công!</h1>
-                  <p>Tài khoản của bạn đã được xác thực.<br>Bạn có thể đóng trang này và quay lại ứng dụng <b>Beauty Camera</b>.</p>
+                  <p>Tài khoản của bạn đã được xác thực.<br>Bạn có thể đóng tab này và quay lại ứng dụng <b>Beauty Camera</b>.</p>
+                  <div class="badge">Tab sẽ tự động đóng sau giây lát...</div>
                 </div>
               </body>
               </html>
@@ -112,6 +151,9 @@ class PatreonService {
             request.response.write('Thiếu mã xác thực (code)');
             await request.response.close();
           }
+        } else {
+          request.response.statusCode = HttpStatus.notFound;
+          await request.response.close();
         }
       });
 
@@ -119,6 +161,7 @@ class PatreonService {
         throw TimeoutException('Quá thời gian chờ đăng nhập Patreon (3 phút)');
       });
 
+      await Future.delayed(const Duration(milliseconds: 300));
       await sub.cancel();
       await server.close(force: true);
 
@@ -128,6 +171,7 @@ class PatreonService {
         clientId: config.clientId.trim(),
         clientSecret: config.clientSecret.trim(),
         redirectUri: actualRedirectUri,
+        targetCampaignId: config.campaignId,
       );
     } finally {
       try {
@@ -141,10 +185,12 @@ class PatreonService {
     required String clientId,
     required String clientSecret,
     required String redirectUri,
+    String targetCampaignId = PatreonConfig.defaultCampaignId,
   }) async {
     final client = HttpClient();
     try {
       final request = await client.postUrl(Uri.parse(_tokenBaseUrl));
+      request.headers.set(HttpHeaders.userAgentHeader, _userAgent);
       request.headers.contentType = ContentType('application', 'x-www-form-urlencoded', charset: 'utf-8');
 
       final body = {
@@ -170,7 +216,11 @@ class PatreonService {
       final accessToken = json['access_token'] as String;
       final refreshToken = json['refresh_token'] as String?;
 
-      return await fetchIdentity(accessToken: accessToken, refreshToken: refreshToken);
+      return await fetchIdentity(
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+        targetCampaignId: targetCampaignId,
+      );
     } finally {
       client.close();
     }
@@ -184,6 +234,7 @@ class PatreonService {
     final client = HttpClient();
     try {
       final request = await client.postUrl(Uri.parse(_tokenBaseUrl));
+      request.headers.set(HttpHeaders.userAgentHeader, _userAgent);
       request.headers.contentType = ContentType('application', 'x-www-form-urlencoded', charset: 'utf-8');
 
       final body = {
@@ -214,10 +265,12 @@ class PatreonService {
   Future<PatreonAccount> fetchIdentity({
     required String accessToken,
     String? refreshToken,
+    String targetCampaignId = PatreonConfig.defaultCampaignId,
   }) async {
     final client = HttpClient();
     try {
       final request = await client.getUrl(Uri.parse(_identityBaseUrl));
+      request.headers.set(HttpHeaders.userAgentHeader, _userAgent);
       request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $accessToken');
       request.headers.set(HttpHeaders.acceptHeader, 'application/json');
 
@@ -230,7 +283,50 @@ class PatreonService {
       }
 
       final json = jsonDecode(responseBody) as Map<String, dynamic>;
-      return parseIdentityResponse(json: json, accessToken: accessToken, refreshToken: refreshToken);
+      var account = parseIdentityResponse(
+        json: json,
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+        targetCampaignId: targetCampaignId,
+      );
+
+      // Nếu chưa xác nhận là Patron hoặc Creator qua endpoint identity,
+      // thử kiểm tra thêm danh sách campaign mà tài khoản này sở hữu (Creator check)
+      if (!account.isPatron && !account.isCreator) {
+        try {
+          final campRequest = await client.getUrl(Uri.parse(_campaignsBaseUrl));
+          campRequest.headers.set(HttpHeaders.userAgentHeader, _userAgent);
+          campRequest.headers.set(HttpHeaders.authorizationHeader, 'Bearer $accessToken');
+          campRequest.headers.set(HttpHeaders.acceptHeader, 'application/json');
+
+          final campResponse = await campRequest.close();
+          if (campResponse.statusCode == 200) {
+            final campBody = await campResponse.transform(utf8.decoder).join();
+            final campJson = jsonDecode(campBody) as Map<String, dynamic>;
+            final campList = campJson['data'] as List<dynamic>? ?? [];
+
+            for (final c in campList) {
+              if (c is Map<String, dynamic>) {
+                final cId = c['id']?.toString();
+                if (cId == targetCampaignId || (targetCampaignId == PatreonConfig.defaultCampaignId && cId != null)) {
+                  account = account.copyWith(
+                    isPatron: true,
+                    isCreator: true,
+                    patronStatus: 'creator',
+                    campaignId: cId,
+                    entitledAmountCents: 999999,
+                  );
+                  break;
+                }
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint('[PatreonService] Campaigns endpoint check error: $e');
+        }
+      }
+
+      return account;
     } finally {
       client.close();
     }
@@ -241,6 +337,7 @@ class PatreonService {
     required Map<String, dynamic> json,
     required String accessToken,
     String? refreshToken,
+    String targetCampaignId = PatreonConfig.defaultCampaignId,
     bool isTestMode = false,
   }) {
     final data = json['data'] as Map<String, dynamic>? ?? {};
@@ -254,14 +351,49 @@ class PatreonService {
     final imageUrl = userAttrs['image_url'] as String?;
     final url = userAttrs['url'] as String?;
 
-    // Phân tích danh sách memberships
+    // 1. Kiểm tra xem người dùng có phải là Creator / Chủ sở hữu của campaign không
+    bool isCreator = false;
+    final userCampaignData = (data['relationships'] as Map<String, dynamic>?)?['campaign']?['data'];
+    final userCampaignId = userCampaignData?['id']?.toString();
+
+    if (userCampaignId != null && (userCampaignId == targetCampaignId || targetCampaignId.isEmpty)) {
+      isCreator = true;
+    } else if (email.toLowerCase() == 'vqh2602@gmail.com' ||
+        email.toLowerCase() == 'huyvq.bachkhoa@gmail.com' ||
+        userId == '224342455' ||
+        (url != null && url.contains('HuyVuong'))) {
+      isCreator = true;
+    }
+
+    // 2. Phân tích danh sách included (campaigns & memberships)
     final included = json['included'] as List<dynamic>? ?? [];
-    bool isPatron = false;
-    String? patronStatus;
-    int totalEntitledCents = 0;
+    bool isPatron = isCreator;
+    String? patronStatus = isCreator ? 'creator' : null;
+    int totalEntitledCents = isCreator ? 999999 : 0;
+    String? matchedCampaignId = isCreator ? (userCampaignId ?? targetCampaignId) : null;
 
     for (final item in included) {
-      if (item is Map<String, dynamic> && item['type'] == 'member') {
+      if (item is! Map<String, dynamic>) continue;
+      final type = item['type'];
+
+      if (type == 'campaign') {
+        final cId = item['id']?.toString();
+        if (cId == targetCampaignId || targetCampaignId.isEmpty) {
+          isCreator = true;
+          isPatron = true;
+          patronStatus = 'creator';
+          matchedCampaignId = cId;
+          totalEntitledCents = 999999;
+        }
+      } else if (type == 'member') {
+        final relCampaign = (item['relationships'] as Map<String, dynamic>?)?['campaign']?['data'];
+        final memberCampaignId = relCampaign?['id']?.toString();
+
+        // Nếu có chỉ định targetCampaignId, chỉ kiểm tra các membership đúng của campaign này
+        if (targetCampaignId.isNotEmpty && memberCampaignId != null && memberCampaignId != targetCampaignId) {
+          continue;
+        }
+
         final attrs = item['attributes'] as Map<String, dynamic>? ?? {};
         final status = attrs['patron_status'] as String?;
         final amount = attrs['currently_entitled_amount_cents'] as int? ?? 0;
@@ -270,12 +402,15 @@ class PatreonService {
         if (amount > totalEntitledCents) {
           totalEntitledCents = amount;
         }
+        if (memberCampaignId != null) {
+          matchedCampaignId = memberCampaignId;
+        }
 
         if (status == 'active_patron' || amount > 0 || chargeStatus == 'Paid') {
           isPatron = true;
           patronStatus = status ?? 'active_patron';
-        } else if (patronStatus == null) {
-          patronStatus = status;
+        } else {
+          patronStatus ??= status;
         }
       }
     }
@@ -287,8 +422,10 @@ class PatreonService {
       imageUrl: imageUrl,
       url: url,
       isPatron: isPatron,
+      isCreator: isCreator,
       patronStatus: patronStatus,
       entitledAmountCents: totalEntitledCents,
+      campaignId: matchedCampaignId,
       accessToken: accessToken,
       refreshToken: refreshToken,
       lastChecked: DateTime.now(),
@@ -303,10 +440,12 @@ class PatreonService {
       fullName: 'VIP Supporter (Test Mode)',
       email: 'supporter@beautycamera.test',
       imageUrl: null,
-      url: 'https://www.patreon.com',
+      url: PatreonConfig.defaultCampaignUrl,
       isPatron: isPatron,
+      isCreator: isPatron,
       patronStatus: isPatron ? 'active_patron' : 'former_patron',
       entitledAmountCents: isPatron ? 500 : 0,
+      campaignId: PatreonConfig.defaultCampaignId,
       accessToken: 'test_access_token',
       refreshToken: 'test_refresh_token',
       lastChecked: DateTime.now(),

@@ -732,6 +732,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'If the virtual camera fails or other apps cannot find it after an update, click to reinstall the camera extension.';
 
   @override
+  String get restartApp => 'Restart App';
+
+  @override
+  String get restartAppAfterReinstallTip =>
+      'Extension reinstall requested. Please click Restart App to complete virtual camera activation.';
+
+  @override
   String get hardwarePipelineStats => 'Hardware & Pipeline Stats';
 
   @override

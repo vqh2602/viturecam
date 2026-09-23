@@ -10,7 +10,33 @@ import 'makeup_settings.dart';
 class MakeupPanel extends ConsumerWidget {
   const MakeupPanel({super.key});
 
-  static String getStyleName(AppLocalizations l10n, String id, String fallback) {
+  static String getStyleName(AppLocalizations l10n, String id, String fallback, {String? category}) {
+    final isVi = l10n.localeName.startsWith('vi');
+    if (category == 'eyeshadow') {
+      switch (id) {
+        case 'gradient':
+          return isVi ? 'Tán loang' : 'Gradient';
+        case 'korean':
+          return isVi ? 'Trong trẻo' : 'K-Dewy';
+        case 'sheer':
+          return isVi ? 'Phủ sương' : 'Soft Sheer';
+        case 'shimmer':
+          return isVi ? 'Ánh nhũ' : 'Shimmer';
+        case 'halo':
+          return isVi ? 'Tâm sáng' : 'Halo Glow';
+        case 'puppy':
+          return isVi ? 'Mắt cún' : 'Puppy Eyes';
+        case 'douyin':
+          return 'Douyin';
+        case 'outerV':
+          return isVi ? 'Đuôi V' : 'Outer V';
+        case 'cutCrease':
+          return isVi ? 'Cắt mí' : 'Cut Crease';
+        default:
+          return fallback;
+      }
+    }
+
     switch (id) {
       case 'full':
         return l10n.styleFull;
@@ -173,6 +199,14 @@ class MakeupPanel extends ConsumerWidget {
         'sunset': 'Sunset',
         'champagne': 'Champagne',
         'smoky': 'Smoky',
+        'dewyPeach': 'Dewy Peach',
+        'milkyPink': 'Milky Pink',
+        'apricotMilk': 'Apricot Milk',
+        'glassCoral': 'Glass Coral',
+        'pearlGlow': 'Pearl Glow',
+        'berryDew': 'Berry Dew',
+        'softMocha': 'Soft Mocha',
+        'grapefruit': 'Grapefruit Glow',
         'warm': 'Warm Brown',
         'cool': 'Cool Ash',
         'bronze': 'Bronze',
@@ -465,6 +499,7 @@ class MakeupPanel extends ConsumerWidget {
                   l10n: l10n,
                   options: MakeupPresets.eyeshadowStyles,
                   selectedId: m.eyeshadowStyle,
+                  category: 'eyeshadow',
                   onSelect: (id) => controller.updateMakeup(m.copyWith(eyeshadowStyle: id)),
                 ),
               ] else if (subTool == 'lens') ...[
@@ -571,6 +606,7 @@ class MakeupPanel extends ConsumerWidget {
     required List<MakeupStyleOption> options,
     required String selectedId,
     required ValueChanged<String> onSelect,
+    String? category,
   }) {
     return Container(
       padding: const EdgeInsets.all(3),
@@ -603,7 +639,7 @@ class MakeupPanel extends ConsumerWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        getStyleName(l10n, opt.id, opt.name),
+                        getStyleName(l10n, opt.id, opt.name, category: category),
                         style: TextStyle(
                           fontSize: 10.5,
                           fontWeight: selectedId == opt.id ? FontWeight.w600 : FontWeight.w400,

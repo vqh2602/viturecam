@@ -223,6 +223,14 @@ class BeautyNativeApi {
     }
   }
 
+  Future<void> restartApp() async {
+    try {
+      await _channel.invokeMethod('restartApp');
+    } catch (e) {
+      debugPrint('[BeautyNativeApi] restartApp error: $e');
+    }
+  }
+
   Future<VirtualCameraStatus> _virtualCameraCall(String method) async {
     try {
       final res = await _channel.invokeMethod<Map<dynamic, dynamic>>(method);

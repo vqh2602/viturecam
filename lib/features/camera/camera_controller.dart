@@ -4,6 +4,7 @@ import '../../platform/beauty_native_api.dart';
 import '../background/background_settings.dart';
 import '../beauty/beauty_settings.dart';
 import '../color/color_settings.dart';
+import '../filters/filter_model.dart';
 import '../makeup/makeup_settings.dart';
 import '../patreon/patreon_provider.dart';
 import '../presets/preset_model.dart';
@@ -20,6 +21,7 @@ class CameraState {
   final bool mirrorPreview;
   final bool mirrorOutput;
   final VirtualCameraStatus virtualCamera;
+  final bool virtualCameraReinstalled;
   bool get virtualCameraActive => virtualCamera.active;
   final bool beautyEnabled;
   final String compareMode; // 'none', 'split', 'raw'
@@ -51,6 +53,7 @@ class CameraState {
     this.mirrorPreview = true,
     this.mirrorOutput = false,
     this.virtualCamera = const VirtualCameraStatus(),
+    this.virtualCameraReinstalled = false,
     this.beautyEnabled = true,
     this.compareMode = 'none',
     this.splitRatio = 0.5,
@@ -80,6 +83,7 @@ class CameraState {
     bool? mirrorPreview,
     bool? mirrorOutput,
     VirtualCameraStatus? virtualCamera,
+    bool? virtualCameraReinstalled,
     bool? beautyEnabled,
     String? compareMode,
     double? splitRatio,
@@ -108,6 +112,7 @@ class CameraState {
       mirrorPreview: mirrorPreview ?? this.mirrorPreview,
       mirrorOutput: mirrorOutput ?? this.mirrorOutput,
       virtualCamera: virtualCamera ?? this.virtualCamera,
+      virtualCameraReinstalled: virtualCameraReinstalled ?? this.virtualCameraReinstalled,
       beautyEnabled: beautyEnabled ?? this.beautyEnabled,
       compareMode: compareMode ?? this.compareMode,
       splitRatio: splitRatio ?? this.splitRatio,
@@ -148,8 +153,18 @@ class CameraController extends StateNotifier<CameraState> {
   Future<void> _init() async {
     _ref?.listen<PatreonState>(patreonProvider, (prev, next) {
       if (prev?.isPatron == true && !next.isPatron) {
-        // Hết hạn hoặc đăng xuất Patreon -> reset hiệu ứng makeup
+        // Hết hạn hoặc đăng xuất Patreon -> reset hiệu ứng VIP
         updateMakeup(const MakeupSettings());
+        if (state.face.jawWidth != 0) {
+          updateFace(state.face.copyWith(jawWidth: 0));
+        }
+        if (state.beauty.skinBrightness != 0 || state.beauty.whitening != 0) {
+          updateBeauty(state.beauty.copyWith(skinBrightness: 0, whitening: 0));
+        }
+        final curFilter = FilterCatalog.getFilterById(state.filterId);
+        if (curFilter?.category == 'Douyin') {
+          updateFilter('original', 80);
+        }
       }
     });
 
@@ -298,13 +313,23 @@ class CameraController extends StateNotifier<CameraState> {
 
   Future<void> reinstallVirtualCamera() async {
     state = state.copyWith(
+      virtualCameraReinstalled: true,
       virtualCamera: const VirtualCameraStatus(
         state: 'installing',
         message: 'Đang gỡ và cài đặt lại Camera Extension...',
       ),
     );
     final status = await _api.reinstallVirtualCamera();
-    if (mounted) state = state.copyWith(virtualCamera: status);
+    if (mounted) {
+      state = state.copyWith(
+        virtualCamera: status,
+        virtualCameraReinstalled: true,
+      );
+    }
+  }
+
+  Future<void> restartApp() async {
+    await _api.restartApp();
   }
 
   Future<void> openCameraExtensionSettings() async {
@@ -317,6 +342,7 @@ class CameraController extends StateNotifier<CameraState> {
         state: state.virtualCamera.state,
         message: '',
       ),
+      virtualCameraReinstalled: false,
     );
   }
 
@@ -360,14 +386,19 @@ class CameraController extends StateNotifier<CameraState> {
   bool _beautyPending = false;
   BeautySettings? _nextBeauty;
   Future<void> updateBeauty(BeautySettings beauty) async {
-    state = state.copyWith(beauty: beauty, activePresetId: null);
+    final isPatron = _ref?.read(patreonProvider).isPatron ?? false;
+    final effectiveBeauty = isPatron
+        ? beauty
+        : beauty.copyWith(skinBrightness: 0, whitening: 0);
+
+    state = state.copyWith(beauty: effectiveBeauty, activePresetId: null);
     if (_beautyPending) {
-      _nextBeauty = beauty;
+      _nextBeauty = effectiveBeauty;
       return;
     }
     _beautyPending = true;
     try {
-      await _api.setBeautySettings(beauty.toMap());
+      await _api.setBeautySettings(effectiveBeauty.toMap());
     } finally {
       _beautyPending = false;
       if (_nextBeauty != null) {
@@ -381,14 +412,17 @@ class CameraController extends StateNotifier<CameraState> {
   bool _facePending = false;
   FaceSettings? _nextFace;
   Future<void> updateFace(FaceSettings face) async {
-    state = state.copyWith(face: face, activePresetId: null);
+    final isPatron = _ref?.read(patreonProvider).isPatron ?? false;
+    final effectiveFace = isPatron ? face : face.copyWith(jawWidth: 0);
+
+    state = state.copyWith(face: effectiveFace, activePresetId: null);
     if (_facePending) {
-      _nextFace = face;
+      _nextFace = effectiveFace;
       return;
     }
     _facePending = true;
     try {
-      await _api.setFaceSettings(face.toMap());
+      await _api.setFaceSettings(effectiveFace.toMap());
     } finally {
       _facePending = false;
       if (_nextFace != null) {
@@ -425,18 +459,24 @@ class CameraController extends StateNotifier<CameraState> {
   bool _filterPending = false;
   (String, double)? _nextFilter;
   Future<void> updateFilter(String filterId, double intensity) async {
+    final isPatron = _ref?.read(patreonProvider).isPatron ?? false;
+    final filterPreset = FilterCatalog.getFilterById(filterId);
+    final isVipFilter = filterPreset?.category == 'Douyin';
+    final effectiveFilterId = (isVipFilter && !isPatron) ? 'original' : filterId;
+    final effectiveIntensity = (isVipFilter && !isPatron) ? 0.0 : intensity;
+
     state = state.copyWith(
-      filterId: filterId,
-      filterIntensity: intensity,
+      filterId: effectiveFilterId,
+      filterIntensity: effectiveIntensity,
       activePresetId: null,
     );
     if (_filterPending) {
-      _nextFilter = (filterId, intensity);
+      _nextFilter = (effectiveFilterId, effectiveIntensity);
       return;
     }
     _filterPending = true;
     try {
-      await _api.setFilter(filterId: filterId, intensity: intensity / 100.0);
+      await _api.setFilter(filterId: effectiveFilterId, intensity: effectiveIntensity / 100.0);
     } finally {
       _filterPending = false;
       if (_nextFilter != null) {
@@ -518,13 +558,23 @@ class CameraController extends StateNotifier<CameraState> {
   Future<void> applyPreset(PresetModel preset) async {
     final isPatron = _ref?.read(patreonProvider).isPatron ?? false;
     final effectiveMakeup = isPatron ? preset.makeup : const MakeupSettings();
+    final effectiveBeauty = isPatron
+        ? preset.beauty
+        : preset.beauty.copyWith(skinBrightness: 0, whitening: 0);
+    final effectiveFace = isPatron
+        ? preset.face
+        : preset.face.copyWith(jawWidth: 0);
+    final filterPreset = FilterCatalog.getFilterById(preset.filterId);
+    final isVipFilter = filterPreset?.category == 'Douyin';
+    final effectiveFilterId = (isVipFilter && !isPatron) ? 'original' : preset.filterId;
+    final effectiveFilterIntensity = (isVipFilter && !isPatron) ? 0.0 : preset.filterIntensity;
 
     state = state.copyWith(
-      beauty: preset.beauty,
-      face: preset.face,
+      beauty: effectiveBeauty,
+      face: effectiveFace,
       makeup: effectiveMakeup,
-      filterId: preset.filterId,
-      filterIntensity: preset.filterIntensity,
+      filterId: effectiveFilterId,
+      filterIntensity: effectiveFilterIntensity,
       color: preset.color,
       background: preset.background,
       activePresetId: preset.id,

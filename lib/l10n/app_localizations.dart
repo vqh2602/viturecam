@@ -1520,6 +1520,18 @@ abstract class AppLocalizations {
   /// **'If the virtual camera fails or other apps cannot find it after an update, click to reinstall the camera extension.'**
   String get virtualCamReinstallTip;
 
+  /// No description provided for @restartApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart App'**
+  String get restartApp;
+
+  /// No description provided for @restartAppAfterReinstallTip.
+  ///
+  /// In en, this message translates to:
+  /// **'Extension reinstall requested. Please click Restart App to complete virtual camera activation.'**
+  String get restartAppAfterReinstallTip;
+
   /// No description provided for @hardwarePipelineStats.
   ///
   /// In en, this message translates to:

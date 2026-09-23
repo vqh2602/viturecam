@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/app_localizations.dart';
 import '../../widgets/tool_button.dart';
+import '../../widgets/vip_badge.dart';
 import '../background/background_panel.dart';
 import '../beauty/beauty_panel.dart';
 import '../color/color_panel.dart';
@@ -91,38 +92,68 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
           children: [
             // Top Bar
             _buildTopBar(context, state, controller),
-            if (state.virtualCamera.message.isNotEmpty)
+            if (state.virtualCamera.message.isNotEmpty || (state.virtualCameraReinstalled && state.virtualCamera.state != 'installing'))
               Container(
                 width: double.infinity,
-                color: state.virtualCamera.state == 'error'
-                    ? const Color(0xFF381C1C)
-                    : (state.virtualCamera.state == 'approval'
-                        ? const Color(0xFF332912)
-                        : const Color(0xFF1B2E22)),
+                color: (state.virtualCameraReinstalled && state.virtualCamera.state != 'installing')
+                    ? const Color(0xFF2B1C28)
+                    : (state.virtualCamera.state == 'error'
+                        ? const Color(0xFF381C1C)
+                        : (state.virtualCamera.state == 'approval'
+                            ? const Color(0xFF332912)
+                            : const Color(0xFF1B2E22))),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
                   children: [
                     Icon(
-                      state.virtualCamera.state == 'error'
-                          ? Icons.error_outline
-                          : (state.virtualCamera.state == 'approval'
-                              ? Icons.admin_panel_settings_outlined
-                              : Icons.info_outline),
+                      (state.virtualCameraReinstalled && state.virtualCamera.state != 'installing')
+                          ? Icons.restart_alt_rounded
+                          : (state.virtualCamera.state == 'error'
+                              ? Icons.error_outline
+                              : (state.virtualCamera.state == 'approval'
+                                  ? Icons.admin_panel_settings_outlined
+                                  : Icons.info_outline)),
                       size: 18,
-                      color: state.virtualCamera.state == 'error'
-                          ? const Color(0xFFFF6B6B)
-                          : (state.virtualCamera.state == 'approval'
-                              ? const Color(0xFFFFD166)
-                              : const Color(0xFF7FE68D)),
+                      color: (state.virtualCameraReinstalled && state.virtualCamera.state != 'installing')
+                          ? const Color(0xFFFF8DA1)
+                          : (state.virtualCamera.state == 'error'
+                              ? const Color(0xFFFF6B6B)
+                              : (state.virtualCamera.state == 'approval'
+                                  ? const Color(0xFFFFD166)
+                                  : const Color(0xFF7FE68D))),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        state.virtualCamera.message,
+                        (state.virtualCameraReinstalled && state.virtualCamera.state != 'installing')
+                            ? (state.virtualCamera.message.isNotEmpty
+                                ? '${state.virtualCamera.message} • ${l10n.restartAppAfterReinstallTip}'
+                                : l10n.restartAppAfterReinstallTip)
+                            : state.virtualCamera.message,
                         style: const TextStyle(color: Colors.white, fontSize: 12),
                       ),
                     ),
                     const SizedBox(width: 8),
+                    if (state.virtualCameraReinstalled && state.virtualCamera.state != 'installing') ...[
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFF7597),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                        ),
+                        icon: const Icon(Icons.restart_alt_rounded, size: 14),
+                        label: Text(
+                          l10n.restartApp,
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                        onPressed: () => controller.restartApp(),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
                     if (state.virtualCamera.state == 'error' || state.virtualCamera.state == 'approval') ...[
                       TextButton.icon(
                         style: TextButton.styleFrom(
@@ -700,30 +731,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
                           isSelected: activeCat == cat['id'],
                           isActive: cat['isActive'] as bool,
                           trailing: cat['id'] == 'makeup'
-                              ? Container(
-                                  margin: const EdgeInsets.only(left: 4),
-                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                                  decoration: BoxDecoration(
-                                    color: patreonState.isPatron
-                                        ? const Color(0xFFFF7597).withValues(alpha: 0.2)
-                                        : const Color(0xFFFF424D).withValues(alpha: 0.25),
-                                    borderRadius: BorderRadius.circular(4),
-                                    border: Border.all(
-                                      color: patreonState.isPatron
-                                          ? const Color(0xFFFF7597).withValues(alpha: 0.5)
-                                          : const Color(0xFFFF424D).withValues(alpha: 0.5),
-                                      width: 0.6,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    patreonState.isPatron ? 'VIP' : 'LOCK',
-                                    style: TextStyle(
-                                      color: patreonState.isPatron ? const Color(0xFFFF8DA1) : const Color(0xFFFF8A80),
-                                      fontSize: 8.5,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                )
+                              ? VipBadge(isPatron: patreonState.isPatron)
                               : null,
                           onTap: () => controller.selectCategory(cat['id'] as String),
                         ),

@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/app_localizations.dart';
 import '../../widgets/beauty_slider.dart';
+import '../../widgets/vip_badge.dart';
 import '../camera/camera_controller.dart';
+import '../patreon/patreon_config_dialog.dart';
+import '../patreon/patreon_provider.dart';
 import 'filter_model.dart';
 
 class FilterPanel extends ConsumerStatefulWidget {
@@ -19,6 +22,7 @@ class _FilterPanelState extends ConsumerState<FilterPanel> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final state = ref.watch(cameraControllerProvider);
+    final isPatron = ref.watch(patreonProvider).isPatron;
     final controller = ref.read(cameraControllerProvider.notifier);
     final activeId = state.filterId;
     final intensity = state.filterIntensity;
@@ -55,7 +59,7 @@ class _FilterPanelState extends ConsumerState<FilterPanel> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Row 1: Category Chips + Active Intensity Slider
+        // Row 1: Category Chips + Active Intensity Slider / VIP Banner
         SizedBox(
           height: 56,
           child: Row(
@@ -83,13 +87,20 @@ class _FilterPanelState extends ConsumerState<FilterPanel> {
                               ),
                             ),
                             child: Center(
-                              child: Text(
-                                cat['label']!,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: _selectedCategory == cat['id'] ? FontWeight.w600 : FontWeight.w400,
-                                  color: _selectedCategory == cat['id'] ? Colors.white : Colors.white70,
-                                ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    cat['label']!,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: _selectedCategory == cat['id'] ? FontWeight.w600 : FontWeight.w400,
+                                      color: _selectedCategory == cat['id'] ? Colors.white : Colors.white70,
+                                    ),
+                                  ),
+                                  if (cat['id'] == 'Douyin')
+                                    VipBadge(isPatron: isPatron, margin: const EdgeInsets.only(left: 3)),
+                                ],
                               ),
                             ),
                           ),
@@ -101,58 +112,62 @@ class _FilterPanelState extends ConsumerState<FilterPanel> {
               const SizedBox(width: 6),
               const VerticalDivider(width: 1, indent: 12, endIndent: 12, color: Colors.white10),
               const SizedBox(width: 6),
-              // Slider or placeholder
+              // Slider or VIP banner or placeholder
               Expanded(
-                child: activeId != 'original'
-                    ? Row(
-                        children: [
-                          Expanded(
-                            child: BeautySlider(
-                              label: l10n.filterIntensity(getFilterDisplayName(activeItem)),
-                              value: intensity,
-                              defaultValue: 80,
-                              onChanged: (v) => controller.updateFilter(activeId, v),
-                            ),
-                          ),
-                          if (activeItem.isLut) ...[
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                              margin: const EdgeInsets.only(right: 12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF6366F1).withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                  color: const Color(0xFF818CF8).withValues(alpha: 0.5),
-                                  width: 0.8,
+                child: activeItem.isVip && !isPatron
+                    ? VipInlineBanner(
+                        featureName: '${l10n.filterCatDouyin} (${getFilterDisplayName(activeItem)})',
+                      )
+                    : activeId != 'original'
+                        ? Row(
+                            children: [
+                              Expanded(
+                                child: BeautySlider(
+                                  label: l10n.filterIntensity(getFilterDisplayName(activeItem)),
+                                  value: intensity,
+                                  defaultValue: 80,
+                                  onChanged: (v) => controller.updateFilter(activeId, v),
                                 ),
                               ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.palette_outlined, size: 11, color: Color(0xFFA5B4FC)),
-                                  SizedBox(width: 3),
-                                  Text(
-                                    '3D LUT',
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFFA5B4FC),
-                                      letterSpacing: 0.5,
+                              if (activeItem.isLut) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                  margin: const EdgeInsets.only(right: 12),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF6366F1).withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: const Color(0xFF818CF8).withValues(alpha: 0.5),
+                                      width: 0.8,
                                     ),
                                   ),
-                                ],
-                              ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.palette_outlined, size: 11, color: Color(0xFFA5B4FC)),
+                                      SizedBox(width: 3),
+                                      Text(
+                                        '3D LUT',
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFFA5B4FC),
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          )
+                        : Center(
+                            child: Text(
+                              l10n.filterOriginalPlaceholder,
+                              style: const TextStyle(color: Colors.white38, fontSize: 12),
                             ),
-                          ],
-                        ],
-                      )
-                    : Center(
-                        child: Text(
-                          l10n.filterOriginalPlaceholder,
-                          style: const TextStyle(color: Colors.white38, fontSize: 12),
-                        ),
-                      ),
+                          ),
               ),
             ],
           ),
@@ -174,6 +189,10 @@ class _FilterPanelState extends ConsumerState<FilterPanel> {
 
               return GestureDetector(
                 onTap: () {
+                  if (item.isVip && !isPatron) {
+                    PatreonConfigDialog.show(context);
+                    return;
+                  }
                   controller.updateFilter(
                     item.id,
                     item.id == 'original' ? 0 : (intensity == 0 ? item.defaultIntensity : intensity),
@@ -185,35 +204,53 @@ class _FilterPanelState extends ConsumerState<FilterPanel> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Container(
-                        width: 28,
-                        height: 26,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                          gradient: LinearGradient(
-                            colors: item.gradient,
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          border: Border.all(
-                            color: isSel ? const Color(0xFFFF7597) : Colors.white12,
-                            width: isSel ? 2.0 : 1.0,
-                          ),
-                          boxShadow: isSel
-                              ? [
-                                  BoxShadow(
-                                    color: const Color(0xFFFF7597).withValues(alpha: 0.4),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 1),
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            width: 28,
+                            height: 26,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              gradient: LinearGradient(
+                                colors: item.gradient,
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              border: Border.all(
+                                color: isSel ? const Color(0xFFFF7597) : Colors.white12,
+                                width: isSel ? 2.0 : 1.0,
+                              ),
+                              boxShadow: isSel
+                                  ? [
+                                      BoxShadow(
+                                        color: const Color(0xFFFF7597).withValues(alpha: 0.4),
+                                        blurRadius: 6,
+                                        offset: const Offset(0, 1),
+                                      )
+                                    ]
+                                  : null,
+                            ),
+                            child: isSel
+                                ? const Center(
+                                    child: Icon(Icons.check, size: 14, color: Colors.white),
                                   )
-                                ]
-                              : null,
-                        ),
-                        child: isSel
-                            ? const Center(
-                                child: Icon(Icons.check, size: 14, color: Colors.white),
-                              )
-                            : null,
+                                : null,
+                          ),
+                          if (item.isVip && !isPatron)
+                            Positioned(
+                              top: -2,
+                              right: -2,
+                              child: Container(
+                                padding: const EdgeInsets.all(1.5),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF1E1E24),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.lock_rounded, size: 9, color: Color(0xFFFF8A80)),
+                              ),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 3),
                       Text(
